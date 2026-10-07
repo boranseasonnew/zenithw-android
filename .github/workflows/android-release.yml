@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing release tag to build and attach APKs to, for example v2.0.0"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -40,13 +46,15 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Install required Android SDK packages
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
       - name: Set version from release tag
         env:
-          TAG_NAME: ${{ github.ref_name }}
+          TAG_NAME: ${{ inputs.release_tag || github.ref_name }}
         run: |
           python3 - <<'PY'
           import os, re
@@ -75,7 +83,7 @@ jobs:
 
       - name: Prepare release files
         env:
-          TAG_NAME: ${{ github.ref_name }}
+          TAG_NAME: ${{ inputs.release_tag || github.ref_name }}
         run: |
           VERSION="${TAG_NAME#v}"
           OUT="release-assets"
@@ -90,7 +98,7 @@ jobs:
       - name: Upload APKs and publish the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG_NAME: ${{ github.ref_name }}
+          TAG_NAME: ${{ inputs.release_tag || github.ref_name }}
         run: |
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
             gh release upload "$TAG_NAME" release-assets/*.apk release-assets/SHA256SUMS.txt --clobber
