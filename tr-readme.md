@@ -1,133 +1,455 @@
-# zenithw-android
+<div align="center">
 
-**ZenithW Android** için kaynak kodlar şu anda mevcut değil, çünkü orijinal yerel kaynak dosyaları yanlışlıkla silindi.
+# ⚡ ZenithW Android 2.0
 
-Proje daha önce şu anda erişilemeyen eski bir GitHub hesabında barındırılıyordu. Eğer o hesaba tekrar erişim sağlanırsa, kaynak kodlar kurtarılıp bu depoya aktarılacaktır.
+### **Hızlı. Native. Yeniden İnşa Edildi.**
 
-Şimdilik uygulamanın kullanılabilir en güncel sürümünü **Releases** bölümünden indirip kullanabilirsiniz.
+Orijinal **ZenithW Android** uygulamasının **Kotlin + Jetpack Compose** ile yeniden oluşturulmuş sürümü.
 
-> **Not:** Bu depo şu anda ZenithW Android için resmi indirme sayfası olarak kullanılmaktadır. Kaynak kodlar kurtarılabilirse gelecekte buraya eklenebilir.
+**Video • Ses • Altyazı • yt-dlp • Aria2c**
 
-## ✨ Özellikler
+---
 
-**ZenithW Android**, **yt-dlp** altyapısıyla çalışan modern bir medya indiricisidir. Video, ses, altyazı ve metadata indirmeyi olabildiğince kolay hale getirmek için tasarlanmıştır.
+> 🧩 **Android kaynak kodu geri döndü.**  
+> Eski hesabın banlanmasının ardından orijinal proje dosyalarına erişim kaybedildi ve hesap geri açılamadı.  
+> Uygulama, mevcut APK üzerinden **JADX GUI** kullanılarak kurtarıldı; ardından kodlar temizlendi, yeniden düzenlendi, gerektiği yerlerde tekrar yazıldı ve modern bir Android projesine dönüştürüldü.
 
-### 🔗 Basit Bağlantı ile İndirme
+</div>
 
-Desteklenen bir medya bağlantısını uygulamaya yapıştırmanız ve istediğiniz indirme seçeneklerini seçmeniz yeterlidir.
+---
 
-Karmaşık komutlar, scriptler veya terminal kullanımı gerekmez.
+## ✨ Neler var?
 
-### 🍪 Otomatik Çerez (Cookie) Alma
+ZenithW 2.0 sadece görsel bir yenileme değil.
 
-ZenithW, gerekli hesap/oturum bağlantısından çerezleri otomatik olarak alıp uygulamaya ekleyebilir.
+Android uygulaması, orijinal uygulamanın temel özelliklerini korurken daha temiz ve sürdürülebilir bir native yapı etrafında yeniden inşa edildi.
 
-Sizin yalnızca gerekli bağlantıyı vermeniz yeterlidir; uygulama çerez ayarlarını otomatik şekilde halleder.
+### 🎨 Arayüz
 
-Bu özellik, oturum gerektiren veya giriş yapılmış hesap isteyen içerikler için faydalıdır.
+- 🖤 Mat **siyah / koyu gri** tasarım
+- 📱 Native **Jetpack Compose** arayüzü
+- 👆 Daha rahat kullanım için büyük dokunma alanları
+- 🧭 Alt gezinme çubuğu
+- 📑 Native bottom sheet yapıları
+- ✨ Hafif seçim animasyonları
+- 📐 Tek elle kullanıma uygun yerleşim
 
-### 🛡️ Gizlilik Dostu İndirme
+### 🔗 URL işlemleri
 
-İndirmeler doğrudan **kendi cihazınızda**, **kendi internetiniz** ve **kendi IP adresiniz** ile gerçekleştirilir.
+- 📋 Bağlantıyı doğrudan yapıştırma
+- 🧹 URL temizleme butonu
+- 📤 Android **Paylaş** menüsünden link alma
+- 🔎 İptal edilebilir medya inceleme
+- 🌐 Daha sade URL giriş akışı
 
-Yani sizinle medya kaynağı arasına giren harici bir indirme sunucusu yoktur.
+### 🎬 İndirme seçenekleri
 
-- Reklam yok
-- Takip odaklı indirme sistemi yok
-- Zorunlu hesap yok
-- Harici indirme sunucusu yok
+Önemli ayarlar doğrudan görünürken, daha az kullanılan seçenekler açılır bölümlerde tutulur.
 
-İndirmeleriniz sizin cihazınızda kalır.
+**Ana seçenekler:**
 
-### ⚙️ yt-dlp Motor Yönetimi
+- 🎞️ Video kalitesi
+- 🎵 Ses formatı
+- 💬 Altyazılar
 
-ZenithW, yt-dlp motorunu uygulama içinden yönetmenize olanak tanır.
+**Gelişmiş seçenekler:**
 
-Yapabilecekleriniz:
+- ⚡ Aria2c
+- 🚦 İndirme hız sınırı
+- ⏰ Zamanlanmış indirmeler
+- 📶 Sadece ölçülmeyen ağlarda indirme
 
-- 🔄 Uygulama içinden yt-dlp güncelleme
-- 📦 Farklı yt-dlp sürüm kanalları arasında seçim yapma
-- 🟢 **Stable** sürüm kullanma
-- 🌙 **Nightly** sürüm kullanma
-- 🔧 Tercih edilen yt-dlp motorunu/sürümünü değiştirme
+### 📥 İndirme sistemi
 
-> **Önerilen:** Tercih edilen yt-dlp motoru **Nightly** olmalıdır. Çünkü site uyumluluğu ve extractor düzeltmeleri daha hızlı gelir.
+- 📚 İndirme kuyruğu
+- 🔔 Android bildirimleri
+- 📂 İndirilen dosyaları açma
+- 📤 İndirilen dosyaları paylaşma
+- ⏱️ Zamanlanmış indirmeler
+- 📡 Wi-Fi / ölçülmeyen ağ kısıtlamaları
+- 🖼️ Küçük resim ve kapak işleme geliştirmeleri
+- ⚙️ Aria2c kullanılamadığında native fallback sistemi
 
-### 🚫 SponsorBlock Desteği
+Aria2c ve küçük resim düzeltmeleriyle ilgili teknik ayrıntılar için:
 
-**SponsorBlock** desteği sayesinde istenmeyen bölümler otomatik olarak atlanabilir veya ayıklanabilir.
+[`DOWNLOAD_FIXES.md`](DOWNLOAD_FIXES.md)
 
-Yapılandırmanıza bağlı olarak desteklenen sponsor bölümleri işleme sırasında kaldırılabilir.
+---
 
-### 🎵 Ses İndirme
+## 🛠️ yt-dlp
 
-Birden fazla ses formatında indirme desteği sunar. Örneğin:
+ZenithW indirme motoru olarak **yt-dlp** kullanır.
 
-- M4A
-- MP3
-- OPUS
-- ve yt-dlp tarafından desteklenen diğer ses formatları
+Uygulamada:
 
-Ayrıca videolardan doğrudan ses de ayıklanabilir.
+- 🔄 Açılışta otomatik güncelleme kontrolü
+- ✅ Doğrulanmış yt-dlp indirmeleri
+- 📦 Düzenlenmiş çevrimdışı yt-dlp paketi
+- 🔐 Sürüm ve checksum doğrulaması
 
-### 🎬 Yüksek Kaliteli Video İndirme
+bulunur.
 
-Videoları kaynağın sunduğu en yüksek kalite seçenekleriyle indirebilirsiniz.
+Mevcut dahili sürüm:
 
-Desteklenebilen çözünürlükler arasında şunlar bulunabilir:
+```text
+yt-dlp 2026.08.19
+```
 
-- 720p
-- 1080p
-- 1440p
-- 4K
-- 8K
+Kaynak, sürüm ve checksum bilgileri:
 
-Gerçek kullanılabilir kalite, videonun orijinal kaynağına bağlıdır.
+```text
+yt-dlp-bundle.json
+```
 
-### 📚 İndirme Kuyruğu
+dosyasında tutulur.
 
-Birden fazla indirmeyi sıraya ekleyebilirsiniz.
+---
 
-Böylece her indirmenin bitmesini beklemek yerine videoları, oynatma listelerini veya ses dosyalarını kuyruğa alıp ZenithW’nin bunları tek tek işlemesini sağlayabilirsiniz.
+## 🍪 Cookie sistemi
 
-### 🖼️ Kapak Fotoğrafı / Küçük Resim Gömme
+ZenithW 2.0 ile cookie sistemi de yeniden ele alındı.
 
-Desteklenen medya dosyalarına video küçük resmini (thumbnail) indirip gömebilir.
+- 🔒 Şifrelenmiş cookie profilleri
+- 🌐 `https://` ile başlayan cookie tarayıcısı
+- 💾 Kayıtlı oturum seçimi
+- 📄 Netscape formatında cookie dosyası içe aktarma
+- ⚡ Daha önce kaydedilmiş profilleri otomatik kullanma
 
-Bu özellik özellikle müzik arşivleri, indirilen videolar ve medya oynatıcılarında gömülü kapak görseli göstermek için kullanışlıdır.
+---
 
-### 💬 Altyazı İndirme
+# 🔨 Derleme
 
-Uygun olan içeriklerde medya ile birlikte altyazıları da indirebilirsiniz.
+## Gereksinimler
 
-Seçenekler arasında şunlar olabilir:
+Gerekli bileşenler:
 
-- Orijinal altyazılar
-- Otomatik oluşturulmuş altyazılar
-- Birden fazla altyazı dili
-- Sadece altyazı indirme
+- **JDK 17 veya daha yeni**
+- **Android SDK 36**
+- **Android Build Tools 36.0.0**
+- Kabul edilmiş Android SDK lisansları
 
-Kullanılabilirlik, platforma ve videoya bağlıdır.
+Android Studio önerilir ancak zorunlu değildir.
 
-### 📁 Metadata Desteği
+SDK yolunu Android Studio üzerinden ayarlayabilir veya:
 
-ZenithW, desteklenen metadata bilgilerini koruyabilir ve medya dosyasına ekleyebilir. Örneğin:
+```text
+local.properties
+```
 
-- Video başlığı
-- Sanatçı / yükleyici
-- Küçük resim
-- Açıklama
-- Yüklenme bilgileri
-- ve diğer kullanılabilir medya metadata bilgileri
+dosyası oluşturup şunu ekleyebilirsin:
 
-### ⚡ yt-dlp Altyapısı
+```properties
+sdk.dir=/android/sdk/yolu
+```
 
-ZenithW, temel indirme motoru olarak **yt-dlp** kullanır. Bu sayede çok sayıda desteklenen site ve medya platformuyla uyumlu çalışabilir.
+---
 
-Web sitelerinin yapıları sık sık değiştiği için yt-dlp’yi güncel tutmanız şiddetle önerilir.
+## 🐧 Linux / WSL
 
-## 🚀 Ve Daha Fazlası
+Derlemek için:
 
-ZenithW, Android üzerinde yt-dlp kullanımını komut satırı bilgisi gerektirmeden kolaylaştırmak için birçok ek indirme, dönüştürme ve medya yönetimi seçeneği sunar.
+```bash
+./gradlew :app:assembleDebug
+```
 
-Gelecek sürümlerde daha fazla özellik ve geliştirme eklenebilir.
+---
+
+## 🪟 Windows
+
+Windows üzerinde:
+
+```bat
+gradlew.bat :app:assembleDebug
+```
+
+kullanılır.
+
+> ⚠️ **Önemli**
+>
+> Projeyi doğrudan şu tarz bir WSL ağ yolundan derlemeyin:
+>
+> ```text
+> \\wsl$\Ubuntu\...
+> ```
+>
+> Gradle çalıştırmadan önce projeyi normal bir Windows klasörüne kopyalayın veya çıkartın.
+
+Windows Gradle ortamı, WSL ağ sistemi üzerinden doğrudan derleme sırasında hata verebilir.
+
+Örneğin:
+
+```text
+C:\Projects\ZenithW-Android
+```
+
+---
+
+## 🔐 Preview imzalama
+
+Gradle wrapper şu anda:
+
+```text
+Gradle 8.13
+```
+
+sürümünü sabitler.
+
+Gradle dağıtımı **SHA-256** ile doğrulanır.
+
+İlk preview derlemesi sırasında otomatik olarak yerel bir imza anahtarı oluşturulur:
+
+```text
+.signing/
+```
+
+### ⚠️ Bu anahtarı gizli tut
+
+Gelecekteki preview APK'larının mevcut preview sürümünün üzerine güncelleme olarak kurulabilmesi için aynı anahtar gerekir.
+
+`.signing` klasörü:
+
+- 🚫 Git'e dahil edilmez
+- 🚫 Kaynak kod arşivlerine eklenmez
+- 🔒 Sadece yerelde tutulur
+
+---
+
+# 📦 APK sürümleri
+
+Mevcut preview paket adı:
+
+```text
+space.zenithw.app.preview
+```
+
+Uygulama adı:
+
+```text
+ZenithW 2.0 Preview
+```
+
+Sürüm:
+
+```text
+2.0.0-preview
+```
+
+Version Code:
+
+```text
+20000
+```
+
+Minimum Android sürümü:
+
+```text
+Android 7.0
+API 24
+```
+
+Preview sürümü, eski ZenithW uygulamasının yanına kurulabilmesi için özellikle farklı bir package ID kullanır.
+
+---
+
+## 🧱 Desteklenen mimariler
+
+Preview APK'ları başarıyla şu mimariler için derlendi:
+
+| Mimari | Durum |
+|---|---|
+| **ARM64 / arm64-v8a** | ✅ Derlendi |
+| **ARM32 / armeabi-v7a** | ✅ Derlendi |
+| **x86_64** | ✅ Derlendi |
+
+Derleme tarihi:
+
+**7 Ekim 2026**
+
+APK imzaları ve paket içindeki **yt-dlp 2026.08.19** dosyası başarıyla doğrulandı.
+
+> 🧪 Bu sürümler henüz fiziksel bir Android cihazda kapsamlı şekilde test edilmedi.
+
+Üretilen APK'lar ve derleme raporları yerelde şu klasörde tutulur:
+
+```text
+ZenithW-Builds/Android-2.0
+```
+
+Bu klasör bilerek Git dışında tutulur.
+
+---
+
+# 📐 Android 16 KB sayfa boyutu uyumluluğu
+
+Yeni Android cihazlarda **16 KB bellek sayfa boyutu** desteği giderek daha önemli hale geliyor.
+
+ZenithW'nin ARM64 çalıştırılabilir dosyaları şu anda:
+
+```text
+✅ 16 KB hizalı
+```
+
+Ancak FFmpeg runtime paketinin içinde bulunan beş adet **WebP shared library** hâlâ:
+
+```text
+⚠️ 4 KB ELF hizalaması
+```
+
+kullanıyor.
+
+Uyumluluğu artırmak için ZenithW, desteklenen cihazlarda Android'in **uygulama bazlı page-size compatibility mode** özelliğini açıkça etkinleştirir.
+
+### Önemli
+
+Bu uyumluluk modu, tam anlamıyla 16 KB destekleyen upstream native binary'lerin yerini tutmaz.
+
+Aşağıdaki özellikler 16 KB kullanan gerçek cihazlarda hâlâ test edilmelidir:
+
+- 📥 İndirmeler
+- 🖼️ Thumbnail dönüştürme
+- 🎬 Etkilenen kütüphaneleri kullanan FFmpeg işlemleri
+
+Android dokümantasyonu:
+
+https://developer.android.com/guide/practices/page-sizes
+
+---
+
+# 🔄 Orijinal ZenithW uygulamasını güncelleme
+
+Orijinal Android uygulaması şu package ID'yi kullanır:
+
+```text
+space.zenithw.app
+```
+
+Android, mevcut bir uygulamanın üzerine güncelleme kurulabilmesi için yeni APK'nın **orijinal uygulamayla aynı imza sertifikasıyla** imzalanmasını zorunlu tutar.
+
+Orijinal imza anahtarı şu anda **geri kazanılmış değil**.
+
+Bu nedenle mevcut preview sürümü farklı bir paket kullanır:
+
+```text
+space.zenithw.app.preview
+```
+
+Böylece **ZenithW 2.0 Preview**, eski ZenithW sürümünün yanına kurulabilir.
+
+### Orijinal package için release sürümleri
+
+Şu paket adına sahip sürümler:
+
+```text
+space.zenithw.app
+```
+
+orijinal imza anahtarı sağlanana kadar bilerek imzasız bırakılır.
+
+---
+
+# 🧩 Kaynak kodun geri kazanılması
+
+Eski Android kaynak kodu deposu, eski hesabın banlanmasından sonra erişilemez hale geldi ve hesap geri açılamadı.
+
+Android sürümünü tamamen bırakmak yerine mevcut APK, **JADX GUI** ile incelendi.
+
+Kurtarılan uygulama mantığı daha sonra projenin yeniden oluşturulmasında referans olarak kullanıldı.
+
+Bu repository bu nedenle **sadece ham bir JADX çıktısı değildir**.
+
+Kaynak kodun önemli bölümleri:
+
+- 🧹 Temizlendi
+- 🧱 Yeniden düzenlendi
+- ✍️ Tekrar yazıldı
+- 🎨 Yeniden tasarlandı
+- ⚙️ Modern Android API'leriyle yeniden uygulandı
+- 🧪 Gelecekteki geliştirmelere uygun hale getirildi
+
+Sonuç olarak ortaya sürdürülebilir ve geliştirilebilir bir **Kotlin + Jetpack Compose** projesi çıktı.
+
+---
+
+# 📚 Üçüncü taraf bileşenler
+
+ZenithW Android çeşitli açık kaynak bileşenler kullanır.
+
+### yt-dlp
+
+Resmî ve doğrulanmış sürüm kullanılır.
+
+Kaynak, sürüm ve checksum bilgileri:
+
+```text
+yt-dlp-bundle.json
+```
+
+dosyasında bulunur.
+
+### Native indirme bileşenleri
+
+ZenithW şu bileşenleri kullanır:
+
+```text
+youtubedl-android 0.18.1
+FFmpeg Android paketleri
+Aria2c Android paketleri
+```
+
+### Android kütüphaneleri
+
+Bunlara şunlar dahildir:
+
+- Jetpack Compose
+- AndroidX
+- WorkManager
+- Kotlin Coroutines
+- Coil
+
+---
+
+# ⚖️ Lisans
+
+Orijinal ZenithW Android projesi:
+
+**GNU Affero General Public License v3.0**
+
+lisansı altındadır.
+
+Detaylar için:
+
+[`LICENSE`](LICENSE)
+
+Üçüncü taraf kütüphaneler kendi lisans ve bildirim şartlarına tabidir.
+
+Orijinal Android projesinden ve bağımlılıklardan gelen lisans / notice şartları geçerliliğini korur.
+
+---
+
+# 🚧 Proje durumu
+
+> **ZenithW Android 2.0 şu anda preview aşamasındadır.**
+
+Proje başarıyla derlenmektedir ancak daha fazla cihaz testi ve uyumluluk çalışması planlanmaktadır.
+
+Şu anki öncelikler:
+
+- 📱 Fiziksel cihaz testleri
+- 🧪 Farklı Android sürümlerinde test
+- 📐 Tam 16 KB native library uyumluluğu
+- ⚡ İndirme kararlılığı geliştirmeleri
+- 🐛 Hata düzeltmeleri
+- 🎨 Arayüz iyileştirmeleri
+- 🚀 Stabil ZenithW 2.0 sürümüne hazırlık
+
+---
+
+<div align="center">
+
+## ⚡ ZenithW
+
+**Gereksiz kalabalık olmadan indir.**
+
+`Android • Kotlin • Jetpack Compose • yt-dlp`
+
+</div>
