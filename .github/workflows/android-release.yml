@@ -88,11 +88,43 @@ jobs:
           VERSION="${TAG_NAME#v}"
           OUT="release-assets"
           mkdir -p "$OUT"
-          for ABI in arm64-v8a armeabi-v7a x86_64; do
-            SOURCE="app/build/outputs/apk/release/app-$ABI-release.apk"
-            test -s "$SOURCE" || { echo "::error::Missing expected APK: $SOURCE"; exit 1; }
-            cp "$SOURCE" "$OUT/Zenith-$VERSION-stable-$ABI.apk"
-          done
+          VERSION="$VERSION" python3 - <<'PY'
+          import json, os, shutil
+          from pathlib import Path
+
+          root = Path("app/build/outputs/apk")
+          wanted = {"arm64-v8a", "armeabi-v7a", "x86_64"}
+          found = {}
+          for metadata in root.rglob("output-metadata.json"):
+              try:
+                  data = json.loads(metadata.read_text())
+              except (OSError, json.JSONDecodeError):
+                  continue
+              for element in data.get("elements", []):
+                  abi = next((item.get("value") for item in element.get("filters", [])
+                              if item.get("filterType") == "ABI"), None)
+                  output = metadata.parent / element.get("outputFile", "")
+                  if abi in wanted and output.is_file():
+                      found[abi] = output
+
+          for abi in wanted:
+              if abi not in found:
+                  for output in root.rglob("*.apk"):
+                      if abi in output.name:
+                          found[abi] = output
+                          break
+
+          missing = wanted - found.keys()
+          if missing:
+              actual = ", ".join(str(path) for path in root.rglob("*.apk")) or "(no APK files found)"
+              raise SystemExit(f"Missing ABI APKs {sorted(missing)}. Actual outputs: {actual}")
+
+          out = Path("release-assets")
+          version = os.environ["VERSION"]
+          for abi, source in found.items():
+              shutil.copy2(source, out / f"Zenith-{version}-stable-{abi}.apk")
+              print(f"Prepared {abi}: {source}")
+          PY
           (cd "$OUT" && sha256sum *.apk > SHA256SUMS.txt)
 
       - name: Upload APKs and publish the GitHub Release
