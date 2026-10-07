@@ -1,0 +1,74 @@
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
+}
+android {
+    namespace = "space.zenithw.app"
+    compileSdk = 36
+    buildToolsVersion = "36.0.0"
+    defaultConfig {
+        applicationId = "space.zenithw.app"
+        minSdk = 24
+        targetSdk = 36
+        versionCode = 20000
+        versionName = "2.0.0"
+    }
+    signingConfigs { getByName("debug") { storeFile=rootProject.file(".signing/preview.keystore") } }
+    buildTypes {
+        debug {
+            applicationIdSuffix = ".preview"
+            versionNameSuffix = "-preview"
+            resValue("string", "app_name", "ZenithW 2.0 Preview")
+        }
+        release {
+            // An unsigned release needs the original signing key before distribution.
+            isMinifyEnabled = false
+        }
+    }
+    buildFeatures { compose = true; buildConfig = true }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = "17" }
+    packaging { jniLibs.useLegacyPackaging = true }
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = false
+        }
+    }
+}
+dependencies {
+    implementation(platform("androidx.compose:compose-bom:2025.09.01"))
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation("androidx.activity:activity-compose:1.10.1")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
+    implementation("androidx.work:work-runtime-ktx:2.10.3")
+    implementation("androidx.core:core-ktx:1.17.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("io.github.junkfood02.youtubedl-android:library:0.18.1")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1")
+    implementation("io.github.junkfood02.youtubedl-android:aria2c:0.18.1")
+}
+
+// Keep preview installs updateable with a local key, never checked into Git.
+val previewKey=rootProject.file(".signing/preview.keystore")
+val generatePreviewKey=tasks.register<Exec>("generatePreviewKey") {
+    onlyIf { !previewKey.exists() }
+    doFirst { previewKey.parentFile.mkdirs() }
+    val executable=if(System.getProperty("os.name").startsWith("Windows")) "keytool.exe" else "keytool"
+    commandLine(File(System.getProperty("java.home"),"bin/$executable").absolutePath,
+        "-genkeypair","-keystore",previewKey.absolutePath,"-storepass","android","-keypass","android",
+        "-alias","AndroidDebugKey","-dname","CN=ZenithW Preview, O=ZenithW, C=TR",
+        "-keyalg","RSA","-keysize","2048","-validity","10000","-noprompt")
+}
+tasks.matching { it.name=="validateSigningDebug" }.configureEach { dependsOn(generatePreviewKey) }
