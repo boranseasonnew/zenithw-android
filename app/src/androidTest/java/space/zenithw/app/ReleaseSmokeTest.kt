@@ -119,20 +119,27 @@ class ReleaseSmokeTest {
         }
         waitForLabel(label)
     }
-    @Test fun settingsCategories() {
-        app.store.language="tr"
+    private fun openSettingsRoot() {
         app.startActivity(android.content.Intent(app,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
+        android.os.SystemClock.sleep(400)
         clickLabel("Ayarlar")
         waitForLabel("Uygulama dili")
+        android.os.SystemClock.sleep(250)
+    }
+    @Test fun settingsCategories() {
+        app.store.language="tr"
         val entries=listOf("Dil" to "English","İndirme motoru" to "Şimdi güncelle","Video ve ses" to "Video kalitesi",
             "Dosya içeriği" to "Medya bilgilerini göm","Altyazılar" to "Altyazıları indir","SponsorBlock" to "Kategoriler",
             "Aria2c" to "Bağlantı sayısı","Bağlantı ve hız" to "Hız sınırı","Oynatma listeleri" to "Liste indirmeye izin ver",
             "Dosyalar ve arşiv" to "Dosya adı","Hazır profiller" to "Günlük","İşlem günlüğü" to "Temizle")
         for((entry,control) in entries) {
+            openSettingsRoot()
             scrollToLabel(entry);clickLabel(entry);waitForLabel(control)
             instrumentation.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+            android.os.SystemClock.sleep(250)
             waitForLabel("Ayarlar")
         }
+        openSettingsRoot()
         scrollToLabel("Tarayıcı oturumları");clickLabel("Tarayıcı oturumları");clickLabel("Yeni oturum bağla")
         waitForLabel("Site adresi")
         assertFalse(nodes().any { it.text?.toString() in listOf("YouTube","Instagram","TikTok") })

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 mkdir -p smoke-results
-trap 'adb logcat -d > smoke-results/logcat.txt' EXIT
+trap 'adb logcat -d > smoke-results/logcat.txt; adb exec-out screencap -p > smoke-results/final.png; adb shell uiautomator dump /sdcard/final-ui.xml; adb pull /sdcard/final-ui.xml smoke-results/final.xml' EXIT
 ./gradlew --no-daemon :app:assembleReleaseAndroidTest
 adb install -r app/build/outputs/apk/release/app-x86_64-release.apk
 TEST_APK="$(find app/build/outputs/apk/androidTest/release -name '*.apk' -print -quit)"
