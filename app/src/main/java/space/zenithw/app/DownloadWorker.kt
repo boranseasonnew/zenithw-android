@@ -66,18 +66,19 @@ class DownloadWorker(context: Context,params: WorkerParameters): CoroutineWorker
         } finally { app.engine.cancel(job.id); directory.deleteRecursively() }
     }
     private fun foreground(title: String,percent: Int): ForegroundInfo {
+        val texts=AppLanguage.context(applicationContext)
         val manager=applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if(Build.VERSION.SDK_INT>=26) manager.createNotificationChannel(NotificationChannel(
-            "downloads","İndirmeler",NotificationManager.IMPORTANCE_LOW))
+            "downloads",texts.getString(R.string.downloads),NotificationManager.IMPORTANCE_LOW))
         val intent=Intent(applicationContext,MainActivity::class.java).putExtra("showQueue",true)
         val pending=PendingIntent.getActivity(applicationContext,0,intent,PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val cancel=WorkManager.getInstance(applicationContext).createCancelPendingIntent(id)
         val notification=NotificationCompat.Builder(applicationContext,"downloads")
             .setSmallIcon(android.R.drawable.stat_sys_download).setContentTitle(title.take(80))
-            .setContentText(if(percent>0) "%$percent" else "Sırada / hazırlanıyor")
+            .setContentText(if(percent>0) "%$percent" else texts.getString(R.string.queued_preparing))
             .setProgress(100,percent,percent==0).setOngoing(true).setOnlyAlertOnce(true)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setContentIntent(pending)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel,"İptal",cancel).build()
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel,texts.getString(R.string.cancel_notification),cancel).build()
         val notificationId=(id.hashCode() and Int.MAX_VALUE).coerceAtLeast(1)
         return if(Build.VERSION.SDK_INT>=29) ForegroundInfo(notificationId,notification,ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
             else ForegroundInfo(notificationId,notification)
