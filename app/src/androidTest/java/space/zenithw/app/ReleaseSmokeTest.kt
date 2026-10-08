@@ -63,6 +63,7 @@ class ReleaseSmokeTest {
             nodes().firstOrNull { it.text?.toString()==label }?.let { return it }
             android.os.SystemClock.sleep(100)
         }
+        captureUi("missing-label")
         error("UI label missing: $label; visible: ${nodes().mapNotNull { it.text?.toString() }}")
     }
     private fun clickLabel(label: String) {
@@ -106,18 +107,31 @@ class ReleaseSmokeTest {
     }
 
     private fun scrollToLabel(label: String) {
-        repeat(14) {
+        repeat(35) {
             if(nodes().any { it.text?.toString()==label && it.isVisibleToUser })return
-            val scroll=nodes().firstOrNull { it.isScrollable && it.isVisibleToUser }
-            if(scroll?.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)!=true)return@repeat
-            android.os.SystemClock.sleep(250)
-        }
-        repeat(14) {
-            if(nodes().any { it.text?.toString()==label && it.isVisibleToUser })return
-            nodes().firstOrNull { it.isScrollable && it.isVisibleToUser }?.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
-            android.os.SystemClock.sleep(350)
+            // A page-sized accessibility scroll can jump over a partially clipped row.
+            // Move one category at a time with the same small swipe a person uses.
+            val metrics=app.resources.displayMetrics
+            val start=android.os.SystemClock.uptimeMillis()
+            for(index in 0..10) {
+                val action=when(index) { 0 -> android.view.MotionEvent.ACTION_DOWN; 10 -> android.view.MotionEvent.ACTION_UP; else -> android.view.MotionEvent.ACTION_MOVE }
+                val event=android.view.MotionEvent.obtain(start,android.os.SystemClock.uptimeMillis(),action,
+                    metrics.widthPixels*.5f,metrics.heightPixels*(.75f-.15f*index/10),0)
+                event.source=android.view.InputDevice.SOURCE_TOUCHSCREEN
+                instrumentation.uiAutomation.injectInputEvent(event,true)
+                event.recycle();android.os.SystemClock.sleep(20)
+            }
+            android.os.SystemClock.sleep(200)
         }
         waitForLabel(label)
+    }
+    private fun captureUi(name: String) {
+        val directory=java.io.File(app.getExternalFilesDir(null),"smoke-ui").apply { mkdirs() }
+        instrumentation.uiAutomation.takeScreenshot()?.let { bitmap ->
+            java.io.FileOutputStream(java.io.File(directory,"$name.png")).use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) }
+            bitmap.recycle()
+        }
+        java.io.File(directory,"$name.txt").writeText(nodes().mapNotNull { it.text?.toString() }.joinToString("\n"))
     }
     private fun openSettingsRoot() {
         app.startActivity(android.content.Intent(app,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
@@ -125,6 +139,7 @@ class ReleaseSmokeTest {
         clickLabel("Ayarlar")
         waitForLabel("Uygulama dili")
         android.os.SystemClock.sleep(250)
+        captureUi("settings-root")
     }
     @Test fun settingsCategories() {
         app.store.language="tr"
@@ -142,6 +157,7 @@ class ReleaseSmokeTest {
         openSettingsRoot()
         scrollToLabel("Tarayıcı oturumları");clickLabel("Tarayıcı oturumları");clickLabel("Yeni oturum bağla")
         waitForLabel("Site adresi")
+        captureUi("cookie-address")
         assertFalse(nodes().any { it.text?.toString() in listOf("YouTube","Instagram","TikTok") })
         assertEquals("https://example.org",normalizeUrl("example.org"))
         assertEquals("https://example.org/login",normalizeUrl("https://example.org/login"))
