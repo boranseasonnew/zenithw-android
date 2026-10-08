@@ -66,15 +66,20 @@ class ReleaseSmokeTest {
         error("UI label missing: $label; visible: ${nodes().mapNotNull { it.text?.toString() }}")
     }
     private fun clickLabel(label: String) {
-        var node: android.view.accessibility.AccessibilityNodeInfo?=waitForLabel(label)
-        while(node!=null) {
-            if(node.isClickable) {
-                assertTrue(node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK))
-                return
+        val deadline=android.os.SystemClock.uptimeMillis()+8000
+        while(android.os.SystemClock.uptimeMillis()<deadline) {
+            var node=nodes().firstOrNull { it.text?.toString()==label && it.isVisibleToUser }
+            while(node!=null) {
+                if(node.isClickable && node.isEnabled && node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)) {
+                    println("Clicked: $label")
+                    instrumentation.waitForIdleSync()
+                    return
+                }
+                node=node.parent
             }
-            node=node.parent
+            android.os.SystemClock.sleep(100)
         }
-        error("UI label not clickable: $label")
+        error("UI label not clickable: $label; visible: ${nodes().mapNotNull { it.text?.toString() }}")
     }
     @Test fun languages() {
         assertEquals("Einstellungen",AppLanguage.context(app).getString(R.string.settings))
@@ -143,4 +148,3 @@ class ReleaseSmokeTest {
         }
     }
 }
-
