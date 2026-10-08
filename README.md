@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ Zenith Android 2.1
+# ⚡ Zenith Android 2.1.1
 
 ### **Fast. Native. Rebuilt.**
 
@@ -20,13 +20,16 @@ A native **Kotlin + Jetpack Compose** reconstruction of the original **ZenithW A
 
 ## ✨ What's inside?
 
-### Changes in 2.1
+### Changes in 2.1.1
 
-- A minimal download screen: logo, URL, Paste and Download.
-- Stable/nightly update lookup uses official release redirects without the GitHub API quota.
+- Restores the original home URL card and controls; removes promotional headings.
+- Restores clickable settings categories for engine, cookies/browser, video/audio, subtitles, SponsorBlock, Aria2c, proxy/network, playlists, files/archive, presets and logs.
+- Cookie sessions accept any HTTPS site address instead of fixed site shortcuts.
+- Turkish, English, German, French and Russian settings; choices persist across restarts.
+- Stable/nightly update lookup uses official release redirects, with the official GitHub API as a fallback and retries for transient download failures.
 - Complete nightly version numbers and checksum verification before installation.
 - Download choices and selected encrypted sessions survive app restarts.
-- Android 13 emulator checks cover channel switching, force-stop persistence and the home screen before publishing.
+- Android 13 emulator checks cover category navigation, actual engine execution, channel switching, force-stop persistence and the home screen before publishing.
 
 ### Stable APK signing
 
