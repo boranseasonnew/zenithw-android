@@ -20,12 +20,12 @@ object DownloadPolicy {
             note = if(sidecar) "Bu format kapağı gömmeyi desteklemiyor; kaynakta görsel varsa ayrı resim olarak kaydedilir." else null
         )
     }
-    fun ariaArguments(connections: Int, retries: Int, speedLimitKbps: Int, certificate: String): String {
+    fun ariaArguments(connections: Int, retries: Int, speedLimitKbps: Int, certificate: String,timeout: Int=20): String {
         require(certificate.isNotBlank() && !certificate.any { it.isISOControl() })
         val quotedCertificate = "'" + certificate.replace("'", "'\"'\"'") + "'"
         return buildString {
             append("aria2c:-x${connections.coerceIn(1,16)} -s${connections.coerceIn(1,16)}")
-            append(" --summary-interval=1 --connect-timeout=15 --timeout=20")
+            append(" --summary-interval=1 --connect-timeout=15 --timeout=${timeout.coerceIn(5,120)}")
             append(" --max-tries=${retries.coerceIn(0,10)+1} --retry-wait=2")
             append(" --ca-certificate=$quotedCertificate")
             if(speedLimitKbps > 0) append(" --max-overall-download-limit=${speedLimitKbps}K")
@@ -37,6 +37,7 @@ object DownloadPolicy {
 
     fun isPublicOutput(name: String): Boolean {
         if(name.startsWith(".") || name.contains(".temp.") || name.contains(".part.")) return false
+        if(name.endsWith(".info.json") || name.endsWith(".description")) return true
         return name.substringAfterLast('.', "").lowercase() in setOf(
             "mp4","mkv","webm","mov","m4v","mp3","m4a","opus","wav","flac","ogg",
             "jpg","jpeg","png","webp","srt","vtt","ass","lrc"

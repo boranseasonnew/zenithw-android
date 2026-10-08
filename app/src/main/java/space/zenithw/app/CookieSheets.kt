@@ -76,10 +76,7 @@ import androidx.compose.ui.unit.dp
                 },label={ Text(texts.getString(R.string.site_address)) },singleLine=true,modifier=Modifier.fillMaxWidth(),
                     keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Uri),shape=RoundedCornerShape(16.dp),
                     isError=error!=null,supportingText={ error?.let { Text(AppLanguage.message(texts,it)) } })
-                Choices(listOf("https://www.youtube.com" to "YouTube","https://www.instagram.com" to "Instagram",
-                    "https://www.tiktok.com" to "TikTok"),value.text) {
-                    value=TextFieldValue(it,TextRange(it.length))
-                }
+
             }
         },confirmButton={ TextButton(onClick={
             runCatching {

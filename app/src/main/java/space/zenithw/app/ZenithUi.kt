@@ -76,14 +76,13 @@ private val CardShape=RoundedCornerShape(26.dp)
         bottomBar={ if(!keyboardOpen) Dock(screen.tab,model::tab) }) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).imePadding()) {
             when(screen.tab) {
-                0 -> HomeScreen(screen,model::url,model::analyze)
+                0 -> HomeScreen(screen,engine,jobs,model::url,model::analyze,{ cookies=true })
                 1 -> DownloadsScreen(jobs,model::cancel,model::retry) { job,share ->
                     runCatching { openFiles(context,job.files,share) }.onFailure {
                         model.showMessage(texts.getString(R.string.no_opener))
                     }
                 }
-                else -> SettingsScreen(screen,engine,model::automatic,model::channel,
-                    model::updateEngine,{ cookies=true },model::language)
+                else -> SettingsHub(model,screen,engine,{ cookies=true })
             }
         }
     }
@@ -103,37 +102,71 @@ private val CardShape=RoundedCornerShape(26.dp)
     Image(painterResource(R.drawable.zenithw),"Zenith",Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)))
 }
 
-@Composable private fun HomeScreen(screen: ScreenState,onUrl: (String)->Unit,onAnalyze: ()->Unit) {
+@Composable private fun HomeScreen(screen: ScreenState,engine: EngineStatus,jobs: List<DownloadJob>,
+    onUrl: (String)->Unit,onAnalyze: ()->Unit,onCookies: ()->Unit) {
     val texts=LocalAppContext.current
     val clipboard=LocalClipboardManager.current
     val keyboard=LocalSoftwareKeyboardController.current
     fun analyze() { keyboard?.hide(); onAnalyze() }
-    BoxWithConstraints(Modifier.fillMaxSize().padding(24.dp)) {
-        BrandRow()
-        val offset=if(maxHeight>360.dp) maxHeight*.12f else 24.dp
-        Column(Modifier.align(Alignment.Center).offset(y=offset).fillMaxWidth()
-            .heightIn(max=(maxHeight-80.dp).coerceAtLeast(120.dp)).verticalScroll(rememberScrollState())) {
-            OutlinedTextField(screen.url,onUrl,placeholder={ Text("URL",color=Muted) },
-                modifier=Modifier.fillMaxWidth(),singleLine=true,shape=RoundedCornerShape(16.dp),
-                keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Uri,imeAction=ImeAction.Go),
-                keyboardActions=KeyboardActions(onGo={ if(screen.url.isNotBlank() && !screen.analyzing) analyze() }),
-                trailingIcon={ if(screen.url.isNotEmpty()) IconButton(onClick={ onUrl("") }) {
-                    Icon(Icons.Outlined.Close,texts.getString(R.string.clear_link))
-                } })
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick={ clipboard.getText()?.text?.takeIf { it.isNotBlank() }?.let(onUrl) },
-                    modifier=Modifier.weight(1f).heightIn(min=52.dp),shape=RoundedCornerShape(16.dp)) {
-                    Icon(Icons.Outlined.ContentPaste,null,Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp)); Text(texts.getString(R.string.paste))
-                }
-                Button(onClick=::analyze,enabled=screen.url.isNotBlank() && !screen.analyzing,
-                    modifier=Modifier.weight(1f).heightIn(min=52.dp),shape=RoundedCornerShape(16.dp)) {
-                    if(screen.analyzing) CircularProgressIndicator(Modifier.size(18.dp),strokeWidth=2.dp,color=Ink)
-                    else Icon(Icons.Outlined.FileDownload,null,Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp)); Text(texts.getString(R.string.download))
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val breathingRoom=(maxHeight.value*.10f).coerceIn(24f,68f).dp
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=24.dp,vertical=20.dp)) {
+            BrandRow()
+            Spacer(Modifier.height(breathingRoom))
+            Spacer(Modifier.height(120.dp))
+            Surface(color=Panel,shape=CardShape,border=BorderStroke(1.dp,Hairline)) {
+                Column(Modifier.padding(20.dp)) {
+                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                        Text(AppLanguage.message(texts,"BAĞLANTI"),color=Muted,style=MaterialTheme.typography.labelSmall)
+                        Spacer(Modifier.weight(1f))
+                        TextButton(onClick={ clipboard.getText()?.text?.takeIf { it.isNotBlank() }?.let(onUrl) }) {
+                            Icon(Icons.Outlined.ContentPaste,null,Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp)); Text(AppLanguage.message(texts,"Yapıştır"))
+                        }
+                    }
+                    OutlinedTextField(screen.url,onUrl,placeholder={ Text(AppLanguage.message(texts,"https://…"),color=Muted) },
+                        modifier=Modifier.fillMaxWidth(),minLines=2,maxLines=4,shape=RoundedCornerShape(16.dp),
+                        keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Uri,imeAction=ImeAction.Go),
+                        keyboardActions=KeyboardActions(onGo={ if(!screen.analyzing) analyze() }),
+                        trailingIcon={ if(screen.url.isNotEmpty()) IconButton(onClick={ onUrl("") }) {
+                            Icon(Icons.Outlined.Close,"Bağlantıyı temizle")
+                        } })
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick=::analyze,enabled=screen.url.isNotBlank() && !screen.analyzing,
+                        modifier=Modifier.fillMaxWidth().heightIn(min=58.dp),shape=RoundedCornerShape(18.dp)) {
+                        if(screen.analyzing) {
+                            CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp,color=Ink)
+                            Spacer(Modifier.width(10.dp)); Text(AppLanguage.message(texts,"Bağlantı hazırlanıyor"))
+                        } else {
+                            Text(AppLanguage.message(texts,"Devam et"),fontWeight=FontWeight.SemiBold)
+                            Spacer(Modifier.width(10.dp)); Icon(Icons.Outlined.ArrowForward,null,Modifier.size(20.dp))
+                        }
+                    }
                 }
             }
+            Spacer(Modifier.height(14.dp))
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                Surface(onClick=onCookies,color=Panel,shape=CircleShape,modifier=Modifier.weight(1f)) {
+                    Row(Modifier.padding(horizontal=14.dp,vertical=12.dp),verticalAlignment=Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.Lock,null,Modifier.size(16.dp),tint=Muted)
+                        Spacer(Modifier.width(7.dp))
+                        Text(screen.profiles.firstOrNull { it.id==screen.cookieId }?.host ?: texts.getString(R.string.connect_session),
+                            style=MaterialTheme.typography.labelLarge,maxLines=1,overflow=TextOverflow.Ellipsis)
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
+                Row(verticalAlignment=Alignment.CenterVertically) {
+                    if(engine.updating) CircularProgressIndicator(Modifier.size(12.dp),strokeWidth=1.5.dp,color=Muted)
+                    else Box(Modifier.size(6.dp).background(if(engine.ready) Success else Muted,CircleShape))
+                    Spacer(Modifier.width(7.dp))
+                    Text(AppLanguage.message(texts,if(engine.updating) "Güncelleniyor" else if(engine.ready) "Motor hazır" else "Hazırlanıyor"),
+                        color=Muted,fontSize=11.sp)
+                }
+            }
+            val active=jobs.count { it.state in listOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING) }
+            if(active>0) Text(AppLanguage.message(texts,"$active indirme sırada veya devam ediyor"),color=Muted,
+                modifier=Modifier.padding(top=20.dp),style=MaterialTheme.typography.bodyMedium)
+
         }
     }
 }
@@ -154,7 +187,7 @@ private val CardShape=RoundedCornerShape(26.dp)
                             horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
                             Icon(icons[index],null,Modifier.size(20.dp),tint=if(active) Ink else Muted)
                             Spacer(Modifier.height(3.dp))
-                            Text(label,color=if(active) Ink else Muted,style=MaterialTheme.typography.labelLarge)
+                            Text(AppLanguage.message(LocalAppContext.current,label),color=if(active) Ink else Muted,style=MaterialTheme.typography.labelLarge)
                         }
                     }
                 }
@@ -216,49 +249,11 @@ private val CardShape=RoundedCornerShape(26.dp)
     }
 }
 
-@Composable private fun SettingsScreen(screen: ScreenState,engine: EngineStatus,onAuto: (Boolean)->Unit,
-    onChannel: (String)->Unit,onUpdate: ()->Unit,onCookies: ()->Unit,onLanguage: (String)->Unit) {
-    val texts=LocalAppContext.current
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
-        BrandRow()
-        Text(texts.getString(R.string.settings),style=MaterialTheme.typography.headlineMedium,modifier=Modifier.padding(top=12.dp))
-        Surface(color=Panel,shape=CardShape) {
-            Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-                Text(texts.getString(R.string.language),style=MaterialTheme.typography.titleLarge)
-                Choices(AppLanguage.choices,screen.language,onLanguage)
-            }
-        }
-        Surface(color=Panel,shape=CardShape) {
-            Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                Text(texts.getString(R.string.engine),style=MaterialTheme.typography.titleLarge)
-                Text(engine.version.ifBlank { texts.getString(R.string.preparing_engine) },color=Muted,style=MaterialTheme.typography.bodyMedium)
-                OptionSwitch(texts.getString(R.string.auto_update),value=screen.autoUpdate,onChange=onAuto)
-                Choices(listOf("stable" to texts.getString(R.string.stable),"nightly" to "Nightly"),screen.channel,onChannel)
-                engine.warning?.let { Text(AppLanguage.message(texts,it),color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodyMedium) }
-                OutlinedButton(onClick=onUpdate,enabled=!engine.updating,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp)) {
-                    if(engine.updating) { CircularProgressIndicator(Modifier.size(16.dp),strokeWidth=2.dp); Spacer(Modifier.width(8.dp)) }
-                    Text(if(engine.updating) texts.getString(R.string.checking) else texts.getString(R.string.check_now))
-                }
-            }
-        }
-        Surface(onClick=onCookies,color=Panel,shape=CardShape) {
-            Row(Modifier.fillMaxWidth().padding(20.dp),verticalAlignment=Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Lock,null,tint=Muted); Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(texts.getString(R.string.sessions),style=MaterialTheme.typography.titleMedium)
-                    Text(texts.getString(R.string.session_count,screen.profiles.size),color=Muted,style=MaterialTheme.typography.bodyMedium)
-                }
-                Icon(Icons.Outlined.ChevronRight,null,tint=Muted)
-            }
-        }
-        Text("${BuildConfig.VERSION_NAME}",style=MaterialTheme.typography.titleMedium)
-    }
-}
 @Composable fun OptionSwitch(title: String,subtitle: String="",value: Boolean,onChange: (Boolean)->Unit) {
     Row(Modifier.fillMaxWidth().heightIn(min=58.dp).clickable { onChange(!value) }.padding(vertical=6.dp),verticalAlignment=Alignment.CenterVertically) {
         Column(Modifier.weight(1f).padding(end=12.dp)) {
-            Text(title,style=MaterialTheme.typography.bodyLarge)
-            if(subtitle.isNotBlank()) Text(subtitle,color=Muted,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=3.dp))
+            Text(AppLanguage.message(LocalAppContext.current,title),style=MaterialTheme.typography.bodyLarge)
+            if(subtitle.isNotBlank()) Text(AppLanguage.message(LocalAppContext.current,subtitle),color=Muted,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=3.dp))
         }
         Switch(value,onChange)
     }
@@ -270,7 +265,7 @@ private val CardShape=RoundedCornerShape(26.dp)
             val color by animateColorAsState(if(active) Silver else PanelRaised,tween(160),label="choice")
             Surface(onClick={ onSelect(value) },modifier=Modifier.semantics { this.selected=active;role=Role.RadioButton },
                 color=color,shape=RoundedCornerShape(14.dp),border=BorderStroke(1.dp,if(active) Silver else Hairline)) {
-                Text(label,Modifier.heightIn(min=46.dp).padding(horizontal=15.dp,vertical=13.dp),
+                Text(AppLanguage.message(LocalAppContext.current,label),Modifier.heightIn(min=46.dp).padding(horizontal=15.dp,vertical=13.dp),
                     color=if(active) Ink else Muted,style=MaterialTheme.typography.labelLarge)
             }
         }
@@ -281,7 +276,7 @@ private val CardShape=RoundedCornerShape(26.dp)
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(PanelRaised)) {
         Row(Modifier.fillMaxWidth().clickable { expanded=!expanded }.padding(18.dp),verticalAlignment=Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(title,style=MaterialTheme.typography.titleMedium)
+                Text(AppLanguage.message(LocalAppContext.current,title),style=MaterialTheme.typography.titleMedium)
                 Text(summary,color=Muted,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=3.dp))
             }
             Icon(if(expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,null,tint=Muted)

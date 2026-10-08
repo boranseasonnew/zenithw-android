@@ -46,6 +46,14 @@ class LocalStore(context: Context) {
         set(value) {
             preferences.edit().putString("defaults",value.copy(cookieId=null,scheduledAt=0,selectedFormat="").json().toString()).apply()
         }
+    private val mutableLogs=MutableStateFlow<List<String>>(emptyList())
+    val logs=mutableLogs.asStateFlow()
+    @Synchronized fun log(message: String) {
+        val safe=message.replace(Regex("https?://[^\\s]+"),"[link]").replace(Regex("[\\r\\n\\u0000]")," ").take(220)
+        val time=java.text.SimpleDateFormat("HH:mm:ss",java.util.Locale.ROOT).format(java.util.Date())
+        mutableLogs.value=(mutableLogs.value+"$time  $safe").takeLast(250)
+    }
+    fun clearLogs() { mutableLogs.value=emptyList() }
     private fun loadJobs(): List<DownloadJob> = runCatching {
         val array=JSONArray(preferences.getString("jobs","[]"))
         (0 until array.length()).mapNotNull { runCatching { DownloadJob.from(array.getJSONObject(it)) }.getOrNull() }

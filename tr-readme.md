@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ Zenith Android 2.1
+# ⚡ Zenith Android 2.1.1
 
 ### **Hızlı. Native. Yeniden İnşa Edildi.**
 
@@ -20,13 +20,16 @@ Orijinal **ZenithW Android** uygulamasının **Kotlin + Jetpack Compose** ile ye
 
 ## ✨ Neler var?
 
-### 2.1 değişiklikleri
+### 2.1.1 değişiklikleri
 
-- Sade indirme ekranı: logo, URL, Yapıştır ve İndir.
-- Stable/nightly güncellemeleri GitHub API kotasına bağlı olmadan resmi sürüm adresinden alınır.
+- Ana ekrandaki eski URL kartı ve düğmeler korunur; tanıtım yazıları kaldırılır.
+- Motor, cookie/tarayıcı, video/ses, altyazı, SponsorBlock, Aria2c, proxy/ağ, oynatma listesi, dosya/arşiv, profil ve günlük için tıklanabilir ayar kategorileri geri gelir.
+- Cookie oturumunda hazır site kısayolları yerine istediğiniz HTTPS adresini girebilirsiniz.
+- Türkçe, İngilizce, Almanca, Fransızca ve Rusça; tercihler yeniden açılışta korunur.
+- Stable/nightly güncellemeleri resmi sürüm adresinden alınır; gerektiğinde resmi GitHub API kullanılır ve geçici bağlantı hatalarında yeniden denenir.
 - Nightly sürüm numarası tam olarak okunur; motor kurulmadan önce checksum doğrulanır.
 - İndirme seçenekleri ve seçili şifreli oturum uygulama yeniden açıldığında korunur.
-- Yayın öncesinde Android 13 emülatöründe motor geçişi, zorla kapatma sonrası ayarlar ve ana ekran kontrol edilir.
+- Yayın öncesinde Android 13 emülatöründe ayar kategorileri, motorun gerçek çalışması, kanal geçişi, zorla kapatma sonrası ayarlar ve ana ekran kontrol edilir.
 
 ### Stable APK imzası
 
