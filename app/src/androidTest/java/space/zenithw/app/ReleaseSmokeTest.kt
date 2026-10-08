@@ -107,8 +107,14 @@ class ReleaseSmokeTest {
 
     private fun scrollToLabel(label: String) {
         repeat(14) {
-            if(nodes().any { it.text?.toString()==label })return
-            nodes().firstOrNull { it.isScrollable }?.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+            if(nodes().any { it.text?.toString()==label && it.isVisibleToUser })return
+            val scroll=nodes().firstOrNull { it.isScrollable && it.isVisibleToUser }
+            if(scroll?.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)!=true)return@repeat
+            android.os.SystemClock.sleep(250)
+        }
+        repeat(14) {
+            if(nodes().any { it.text?.toString()==label && it.isVisibleToUser })return
+            nodes().firstOrNull { it.isScrollable && it.isVisibleToUser }?.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
             android.os.SystemClock.sleep(350)
         }
         waitForLabel(label)
@@ -117,6 +123,7 @@ class ReleaseSmokeTest {
         app.store.language="tr"
         app.startActivity(android.content.Intent(app,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
         clickLabel("Ayarlar")
+        waitForLabel("Uygulama dili")
         val entries=listOf("Dil" to "English","İndirme motoru" to "Şimdi güncelle","Video ve ses" to "Video kalitesi",
             "Dosya içeriği" to "Medya bilgilerini göm","Altyazılar" to "Altyazıları indir","SponsorBlock" to "Kategoriler",
             "Aria2c" to "Bağlantı sayısı","Bağlantı ve hız" to "Hız sınırı","Oynatma listeleri" to "Liste indirmeye izin ver",
