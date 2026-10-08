@@ -11,10 +11,19 @@ android {
         applicationId = "space.zenithw.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 20000
+        versionCode = 20001
         versionName = "2.0.0"
     }
-    signingConfigs { getByName("debug") { storeFile=rootProject.file(".signing/preview.keystore") } }
+    signingConfigs {
+        getByName("debug") { storeFile = rootProject.file(".signing/preview.keystore") }
+        create("release") {
+            storeFile = rootProject.file(".signing/preview.keystore")
+            storePassword = "android"
+            keyAlias = "AndroidDebugKey"
+            keyPassword = "android"
+            enableV2Signing = true
+        }
+    }
     buildTypes {
         debug {
             applicationIdSuffix = ".preview"
@@ -22,7 +31,9 @@ android {
             resValue("string", "app_name", "ZenithW 2.0 Preview")
         }
         release {
-            // An unsigned release needs the original signing key before distribution.
+            applicationIdSuffix = ".stable"
+            signingConfig = signingConfigs.getByName("release")
+            resValue("string", "app_name", "Zenith")
             isMinifyEnabled = false
         }
     }

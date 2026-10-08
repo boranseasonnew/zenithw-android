@@ -20,6 +20,22 @@ Orijinal **ZenithW Android** uygulamasının **Kotlin + Jetpack Compose** ile ye
 
 ## ✨ Neler var?
 
+### Stable APK imzası
+
+Stable sürümün paket kimliği `space.zenithw.app.stable`; eski uygulama ve preview
+yanına ayrı kurulur. Eski uygulamanın imza anahtarı bulunamadığından ayarları
+taşınmaz. Release derlemesi `.signing/preview.keystore` içindeki mevcut anahtarı
+kullanır; Actions bunu `ANDROID_SIGNING_KEY_BASE64` secret değerinden yükler.
+Anahtar yoksa release derlemesi durur, yeni anahtar üretilmez. Güncellemeler için
+bu anahtarı saklayın. Yalnızca açık sertifika özeti `release-certificate.sha256`
+dosyasında tutulur; özel anahtar Git'e eklenmez.
+
+Actions üç APK'nın imzasını, sertifikasını, paketini, sürümünü ve mimarisini
+yayından önce kontrol eder. Yayınlamadan denemek için Android release akışında
+`publish_release` seçeneğini kapatıp `android-signed-apks` çıktısını indirin.
+İlk otomatik v2.0.0 APK'ları imzasız olduğundan kurulamıyordu; imza düzeltmesi
+yayınlandıktan sonra dosyaları yeniden indirin.
+
 ZenithW 2.0 sadece görsel bir yenileme değil.
 
 Android uygulaması, orijinal uygulamanın temel özelliklerini korurken daha temiz ve sürdürülebilir bir native yapı etrafında yeniden inşa edildi.

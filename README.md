@@ -20,6 +20,22 @@ A native **Kotlin + Jetpack Compose** reconstruction of the original **ZenithW A
 
 ## ✨ What's inside?
 
+### Stable APK signing
+
+Stable releases use `space.zenithw.app.stable` and install alongside the original
+`space.zenithw.app` and preview. The original app's signing key is unavailable;
+its settings are not migrated. Stable builds use the retained key at
+`.signing/preview.keystore`, restored in Actions from `ANDROID_SIGNING_KEY_BASE64`.
+Release builds fail if that key is missing; they never generate a replacement.
+Keep this key for future updates. The public certificate fingerprint is recorded
+in `release-certificate.sha256`; no private key is committed.
+
+Actions verifies all three APK signatures, the stable certificate, package,
+version and ABI before uploading. For a build without publishing, run the Android
+release workflow with `publish_release` disabled and download `android-signed-apks`.
+The first automated v2.0.0 APKs were unsigned and could not be installed; download
+the corrected files after the signing fix is published.
+
 ZenithW 2.0 is not just a visual refresh.
 
 The Android application has been reconstructed around a cleaner native architecture while preserving the core functionality of the original app.
