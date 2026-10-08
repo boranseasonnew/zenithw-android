@@ -32,6 +32,17 @@ class LocalStore(context: Context) {
     var lastEngineCheck: Long
         get()=preferences.getLong("engineChecked",0)
         set(value) { preferences.edit().putLong("engineChecked",value).apply() }
+    var selectedCookieId: String?
+        get()=preferences.getString("selectedCookieId",null)
+        set(value) { preferences.edit().putString("selectedCookieId",value).apply() }
+    var defaultOptions: DownloadOptions
+        get()=runCatching {
+            preferences.getString("defaults",null)?.let { DownloadOptions.from(JSONObject(it)) }
+                ?: DownloadOptions(embedThumbnail=true)
+        }.getOrDefault(DownloadOptions(embedThumbnail=true))
+        set(value) {
+            preferences.edit().putString("defaults",value.copy(cookieId=null,scheduledAt=0,selectedFormat="").json().toString()).apply()
+        }
     private fun loadJobs(): List<DownloadJob> = runCatching {
         val array=JSONArray(preferences.getString("jobs","[]"))
         (0 until array.length()).mapNotNull { runCatching { DownloadJob.from(array.getJSONObject(it)) }.getOrNull() }

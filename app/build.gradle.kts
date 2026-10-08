@@ -11,8 +11,9 @@ android {
         applicationId = "space.zenithw.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 20001
-        versionName = "2.0.0"
+        versionCode = 2001000
+        versionName = "2.1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
         getByName("debug") { storeFile = rootProject.file(".signing/preview.keystore") }
@@ -38,6 +39,7 @@ android {
         }
     }
     buildFeatures { compose = true; buildConfig = true }
+    testBuildType = "release"
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -54,6 +56,9 @@ android {
     }
 }
 dependencies {
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:core:1.6.1")
     implementation(platform("androidx.compose:compose-bom:2025.09.01"))
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")

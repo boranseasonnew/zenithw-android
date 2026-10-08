@@ -26,6 +26,7 @@ concurrency:
 jobs:
   build-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -86,6 +87,31 @@ jobs:
           chmod +x ./gradlew
           ./gradlew --no-daemon assembleRelease
 
+      - name: Enable Android emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Test updates and saved settings on Android 13
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          target: default
+          profile: pixel_2
+          disable-animations: true
+          script: bash scripts/android_smoke.sh
+
+      - name: Upload Android test results and screen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-13-smoke-results
+          path: smoke-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Verify and prepare signed release files
         env:
           TAG_NAME: ${{ inputs.release_tag || github.ref_name }}
@@ -94,11 +120,13 @@ jobs:
             --build-tools "$ANDROID_HOME/build-tools/36.0.0"
 
       - name: Upload verified APK build artifacts
+        if: github.event_name == 'workflow_dispatch' && !inputs.publish_release
         uses: actions/upload-artifact@v4
         with:
           name: android-signed-apks
           path: release-assets/
           if-no-files-found: error
+          retention-days: 3
 
       - name: Upload APKs and publish the GitHub Release
         if: github.event_name == 'push' || inputs.publish_release
@@ -114,5 +142,5 @@ jobs:
             fi
           else
             gh release create "$TAG_NAME" release-assets/*.apk release-assets/SHA256SUMS.txt \
-              --title "Zenith Android ${TAG_NAME#v}" --generate-notes
+              --target "$GITHUB_SHA" --title "Zenith Android ${TAG_NAME#v}" --generate-notes
           fi

@@ -24,10 +24,11 @@ import org.json.JSONObject
 import java.text.DateFormat
 import java.util.Calendar
 
-@Composable fun DownloadSheet(preview: MediaPreview,cookieHost: String?,onDismiss: ()->Unit,onDownload: (DownloadOptions)->Unit) {
-    var raw by rememberSaveable(preview.url) { mutableStateOf(DownloadOptions(embedThumbnail=true).json().toString()) }
+@Composable fun DownloadSheet(preview: MediaPreview,cookieHost: String?,defaults: DownloadOptions,
+    onDefaults: (DownloadOptions)->Unit,onDismiss: ()->Unit,onDownload: (DownloadOptions)->Unit) {
+    var raw by rememberSaveable(preview.url) { mutableStateOf(defaults.json().toString()) }
     val o=remember(raw) { DownloadOptions.from(JSONObject(raw)) }
-    fun update(value: DownloadOptions) { raw=value.json().toString() }
+    fun update(value: DownloadOptions) { raw=value.json().toString(); onDefaults(value) }
     val context=LocalContext.current
     val plan=DownloadPolicy.thumbnailPlan(o.mode.name,o.container,o.audioFormat,o.embedThumbnail,o.downloadThumbnail,o.thumbnailFormat)
     val maxHeight=(LocalConfiguration.current.screenHeightDp*.90f).dp
