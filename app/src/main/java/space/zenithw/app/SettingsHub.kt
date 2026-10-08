@@ -159,13 +159,13 @@ private val categories=listOf(
                                 Pick("Parça denemeleri",listOf(0,1,3,5,10).map { it.toString() to it.toString() },o.fragmentRetries.toString()) { update(o.copy(fragmentRetries=it.toInt())) }
                                 Pick("Zaman aşımı",listOf(10,20,30,60,120).map { it.toString() to "$it ${AppLanguage.message(texts,"sn")}" },o.timeout.toString()) { update(o.copy(timeout=it.toInt())) }
                                 Pick("İndirme öncesi bekleme",listOf(0,3,5,10,30,60).map { it.toString() to if(it==0) "Kapalı" else "$it ${AppLanguage.message(texts,"sn")}" },o.sleepSeconds.toString()) { update(o.copy(sleepSeconds=it.toInt())) }
-                                CompactField(texts.getString(R.string.proxy),o.proxy) { update(o.copy(proxy=it.trim())) }
-                                CompactField(texts.getString(R.string.user_agent),o.userAgent) { update(o.copy(userAgent=it)) }
+                                CompactField(texts.getString(R.string.proxy),o.proxy,onChange={ update(o.copy(proxy=it.trim())) })
+                                CompactField(texts.getString(R.string.user_agent),o.userAgent,onChange={ update(o.copy(userAgent=it)) })
                             }
                             "playlist" -> {
                                 OptionSwitch("Liste indirmeye izin ver",value=o.playlist) { update(o.copy(playlist=it)) }
                                 Pick("Liste aralığı",listOf("" to "Tümü","1:5" to "İlk 5","1:10" to "İlk 10","1:25" to "İlk 25","1:50" to "İlk 50","1:100" to "İlk 100"),o.playlistItems) { update(o.copy(playlistItems=it)) }
-                                CompactField(texts.getString(R.string.playlist_items),o.playlistItems) { update(o.copy(playlistItems=it)) }
+                                CompactField(texts.getString(R.string.playlist_items),o.playlistItems,onChange={ update(o.copy(playlistItems=it)) })
                                 Pick("İndirme sırası",listOf("normal" to "Normal","reverse" to "Ters","random" to "Karışık"),o.playlistOrder) { update(o.copy(playlistOrder=it)) }
                                 Pick("Bir video indirilemezse",listOf("continue" to "Sonrakine geç","stop" to "Durdur"),o.playlistErrors) { update(o.copy(playlistErrors=it)) }
                             }
