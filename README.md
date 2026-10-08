@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ ZenithW Android 2.0
+# ⚡ Zenith Android 2.1
 
 ### **Fast. Native. Rebuilt.**
 
@@ -20,6 +20,14 @@ A native **Kotlin + Jetpack Compose** reconstruction of the original **ZenithW A
 
 ## ✨ What's inside?
 
+### Changes in 2.1
+
+- A minimal download screen: logo, URL, Paste and Download.
+- Stable/nightly update lookup uses official release redirects without the GitHub API quota.
+- Complete nightly version numbers and checksum verification before installation.
+- Download choices and selected encrypted sessions survive app restarts.
+- Android 13 emulator checks cover channel switching, force-stop persistence and the home screen before publishing.
+
 ### Stable APK signing
 
 Stable releases use `space.zenithw.app.stable` and install alongside the original
@@ -33,8 +41,8 @@ in `release-certificate.sha256`; no private key is committed.
 Actions verifies all three APK signatures, the stable certificate, package,
 version and ABI before uploading. For a build without publishing, run the Android
 release workflow with `publish_release` disabled and download `android-signed-apks`.
-The first automated v2.0.0 APKs were unsigned and could not be installed; download
-the corrected files after the signing fix is published.
+The original automated v2.0.0 signing issue has been fixed. Stable updates retain
+the same package and signing key, so installing v2.1 over v2.0 preserves app data.
 
 ZenithW 2.0 is not just a visual refresh.
 
@@ -216,7 +224,7 @@ The `.signing` directory is:
 
 # 📦 APK builds
 
-The current preview application uses:
+The earlier 2.0 preview application used:
 
 ```text
 Package:
@@ -315,7 +323,7 @@ Android requires updates to an installed application to be signed with the **sam
 
 The original signing key has **not been recovered**.
 
-Because of this, the current preview uses a separate package:
+Because of this, the earlier preview used a separate package:
 
 ```text
 space.zenithw.app.preview
@@ -331,7 +339,7 @@ Builds targeting:
 space.zenithw.app
 ```
 
-are intentionally left unsigned unless the original signing key becomes available.
+are signed with the retained stable key under `space.zenithw.app.stable`. They update the stable app and do not replace the original package.
 
 ---
 
@@ -412,7 +420,7 @@ Licenses and notices inherited from the original Android project and dependency 
 
 # 🚧 Project status
 
-> **ZenithW Android 2.0 is currently a preview.**
+> **Zenith Android 2.1 is the stable release.**
 
 The project builds successfully, but additional device testing and compatibility work is still planned.
 
@@ -424,7 +432,7 @@ Current priorities include:
 - ⚡ Download reliability improvements
 - 🐛 Bug fixes
 - 🎨 UI polishing
-- 🚀 Preparing a stable ZenithW 2.0 release
+- 🚀 Signed stable releases through GitHub Actions
 
 ---
 

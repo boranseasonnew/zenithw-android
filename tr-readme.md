@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ ZenithW Android 2.0
+# ⚡ Zenith Android 2.1
 
 ### **Hızlı. Native. Yeniden İnşa Edildi.**
 
@@ -20,6 +20,14 @@ Orijinal **ZenithW Android** uygulamasının **Kotlin + Jetpack Compose** ile ye
 
 ## ✨ Neler var?
 
+### 2.1 değişiklikleri
+
+- Sade indirme ekranı: logo, URL, Yapıştır ve İndir.
+- Stable/nightly güncellemeleri GitHub API kotasına bağlı olmadan resmi sürüm adresinden alınır.
+- Nightly sürüm numarası tam olarak okunur; motor kurulmadan önce checksum doğrulanır.
+- İndirme seçenekleri ve seçili şifreli oturum uygulama yeniden açıldığında korunur.
+- Yayın öncesinde Android 13 emülatöründe motor geçişi, zorla kapatma sonrası ayarlar ve ana ekran kontrol edilir.
+
 ### Stable APK imzası
 
 Stable sürümün paket kimliği `space.zenithw.app.stable`; eski uygulama ve preview
@@ -33,8 +41,8 @@ dosyasında tutulur; özel anahtar Git'e eklenmez.
 Actions üç APK'nın imzasını, sertifikasını, paketini, sürümünü ve mimarisini
 yayından önce kontrol eder. Yayınlamadan denemek için Android release akışında
 `publish_release` seçeneğini kapatıp `android-signed-apks` çıktısını indirin.
-İlk otomatik v2.0.0 APK'ları imzasız olduğundan kurulamıyordu; imza düzeltmesi
-yayınlandıktan sonra dosyaları yeniden indirin.
+v2.0.0 imza sorunu düzeltildi. v2.1 aynı stable paketini ve anahtarı kullanır;
+mevcut uygulamanın üzerine kurulduğunda verileri korunur.
 
 ZenithW 2.0 sadece görsel bir yenileme değil.
 
@@ -232,7 +240,7 @@ Gelecekteki preview APK'larının mevcut preview sürümünün üzerine güncell
 
 # 📦 APK sürümleri
 
-Mevcut preview paket adı:
+Önceki 2.0 preview paket adı:
 
 ```text
 space.zenithw.app.preview
@@ -444,7 +452,7 @@ Orijinal Android projesinden ve bağımlılıklardan gelen lisans / notice şart
 
 # 🚧 Proje durumu
 
-> **ZenithW Android 2.0 şu anda preview aşamasındadır.**
+> **Zenith Android 2.1 kararlı sürümdür.**
 
 Proje başarıyla derlenmektedir ancak daha fazla cihaz testi ve uyumluluk çalışması planlanmaktadır.
 
@@ -456,7 +464,7 @@ Proje başarıyla derlenmektedir ancak daha fazla cihaz testi ve uyumluluk çal�
 - ⚡ İndirme kararlılığı geliştirmeleri
 - 🐛 Hata düzeltmeleri
 - 🎨 Arayüz iyileştirmeleri
-- 🚀 Stabil ZenithW 2.0 sürümüne hazırlık
+- 🚀 GitHub Actions üzerinden imzalı stable sürümler
 
 ---
 

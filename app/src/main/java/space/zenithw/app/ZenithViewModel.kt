@@ -21,7 +21,7 @@ data class ScreenState(val tab: Int=0,val url: String="",val analyzing: Boolean=
 class ZenithViewModel(application: Application): AndroidViewModel(application) {
     val app=application as ZenithApplication
     private val mutableScreen=MutableStateFlow(ScreenState(profiles=app.vault.profiles(),
-        autoUpdate=app.store.autoUpdate,channel=app.store.channel))
+        autoUpdate=app.store.autoUpdate,channel=app.store.channel,cookieId=app.store.selectedCookieId))
     val screen=mutableScreen.asStateFlow()
     val jobs=app.store.jobs
     val engine=app.engine.status
@@ -54,11 +54,13 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     fun dismissPreview()=edit { it.copy(preview=null) }
     fun cookie(id: String?) {
         inspection?.cancel()
+        app.store.selectedCookieId=id
         edit { it.copy(cookieId=id,analyzing=false,preview=null) }
     }
     fun refreshProfiles() {
         val profiles=app.vault.profiles()
         edit { it.copy(profiles=profiles,cookieId=it.cookieId?.takeIf { id -> profiles.any { profile -> profile.id==id } }) }
+        app.store.selectedCookieId=mutableScreen.value.cookieId
     }
     fun removeProfile(id: String) { app.vault.remove(id); refreshProfiles() }
     fun shareIntent(text: String) {
@@ -84,6 +86,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         }
     }
     fun enqueue(options: DownloadOptions) {
+        app.store.defaultOptions=options
         val state=mutableScreen.value
         val preview=state.preview ?: return
         val job=DownloadJob(url=preview.url,title=preview.title,thumbnail=preview.thumbnail,
@@ -99,6 +102,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         DownloadWorker.enqueue(app,replacement)
     }
     fun automatic(value: Boolean) { app.store.autoUpdate=value; edit { it.copy(autoUpdate=value) } }
+    fun defaults(value: DownloadOptions) { app.store.defaultOptions=value }
     fun channel(value: String) { app.store.channel=value; edit { it.copy(channel=value) }; updateEngine() }
     fun updateEngine() { app.applicationScope.launch { app.engine.initializeAndUpdate(force=true) } }
 }

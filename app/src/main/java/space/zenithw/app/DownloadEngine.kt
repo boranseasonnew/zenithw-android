@@ -41,7 +41,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         java.util.zip.ZipFile(file).use { zip ->
             zip.getEntry("yt_dlp/version.py")?.let { entry ->
                 zip.getInputStream(entry).bufferedReader().use { it.readText() }
-                    .let { Regex("__version__ = ['\"]([0-9]{4}\\.[0-9]{2}\\.[0-9]{2})").find(it)?.groupValues?.get(1) }
+                    .let { Regex("__version__\\s*=\\s*['\"]([0-9]{4}\\.[0-9]{2}\\.[0-9]{2}(?:\\.[0-9]+)?)['\"]").find(it)?.groupValues?.get(1) }
             }
         }
     }.getOrNull()
@@ -83,9 +83,10 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
             } catch(cancelled: CancellationException) {
                 throw cancelled
             } catch(e: Exception) {
+                android.util.Log.w("ZenithEngine", "Engine update failed for ${store.channel}",e)
                 mutableStatus.value=EngineStatus(initialized,false,
                     if(initialized) "İndirmeye hazır" else "Motor başlatılamadı",store.lastEngineVersion,
-                    if(initialized) "Güncelleme alınamadı. Mevcut motor kullanılabilir." else "Motoru hazırlamak için tekrar dene.")
+                    if(initialized) "${if(store.channel=="nightly") "Nightly" else "Kararlı sürüm"} güncellenemedi. Tekrar dene." else "Motoru hazırlamak için tekrar dene.")
             }
         }
     }
@@ -97,7 +98,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
             val connection=current.openConnection() as HttpsURLConnection
             connection.connectTimeout=15000; connection.readTimeout=30000
             connection.instanceFollowRedirects=false
-            connection.setRequestProperty("User-Agent","ZenithW-Android/2.0")
+            connection.setRequestProperty("User-Agent","Zenith-Android/${BuildConfig.VERSION_NAME}")
             try {
                 when(connection.responseCode) {
                     in 300..399 -> {
@@ -119,42 +120,40 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                             output.toByteArray()
                         }
                     }
-                    else -> error("Update request failed")
+                    else -> error("Update request failed: HTTP ${connection.responseCode}")
                 }
             } finally { connection.disconnect() }
         }
         error("Too many update redirects")
     }
     private suspend fun updateVerifiedBinary() {
-        val repository=if(store.channel=="nightly") "yt-dlp/yt-dlp-nightly-builds" else "yt-dlp/yt-dlp"
-        val release=JSONObject(String(getBytes("https://api.github.com/repos/$repository/releases/latest",2*1024*1024),Charsets.UTF_8))
-        val tag=release.getString("tag_name")
-        val version="${store.channel} · $tag"
-        if(store.lastEngineVersion==version) { store.lastEngineCheck=System.currentTimeMillis(); return }
-        val assets=release.getJSONArray("assets")
-        fun asset(name: String): String {
-            val item=(0 until assets.length()).map { assets.getJSONObject(it) }.first { it.getString("name")==name }
-            val url=item.getString("browser_download_url")
-            require(url.startsWith("https://github.com/$repository/releases/download/"))
-            return url
+        val channel=store.channel
+        val repository=EngineUpdateSource.repository(channel)
+        val tag=EngineUpdateSource.latestTag(channel)
+        val version="$channel · $tag"
+        val installed=File(context.noBackupFilesDir,"youtubedl-android/yt-dlp/yt-dlp")
+        if(store.lastEngineVersion==version && binaryVersion(installed)==tag) {
+            store.lastEngineCheck=System.currentTimeMillis(); return
         }
-        val sums=String(getBytes(asset("SHA2-256SUMS"),1024*1024),Charsets.UTF_8)
+        val base="https://github.com/$repository/releases/download/$tag"
+        val sums=String(getBytes("$base/SHA2-256SUMS",1024*1024),Charsets.UTF_8)
         val checksum=sums.lineSequence().map { it.trim().split(Regex("\\s+"),limit=2) }
             .firstOrNull { it.size==2 && it[1].removePrefix("*")=="yt-dlp" }?.first()
             ?: error("Missing executable checksum")
         require(checksum.matches(Regex("[a-fA-F0-9]{64}")))
-        val binary=getBytes(asset("yt-dlp"),32*1024*1024)
+        val binary=getBytes("$base/yt-dlp",32*1024*1024)
         val actual=MessageDigest.getInstance("SHA-256").digest(binary).joinToString("") { "%02x".format(it) }
         require(actual.equals(checksum,ignoreCase=true)) { "Update integrity check failed" }
         // Fetch and verify outside the download lock. Startup update requests must
         // not prevent a download from starting on an already usable engine.
         gate.withLock {
+            if(store.channel!=channel) return@withLock
             val directory=File(context.noBackupFilesDir,"youtubedl-android/yt-dlp").apply { mkdirs() }
             val staged=File(directory,"yt-dlp.download")
             val destination=File(directory,"yt-dlp")
             try {
                 java.io.FileOutputStream(staged).use { it.write(binary); it.fd.sync() }
-                require(binaryVersion(staged)?.let { it >= BundledEngine.VERSION } == true)
+                require(binaryVersion(staged)==tag && tag >= BundledEngine.VERSION) { "Unexpected engine version" }
                 require(staged.renameTo(destination)) { "Cannot atomically install update" }
                 store.lastEngineVersion=version
                 store.lastEngineCheck=System.currentTimeMillis()
