@@ -14,7 +14,7 @@ class ReleaseSmokeTest {
         audioBitrate=192,subtitles=true,autoSubtitles=true,subtitleLanguages="tr.*",playlist=true,
         wifiOnly=true,embedMetadata=false,embedThumbnail=true,downloadThumbnail=true,thumbnailFormat="png",
         sponsorBlock=true,useAria2=true,ariaConnections=8,fragments=8,retries=5,speedLimitKbps=512,
-        networkMode="ipv4",filenameTemplate="%(title)s.%(ext)s")
+        networkMode="ipv4",playlistOrder="reverse",playlistErrors="stop",sponsorAction="mark",writeDescription=true,downloadArchive=true,keepOriginal=true,sleepSeconds=3,timeout=60,proxy="socks5://127.0.0.1:1080",filenameTemplate="%(title)s.%(ext)s")
 
     @Test fun saveSettings() {
         app.store.language="de"
@@ -42,6 +42,7 @@ class ReleaseSmokeTest {
         assertEquals("nightly",model.screen.value.channel)
         assertFalse(model.screen.value.autoUpdate)
         assertEquals("de",model.screen.value.language)
+        assertEquals(options(),model.screen.value.defaults)
     }
 
     private val instrumentation get()=InstrumentationRegistry.getInstrumentation()
@@ -79,6 +80,7 @@ class ReleaseSmokeTest {
         assertEquals("Einstellungen",AppLanguage.context(app).getString(R.string.settings))
         app.startActivity(android.content.Intent(app,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
         clickLabel("Einstellungen")
+        clickLabel("Sprache")
         val labels=listOf("tr" to "Dil","en" to "Language","de" to "Sprache","fr" to "Langue","ru" to "Язык")
         for((tag,label) in labels) {
             clickLabel(AppLanguage.choices.first { it.first==tag }.second)
@@ -94,7 +96,37 @@ class ReleaseSmokeTest {
         }
         clickLabel("Türkçe")
         waitForLabel("Dil")
+        instrumentation.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
         app.getSharedPreferences("zenithw_v2",0).edit().putBoolean("languagesChecked",true).commit()
+    }
+
+    private fun scrollToLabel(label: String) {
+        repeat(14) {
+            if(nodes().any { it.text?.toString()==label })return
+            nodes().firstOrNull { it.isScrollable }?.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+            android.os.SystemClock.sleep(350)
+        }
+        waitForLabel(label)
+    }
+    @Test fun settingsCategories() {
+        app.store.language="tr"
+        app.startActivity(android.content.Intent(app,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
+        clickLabel("Ayarlar")
+        val entries=listOf("Dil" to "English","İndirme motoru" to "Şimdi güncelle","Video ve ses" to "Video kalitesi",
+            "Dosya içeriği" to "Medya bilgilerini göm","Altyazılar" to "Altyazıları indir","SponsorBlock" to "Kategoriler",
+            "Aria2c" to "Bağlantı sayısı","Bağlantı ve hız" to "Hız sınırı","Oynatma listeleri" to "Liste indirmeye izin ver",
+            "Dosyalar ve arşiv" to "Dosya adı","Hazır profiller" to "Günlük","İşlem günlüğü" to "Temizle")
+        for((entry,control) in entries) {
+            scrollToLabel(entry);clickLabel(entry);waitForLabel(control)
+            instrumentation.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+            waitForLabel("Ayarlar")
+        }
+        scrollToLabel("Tarayıcı oturumları");clickLabel("Tarayıcı oturumları");clickLabel("Yeni oturum bağla")
+        waitForLabel("Site adresi")
+        assertFalse(nodes().any { it.text?.toString() in listOf("YouTube","Instagram","TikTok") })
+        assertEquals("https://example.org",normalizeUrl("example.org"))
+        assertEquals("https://example.org/login",normalizeUrl("https://example.org/login"))
+        instrumentation.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
     }
 
     @Test fun updateChannels()=runBlocking {
@@ -105,8 +137,10 @@ class ReleaseSmokeTest {
             assertTrue("$channel engine was not ready",status.ready)
             assertNull("$channel update failed: ${status.warning}",status.warning)
             assertTrue(status.version.startsWith("$channel · "))
+            assertEquals(status.version.substringAfter(" · "),app.engine.runtimeVersion())
             assertEquals(status.version,app.store.lastEngineVersion)
             assertTrue(app.store.lastEngineCheck>0)
         }
     }
 }
+

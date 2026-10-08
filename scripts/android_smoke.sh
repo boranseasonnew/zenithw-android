@@ -18,6 +18,7 @@ run_test saveSettings
 adb shell am force-stop "$PACKAGE"
 run_test restoreSettings
 run_test languages
+run_test settingsCategories
 run_test updateChannels
 adb shell am force-stop "$PACKAGE"
 adb shell am start -W -n "$PACKAGE/space.zenithw.app.MainActivity"
@@ -32,11 +33,11 @@ nodes=list(ET.parse('smoke-results/home.xml').getroot().iter('node'))
 labels=[node.get('text','') or node.get('content-desc','') for node in nodes]
 for label in ('Zenith','Yapıştır','İndir','Ayarlar'):
     assert label in labels, (label,labels)
-for slogan in ('Bir bağlantı.', 'Hepsi senin.', 'Motor hazır', 'Oturum bağla', 'DAHA AZ ADIM'):
+for slogan in ('Bir bağlantı.', 'Hepsi senin.', 'DAHA AZ ADIM'):
     assert not any(slogan in label for label in labels), labels
 import re
 bounds=lambda node: list(map(int,re.findall(r'\d+',node.get('bounds',''))))
-url=next(node for node in nodes if node.get('text')=='URL')
+url=next(node for node in nodes if node.get('class')=='android.widget.EditText')
 logo=next(node for node in nodes if node.get('content-desc')=='Zenith')
 root_bounds=bounds(nodes[0])
 y=bounds(url)

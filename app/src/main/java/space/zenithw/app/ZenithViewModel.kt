@@ -17,13 +17,14 @@ import java.util.UUID
 
 data class ScreenState(val tab: Int=0,val url: String="",val analyzing: Boolean=false,
     val preview: MediaPreview?=null,val message: String?=null,val profiles: List<CookieProfile> = emptyList(),
-    val cookieId: String?=null,val autoUpdate: Boolean=true,val channel: String="stable",val language: String="tr")
+    val cookieId: String?=null,val autoUpdate: Boolean=true,val channel: String="stable",val language: String="tr",val defaults: DownloadOptions=DownloadOptions())
 class ZenithViewModel(application: Application): AndroidViewModel(application) {
     val app=application as ZenithApplication
     private val mutableScreen=MutableStateFlow(ScreenState(profiles=app.vault.profiles(),
-        autoUpdate=app.store.autoUpdate,channel=app.store.channel,cookieId=app.store.selectedCookieId,language=app.store.language))
+        autoUpdate=app.store.autoUpdate,channel=app.store.channel,cookieId=app.store.selectedCookieId,language=app.store.language,defaults=app.store.defaultOptions))
     val screen=mutableScreen.asStateFlow()
     val jobs=app.store.jobs
+    val logs=app.store.logs
     val engine=app.engine.status
     private var inspection: Job?=null
     private fun edit(update: (ScreenState)->ScreenState) { mutableScreen.value=update(mutableScreen.value) }
@@ -86,7 +87,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         }
     }
     fun enqueue(options: DownloadOptions) {
-        app.store.defaultOptions=options
+        defaults(options)
         val state=mutableScreen.value
         val preview=state.preview ?: return
         val job=DownloadJob(url=preview.url,title=preview.title,thumbnail=preview.thumbnail,
@@ -103,7 +104,8 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     }
     fun automatic(value: Boolean) { app.store.autoUpdate=value; edit { it.copy(autoUpdate=value) } }
     fun language(value: String) { app.store.language=value; edit { it.copy(language=app.store.language) } }
-    fun defaults(value: DownloadOptions) { app.store.defaultOptions=value }
+    fun defaults(value: DownloadOptions) { app.store.defaultOptions=value; edit { it.copy(defaults=app.store.defaultOptions) } }
+    fun clearLogs()=app.store.clearLogs()
     fun channel(value: String) { app.store.channel=value; edit { it.copy(channel=value) }; updateEngine() }
     fun updateEngine() { app.applicationScope.launch { app.engine.initializeAndUpdate(force=true) } }
 }

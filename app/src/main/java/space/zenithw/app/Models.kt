@@ -45,6 +45,16 @@ data class DownloadOptions(
     val proxy: String = "",
     val userAgent: String = "",
     val filenameTemplate: String = "%(title).150B [%(id)s].%(ext)s",
+    val playlistOrder: String = "normal",
+    val playlistErrors: String = "continue",
+    val sponsorAction: String = "remove",
+    val skipUnavailable: Boolean = true,
+    val writeInfoJson: Boolean = false,
+    val writeDescription: Boolean = false,
+    val downloadArchive: Boolean = false,
+    val keepOriginal: Boolean = false,
+    val sleepSeconds: Int = 0,
+    val timeout: Int = 20,
     val selectedFormat: String = ""
 ) {
     fun json() = JSONObject().apply {
@@ -61,6 +71,16 @@ data class DownloadOptions(
         put("ariaConnections",ariaConnections); put("fragments",fragments); put("retries",retries)
         put("fragmentRetries",fragmentRetries); put("speedLimitKbps",speedLimitKbps)
         put("networkMode",networkMode); put("proxy",proxy); put("userAgent",userAgent)
+        put("playlistOrder",playlistOrder);
+        put("playlistErrors",playlistErrors);
+        put("sponsorAction",sponsorAction);
+        put("skipUnavailable",skipUnavailable);
+        put("writeInfoJson",writeInfoJson);
+        put("writeDescription",writeDescription);
+        put("downloadArchive",downloadArchive);
+        put("keepOriginal",keepOriginal);
+        put("sleepSeconds",sleepSeconds);
+        put("timeout",timeout);
         put("filenameTemplate",filenameTemplate); put("selectedFormat",selectedFormat)
     }
     companion object {
@@ -85,6 +105,16 @@ data class DownloadOptions(
             networkMode=o.optString("networkMode","auto"), proxy=o.optString("proxy"),
             userAgent=o.optString("userAgent"),
             filenameTemplate=o.optString("filenameTemplate","%(title).150B [%(id)s].%(ext)s"),
+            playlistOrder=o.optString("playlistOrder","normal"),
+            playlistErrors=o.optString("playlistErrors","continue"),
+            sponsorAction=o.optString("sponsorAction","remove"),
+            skipUnavailable=o.optBoolean("skipUnavailable",true),
+            writeInfoJson=o.optBoolean("writeInfoJson",false),
+            writeDescription=o.optBoolean("writeDescription",false),
+            downloadArchive=o.optBoolean("downloadArchive",false),
+            keepOriginal=o.optBoolean("keepOriginal",false),
+            sleepSeconds=o.optInt("sleepSeconds",0).coerceIn(0,60),
+            timeout=o.optInt("timeout",20).coerceIn(5,120),
             selectedFormat=o.optString("selectedFormat")
         )
     }

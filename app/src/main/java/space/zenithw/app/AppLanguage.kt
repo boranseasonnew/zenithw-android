@@ -167,6 +167,7 @@ object AppLanguage {
         "Birlikte gelen sürüm" to R.string.bundled,
     )
     fun message(context: Context,value: String): String {
+        SettingsText.labels[value]?.let { return context.getString(it) }
         legacy[value]?.let { return context.getString(it) }
         Regex("Yaklaşık (\\d+) dk (\\d+) sn").matchEntire(value)?.let {
             return context.getString(R.string.eta,it.groupValues[1],it.groupValues[2])

@@ -78,11 +78,13 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                 gate.withLock { init() }
                 mutableStatus.value=EngineStatus(true,store.autoUpdate || force,
                     if(store.autoUpdate || force) "Güncellemeler kontrol ediliyor" else "İndirmeye hazır",store.lastEngineVersion)
-                if(store.autoUpdate || force) updateVerifiedBinary()
+                if(store.autoUpdate || force) { store.log("ENGINE  ${store.channel} kontrol ediliyor");updateVerifiedBinary() }
+                store.log("ENGINE  Hazır · ${store.lastEngineVersion}")
                 mutableStatus.value=EngineStatus(true,false,"İndirmeye hazır",store.lastEngineVersion)
             } catch(cancelled: CancellationException) {
                 throw cancelled
             } catch(e: Exception) {
+                store.log("ENGINE  ${store.channel} güncellemesi başarısız: ${e.javaClass.simpleName}")
                 android.util.Log.w("ZenithEngine", "Engine update failed for ${store.channel}",e)
                 mutableStatus.value=EngineStatus(initialized,false,
                     if(initialized) "İndirmeye hazır" else "Motor başlatılamadı",store.lastEngineVersion,
@@ -91,6 +93,16 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         }
     }
     private fun getBytes(address: String, limit: Int): ByteArray {
+        var failure: Exception?=null
+        repeat(3) { attempt ->
+            try { return fetchBytes(address,limit) } catch(e: java.io.IOException) {
+                failure=e
+                if(attempt<2) Thread.sleep(1000L*(attempt+1))
+            }
+        }
+        throw failure ?: error("Update request failed")
+    }
+    private fun fetchBytes(address: String, limit: Int): ByteArray {
         var current=URL(address)
         val allowed=setOf("api.github.com","github.com","release-assets.githubusercontent.com","objects.githubusercontent.com")
         repeat(6) {
@@ -120,7 +132,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                             output.toByteArray()
                         }
                     }
-                    else -> error("Update request failed: HTTP ${connection.responseCode}")
+                    else -> throw java.io.IOException("Update request failed: HTTP ${connection.responseCode}")
                 }
             } finally { connection.disconnect() }
         }
@@ -158,6 +170,13 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                 store.lastEngineVersion=version
                 store.lastEngineCheck=System.currentTimeMillis()
             } finally { if(staged.exists()) staged.delete() }
+        }
+    }
+    suspend fun runtimeVersion(): String=withContext(Dispatchers.IO) {
+        gate.withLock {
+            init()
+            val request=YoutubeDLRequest(listOf<String>()).apply { addOption("--version") }
+            runInterruptible { YoutubeDL.getInstance().execute(request).out.trim() }
         }
     }
     private fun baseRequest(url: String)=YoutubeDLRequest(normalizeUrl(url)).apply {
@@ -240,6 +259,17 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         if(o.playlist && o.playlistItems.isNotBlank()) {
             require(o.playlistItems.matches(Regex("[0-9,: -]+"))); r.addOption("--playlist-items",o.playlistItems)
         }
+        r.addOption("--socket-timeout",o.timeout.toString())
+        r.addOption(if(o.skipUnavailable) "--skip-unavailable-fragments" else "--abort-on-unavailable-fragments")
+        if(o.playlist) {
+            when(o.playlistOrder) { "reverse" -> r.addOption("--playlist-reverse"); "random" -> r.addOption("--playlist-random") }
+            if(o.playlistErrors=="continue") r.addOption("--ignore-errors")
+        }
+        if(o.writeInfoJson) r.addOption("--write-info-json")
+        if(o.writeDescription) r.addOption("--write-description")
+        if(o.downloadArchive) r.addOption("--download-archive",File(context.noBackupFilesDir,"download-archive.txt").absolutePath)
+        if(o.keepOriginal) r.addOption("--keep-video")
+        if(o.sleepSeconds>0) r.addOption("--sleep-interval",o.sleepSeconds.toString())
         cookie?.let { r.addOption("--cookies",it.absolutePath) }
         when(o.networkMode) { "ipv4" -> r.addOption("--force-ipv4"); "ipv6" -> r.addOption("--force-ipv6") }
         if(o.proxy.isNotBlank()) {
@@ -253,10 +283,10 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
             r.addOption("--downloader","http,ftp:${binary.absolutePath}")
             r.addOption("--downloader","dash,m3u8:native")
             r.addOption("--downloader-args",DownloadPolicy.ariaArguments(
-                o.ariaConnections,o.retries,o.speedLimitKbps,ariaCertificate().absolutePath))
+                o.ariaConnections,o.retries,o.speedLimitKbps,ariaCertificate().absolutePath,o.timeout))
         } else if(o.speedLimitKbps>0) r.addOption("--limit-rate","${o.speedLimitKbps}K")
-        if(o.sponsorBlock) {
-            require(o.sponsorCategories.matches(Regex("[a-z_,]+"))); r.addOption("--sponsorblock-remove",o.sponsorCategories)
+        if(o.sponsorBlock && o.mode!=MediaMode.AUDIO) {
+            require(o.sponsorCategories.matches(Regex("[a-z_,]+"))); r.addOption(if(o.sponsorAction=="mark") "--sponsorblock-mark" else "--sponsorblock-remove",o.sponsorCategories)
         }
         when(o.mode) {
             MediaMode.AUDIO -> {
@@ -270,9 +300,9 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                 val codec=when(o.codec) { "h264"->"[vcodec^=avc]";"av1"->"[vcodec^=av01]";"vp9"->"[vcodec^=vp9]"; else->"" }
                 r.addOption("-f",o.selectedFormat.ifBlank { "bv*$height$codec+ba/b$height" })
                 require(o.container in listOf("mp4","mkv","webm"))
-                r.addOption("--merge-output-format",o.container)
+                r.addOption("--merge-output-format",if(o.container=="webm") "mkv" else o.container)
                 // Merge format alone is ignored for a single combined video/audio stream.
-                r.addOption("--remux-video",o.container)
+                r.addOption(if(o.container=="webm") "--recode-video" else "--remux-video",o.container)
             }
             MediaMode.SUBTITLES -> r.addOption("--skip-download")
         }
