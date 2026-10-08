@@ -10,7 +10,7 @@ adb install -r "$TEST_APK"
 PACKAGE="space.zenithw.app.stable"
 TEST_PACKAGE="$PACKAGE.test"
 run_test() {
-  adb shell am instrument -w -r -e class "space.zenithw.app.ReleaseSmokeTest#$1" \
+  adb shell am instrument -w -r -e class "space.zenithw.app.${2:-ReleaseSmokeTest}#$1" \
     "$TEST_PACKAGE/androidx.test.runner.AndroidJUnitRunner" | tee "smoke-results/$1.txt"
   grep -q 'OK (1 test)' "smoke-results/$1.txt"
 }
@@ -19,6 +19,9 @@ adb shell am force-stop "$PACKAGE"
 run_test restoreSettings
 run_test languages
 run_test settingsCategories
+for method in releasePageFailureUsesAssetRoute blockedRedirectsUseOfficialApi blockedAssetUsesApiDownloadAndKeepsVersion untrustedRedirectIsNeverRequested oversizedResponseIsRejectedAndCacheIsDisabled failureNamesLookupStageAndHttpStatus corruptUpdatePreservesWorkingEngine; do
+  run_test "$method" EngineUpdateSourceTest
+done
 run_test updateChannels
 adb shell am force-stop "$PACKAGE"
 adb shell am start -W -n "$PACKAGE/space.zenithw.app.MainActivity"

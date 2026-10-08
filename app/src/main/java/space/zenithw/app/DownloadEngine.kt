@@ -17,14 +17,12 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
-import java.net.URL
 import java.security.MessageDigest
-import javax.net.ssl.HttpsURLConnection
 
 data class EngineStatus(val ready: Boolean=false, val updating: Boolean=false,
     val label: String="Motor hazırlanıyor", val version: String="", val warning: String?=null)
 
-class DownloadEngine(private val context: Context, private val store: LocalStore, private val vault: CookieVault) {
+class DownloadEngine(private val context: Context, private val store: LocalStore, private val vault: CookieVault, private val updateHttp: EngineHttp=EngineHttp()) {
     private val gate=Mutex()
     private val updateGate=Mutex()
     private var initialized=false
@@ -63,8 +61,8 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                         digest.update(buffer,0,count)
                     }
                 }
-                require(digest.digest().joinToString("") { "%02x".format(it) } == BundledEngine.SHA256)
-                require(staged.renameTo(destination))
+                require(digest.digest().joinToString("") { "%02x".format(it) } == BundledEngine.SHA256) { "BUNDLE_CHECKSUM: bundled engine is damaged" }
+                require(staged.renameTo(destination)) { "BUNDLE_INSTALL: cannot replace engine file" }
                 version=BundledEngine.VERSION
                 store.lastEngineVersion="stable · $version"
             } finally { staged.delete() }
@@ -84,7 +82,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
             } catch(cancelled: CancellationException) {
                 throw cancelled
             } catch(e: Exception) {
-                store.log("ENGINE  ${store.channel} güncellemesi başarısız: ${e.javaClass.simpleName}")
+                store.log("ENGINE  ${store.channel} güncellemesi başarısız: ${EngineUpdateSource.diagnostic(e)}")
                 android.util.Log.w("ZenithEngine", "Engine update failed for ${store.channel}",e)
                 mutableStatus.value=EngineStatus(initialized,false,
                     if(initialized) "İndirmeye hazır" else "Motor başlatılamadı",store.lastEngineVersion,
@@ -92,70 +90,22 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
             }
         }
     }
-    private fun getBytes(address: String, limit: Int): ByteArray {
-        var failure: Exception?=null
-        repeat(3) { attempt ->
-            try { return fetchBytes(address,limit) } catch(e: java.io.IOException) {
-                failure=e
-                if(attempt<2) Thread.sleep(1000L*(attempt+1))
-            }
-        }
-        throw failure ?: error("Update request failed")
-    }
-    private fun fetchBytes(address: String, limit: Int): ByteArray {
-        var current=URL(address)
-        val allowed=setOf("api.github.com","github.com","release-assets.githubusercontent.com","objects.githubusercontent.com")
-        repeat(6) {
-            require(current.protocol=="https" && current.host in allowed) { "Untrusted update location" }
-            val connection=current.openConnection() as HttpsURLConnection
-            connection.connectTimeout=15000; connection.readTimeout=30000
-            connection.instanceFollowRedirects=false
-            connection.setRequestProperty("User-Agent","Zenith-Android/${BuildConfig.VERSION_NAME}")
-            try {
-                when(connection.responseCode) {
-                    in 300..399 -> {
-                        val redirect=connection.getHeaderField("Location") ?: error("Missing update redirect")
-                        current=URL(current,redirect)
-                    }
-                    200 -> {
-                        return connection.inputStream.use { input ->
-                            val output=java.io.ByteArrayOutputStream()
-                            val buffer=ByteArray(32768)
-                            var size=0
-                            while(true) {
-                                val count=input.read(buffer)
-                                if(count<0) break
-                                size+=count
-                                require(size<=limit) { "Update exceeds allowed size" }
-                                output.write(buffer,0,count)
-                            }
-                            output.toByteArray()
-                        }
-                    }
-                    else -> throw java.io.IOException("Update request failed: HTTP ${connection.responseCode}")
-                }
-            } finally { connection.disconnect() }
-        }
-        error("Too many update redirects")
-    }
     private suspend fun updateVerifiedBinary() {
         val channel=store.channel
-        val repository=EngineUpdateSource.repository(channel)
-        val tag=EngineUpdateSource.latestTag(channel)
+        val tag=EngineUpdateSource.latestTag(channel,updateHttp)
         val version="$channel · $tag"
         val installed=File(context.noBackupFilesDir,"youtubedl-android/yt-dlp/yt-dlp")
         if(store.lastEngineVersion==version && binaryVersion(installed)==tag) {
             store.lastEngineCheck=System.currentTimeMillis(); return
         }
-        val base="https://github.com/$repository/releases/download/$tag"
-        val sums=String(getBytes("$base/SHA2-256SUMS",1024*1024),Charsets.UTF_8)
+        val sums=String(EngineUpdateSource.asset(channel,tag,"SHA2-256SUMS",1024*1024,updateHttp),Charsets.UTF_8)
         val checksum=sums.lineSequence().map { it.trim().split(Regex("\\s+"),limit=2) }
             .firstOrNull { it.size==2 && it[1].removePrefix("*")=="yt-dlp" }?.first()
-            ?: error("Missing executable checksum")
-        require(checksum.matches(Regex("[a-fA-F0-9]{64}")))
-        val binary=getBytes("$base/yt-dlp",32*1024*1024)
+            ?: error("UPDATE_CHECKSUM: missing executable checksum")
+        require(checksum.matches(Regex("[a-fA-F0-9]{64}"))) { "UPDATE_CHECKSUM: invalid checksum format" }
+        val binary=EngineUpdateSource.asset(channel,tag,"yt-dlp",32*1024*1024,updateHttp)
         val actual=MessageDigest.getInstance("SHA-256").digest(binary).joinToString("") { "%02x".format(it) }
-        require(actual.equals(checksum,ignoreCase=true)) { "Update integrity check failed" }
+        require(actual.equals(checksum,ignoreCase=true)) { "UPDATE_CHECKSUM: downloaded file does not match SHA-256" }
         // Fetch and verify outside the download lock. Startup update requests must
         // not prevent a download from starting on an already usable engine.
         gate.withLock {
@@ -165,8 +115,8 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
             val destination=File(directory,"yt-dlp")
             try {
                 java.io.FileOutputStream(staged).use { it.write(binary); it.fd.sync() }
-                require(binaryVersion(staged)==tag && tag >= BundledEngine.VERSION) { "Unexpected engine version" }
-                require(staged.renameTo(destination)) { "Cannot atomically install update" }
+                require(binaryVersion(staged)==tag && tag >= BundledEngine.VERSION) { "UPDATE_VERSION: downloaded engine version differs from release" }
+                require(staged.renameTo(destination)) { "UPDATE_INSTALL: cannot replace engine file" }
                 store.lastEngineVersion=version
                 store.lastEngineCheck=System.currentTimeMillis()
             } finally { if(staged.exists()) staged.delete() }
