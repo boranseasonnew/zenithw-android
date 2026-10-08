@@ -10,6 +10,11 @@ on:
         description: "Existing release tag to build and attach APKs to, for example v2.0.0"
         required: true
         type: string
+      publish_release:
+        description: "Publish verified APKs; disable to only build and upload test artifacts"
+        required: true
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -81,53 +86,22 @@ jobs:
           chmod +x ./gradlew
           ./gradlew --no-daemon assembleRelease
 
-      - name: Prepare release files
+      - name: Verify and prepare signed release files
         env:
           TAG_NAME: ${{ inputs.release_tag || github.ref_name }}
         run: |
-          VERSION="${TAG_NAME#v}"
-          OUT="release-assets"
-          mkdir -p "$OUT"
-          VERSION="$VERSION" python3 - <<'PY'
-          import json, os, shutil
-          from pathlib import Path
+          python3 scripts/prepare_release.py --version "${TAG_NAME#v}" \
+            --build-tools "$ANDROID_HOME/build-tools/36.0.0"
 
-          root = Path("app/build/outputs/apk")
-          wanted = {"arm64-v8a", "armeabi-v7a", "x86_64"}
-          found = {}
-          for metadata in root.rglob("output-metadata.json"):
-              try:
-                  data = json.loads(metadata.read_text())
-              except (OSError, json.JSONDecodeError):
-                  continue
-              for element in data.get("elements", []):
-                  abi = next((item.get("value") for item in element.get("filters", [])
-                              if item.get("filterType") == "ABI"), None)
-                  output = metadata.parent / element.get("outputFile", "")
-                  if abi in wanted and output.is_file():
-                      found[abi] = output
-
-          for abi in wanted:
-              if abi not in found:
-                  for output in root.rglob("*.apk"):
-                      if abi in output.name:
-                          found[abi] = output
-                          break
-
-          missing = wanted - found.keys()
-          if missing:
-              actual = ", ".join(str(path) for path in root.rglob("*.apk")) or "(no APK files found)"
-              raise SystemExit(f"Missing ABI APKs {sorted(missing)}. Actual outputs: {actual}")
-
-          out = Path("release-assets")
-          version = os.environ["VERSION"]
-          for abi, source in found.items():
-              shutil.copy2(source, out / f"Zenith-{version}-stable-{abi}.apk")
-              print(f"Prepared {abi}: {source}")
-          PY
-          (cd "$OUT" && sha256sum *.apk > SHA256SUMS.txt)
+      - name: Upload verified APK build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-signed-apks
+          path: release-assets/
+          if-no-files-found: error
 
       - name: Upload APKs and publish the GitHub Release
+        if: github.event_name == 'push' || inputs.publish_release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ inputs.release_tag || github.ref_name }}
