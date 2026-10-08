@@ -331,15 +331,9 @@ space.zenithw.app.preview
 
 This allows **ZenithW 2.0 Preview** to be installed alongside the original ZenithW application.
 
-### Original-package release builds
+### Stable release builds
 
-Builds targeting:
-
-```text
-space.zenithw.app
-```
-
-are signed with the retained stable key under `space.zenithw.app.stable`. They update the stable app and do not replace the original package.
+The signed release package is `space.zenithw.app.stable`. It uses the retained stable key and updates the stable app without replacing the original package.
 
 ---
 

@@ -359,15 +359,9 @@ space.zenithw.app.preview
 
 Böylece **ZenithW 2.0 Preview**, eski ZenithW sürümünün yanına kurulabilir.
 
-### Orijinal package için release sürümleri
+### Stable release sürümleri
 
-Şu paket adına sahip sürümler:
-
-```text
-space.zenithw.app
-```
-
-orijinal imza anahtarı sağlanana kadar bilerek imzasız bırakılır.
+İmzalı release paketinin adı `space.zenithw.app.stable`. Mevcut stable anahtarıyla imzalanır; eski uygulamayı değiştirmeden stable sürümün üzerine güncellenir.
 
 ---
 
