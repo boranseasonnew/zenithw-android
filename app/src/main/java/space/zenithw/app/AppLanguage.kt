@@ -11,7 +11,7 @@ val LocalAppContext=staticCompositionLocalOf<Context> { error("App language cont
 object AppLanguage {
     val choices=listOf("tr" to "Türkçe","en" to "English","de" to "Deutsch","fr" to "Français","ru" to "Русский")
     fun valid(tag: String)=tag.takeIf { value -> choices.any { it.first==value } } ?: "tr"
-    fun context(base: Context,tag: String=LocalStore(base).language): Context {
+    fun context(base: Context,tag: String=base.getSharedPreferences("zenithw_v2",Context.MODE_PRIVATE).getString("language","tr") ?: "tr"): Context {
         val configuration=Configuration(base.resources.configuration)
         configuration.setLocale(Locale.forLanguageTag(valid(tag)))
         return ContextThemeWrapper(base,base.theme).apply { applyOverrideConfiguration(configuration) }

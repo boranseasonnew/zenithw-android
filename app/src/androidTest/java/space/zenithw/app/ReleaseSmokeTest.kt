@@ -45,14 +45,24 @@ class ReleaseSmokeTest {
     }
 
     private val instrumentation get()=InstrumentationRegistry.getInstrumentation()
+    private fun nodes(): List<android.view.accessibility.AccessibilityNodeInfo> {
+        val result=mutableListOf<android.view.accessibility.AccessibilityNodeInfo>()
+        fun visit(node: android.view.accessibility.AccessibilityNodeInfo) {
+            result.add(node)
+            for(index in 0 until node.childCount) node.getChild(index)?.let(::visit)
+        }
+        instrumentation.uiAutomation.rootInActiveWindow?.let(::visit)
+        return result
+    }
     private fun waitForLabel(label: String): android.view.accessibility.AccessibilityNodeInfo {
         val deadline=android.os.SystemClock.uptimeMillis()+8000
         while(android.os.SystemClock.uptimeMillis()<deadline) {
-            instrumentation.uiAutomation.rootInActiveWindow?.findAccessibilityNodeInfosByText(label)
-                ?.firstOrNull { it.text?.toString()==label }?.let { return it }
+            // Compose exposes virtual accessibility nodes. Walk them directly instead of
+            // using the platform text-search method, which need not search virtual children.
+            nodes().firstOrNull { it.text?.toString()==label }?.let { return it }
             android.os.SystemClock.sleep(100)
         }
-        error("UI label missing: $label")
+        error("UI label missing: $label; visible: ${nodes().mapNotNull { it.text?.toString() }}")
     }
     private fun clickLabel(label: String) {
         var node: android.view.accessibility.AccessibilityNodeInfo?=waitForLabel(label)
@@ -66,6 +76,7 @@ class ReleaseSmokeTest {
         error("UI label not clickable: $label")
     }
     @Test fun languages() {
+        assertEquals("Einstellungen",AppLanguage.context(app).getString(R.string.settings))
         app.startActivity(android.content.Intent(app,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
         clickLabel("Einstellungen")
         val labels=listOf("tr" to "Dil","en" to "Language","de" to "Sprache","fr" to "Langue","ru" to "Язык")
