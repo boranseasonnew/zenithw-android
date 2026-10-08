@@ -439,3 +439,9 @@ Current priorities include:
 `Android • Kotlin • Jetpack Compose • yt-dlp`
 
 </div>
+
+### Android 2.1 language and layout
+
+Settings includes Turkish, English, German, French and Russian. The chosen language is saved locally and changes the UI immediately, including download options, status messages and session screens. Media titles and entered links stay unchanged. The logo stays at the top left; the URL form sits slightly below the center and adapts when the keyboard opens.
+
+The Android 13 release smoke test clicks all five language choices, checks translated labels, verifies German survives a process restart, and checks the URL position from the screen hierarchy before publishing.

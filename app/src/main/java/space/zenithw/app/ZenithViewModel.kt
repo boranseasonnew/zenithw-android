@@ -17,11 +17,11 @@ import java.util.UUID
 
 data class ScreenState(val tab: Int=0,val url: String="",val analyzing: Boolean=false,
     val preview: MediaPreview?=null,val message: String?=null,val profiles: List<CookieProfile> = emptyList(),
-    val cookieId: String?=null,val autoUpdate: Boolean=true,val channel: String="stable")
+    val cookieId: String?=null,val autoUpdate: Boolean=true,val channel: String="stable",val language: String="tr")
 class ZenithViewModel(application: Application): AndroidViewModel(application) {
     val app=application as ZenithApplication
     private val mutableScreen=MutableStateFlow(ScreenState(profiles=app.vault.profiles(),
-        autoUpdate=app.store.autoUpdate,channel=app.store.channel,cookieId=app.store.selectedCookieId))
+        autoUpdate=app.store.autoUpdate,channel=app.store.channel,cookieId=app.store.selectedCookieId,language=app.store.language))
     val screen=mutableScreen.asStateFlow()
     val jobs=app.store.jobs
     val engine=app.engine.status
@@ -102,6 +102,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         DownloadWorker.enqueue(app,replacement)
     }
     fun automatic(value: Boolean) { app.store.autoUpdate=value; edit { it.copy(autoUpdate=value) } }
+    fun language(value: String) { app.store.language=value; edit { it.copy(language=app.store.language) } }
     fun defaults(value: DownloadOptions) { app.store.defaultOptions=value }
     fun channel(value: String) { app.store.channel=value; edit { it.copy(channel=value) }; updateEngine() }
     fun updateEngine() { app.applicationScope.launch { app.engine.initializeAndUpdate(force=true) } }

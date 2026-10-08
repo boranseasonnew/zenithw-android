@@ -20,6 +20,9 @@ class LocalStore(context: Context) {
     private val preferences=context.getSharedPreferences("zenithw_v2",Context.MODE_PRIVATE)
     private val mutableJobs=MutableStateFlow(loadJobs())
     val jobs=mutableJobs.asStateFlow()
+    var language: String
+        get()=AppLanguage.valid(preferences.getString("language","tr") ?: "tr")
+        set(value) { preferences.edit().putString("language",AppLanguage.valid(value)).apply() }
     var autoUpdate: Boolean
         get()=preferences.getBoolean("autoUpdate",true)
         set(value) { preferences.edit().putBoolean("autoUpdate",value).apply() }

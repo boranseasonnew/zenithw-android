@@ -35,10 +35,18 @@ class CookieBrowserActivity: ComponentActivity() {
             navigationBarStyle=SystemBarStyle.dark(android.graphics.Color.TRANSPARENT))
         val initial=runCatching { normalizeUrl(intent.getStringExtra("url").orEmpty()) }
             .getOrNull()?.takeIf { it.startsWith("https://") } ?: run { finish(); return }
-        setContent { ZenithTheme { CookieBrowser(initial) } }
+        setContent {
+            val base=androidx.compose.ui.platform.LocalContext.current
+            val localized=remember(base) { AppLanguage.context(base) }
+            CompositionLocalProvider(LocalAppContext provides localized,
+                androidx.compose.ui.platform.LocalConfiguration provides localized.resources.configuration) {
+                ZenithTheme { CookieBrowser(initial) }
+            }
+        }
     }
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable private fun CookieBrowser(initial: String) {
+        val texts=LocalAppContext.current
         var current by remember { mutableStateOf(initial) }
         var loading by remember { mutableStateOf(true) }
         var message by remember { mutableStateOf<String?>(null) }
@@ -61,7 +69,7 @@ class CookieBrowserActivity: ComponentActivity() {
                     override fun onPageFinished(view: WebView,url: String) { current=url;loading=false }
                     override fun onReceivedSslError(view: WebView,handler: SslErrorHandler,error: SslError) {
                         handler.cancel()
-                        message="Sitenin güvenli bağlantısı doğrulanamadı."
+                        message=texts.getString(R.string.ssl_error)
                     }
                 }
                 loadUrl(initial)
@@ -73,14 +81,14 @@ class CookieBrowserActivity: ComponentActivity() {
         }
         Scaffold(containerColor=Ink,topBar={
             TopAppBar(title={
-                Text(Uri.parse(current).host ?: "Oturum bağla",style=MaterialTheme.typography.titleMedium)
-            },navigationIcon={ IconButton(onClick={ finish() }) { Icon(Icons.Outlined.ArrowBack,"Geri") } },
+                Text(Uri.parse(current).host ?: texts.getString(R.string.connect_session),style=MaterialTheme.typography.titleMedium)
+            },navigationIcon={ IconButton(onClick={ finish() }) { Icon(Icons.Outlined.ArrowBack,texts.getString(R.string.back)) } },
                 actions={ IconButton(onClick={ startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(current))) }) {
-                    Icon(Icons.Outlined.OpenInNew,"Varsayılan tarayıcıda aç")
+                    Icon(Icons.Outlined.OpenInNew,texts.getString(R.string.open_browser))
                 } },colors=TopAppBarDefaults.topAppBarColors(containerColor=Panel))
         },bottomBar={
             Column(Modifier.navigationBarsPadding().padding(16.dp)) {
-                Text(message ?: "Giriş yaptıktan sonra kaydet. Uygulama içi giriş engellenirse cookie dosyası içe aktarabilirsin.",
+                Text(message?.let { AppLanguage.message(texts,it) } ?: texts.getString(R.string.save_login_hint),
                     color=Muted,style=MaterialTheme.typography.bodyMedium)
                 Button(onClick={
                     if(!saving) {
@@ -91,17 +99,17 @@ class CookieBrowserActivity: ComponentActivity() {
                             try {
                                 require(uri.scheme=="https")
                                 val profile=withContext(Dispatchers.IO) {
-                                    val saved=vault.capture(uri.host ?: error("Site adresi alınamadı"),header)
+                                    val saved=vault.capture(uri.host ?: error(texts.getString(R.string.missing_site)),header)
                                     CookieManager.getInstance().flush()
                                     saved
                                 }
                                 setResult(RESULT_OK,Intent().putExtra("profileId",profile.id));finish()
                             } catch(cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
-                            catch(e: Exception) { message=e.message ?: "Oturum kaydedilemedi.";saving=false }
+                            catch(e: Exception) { message=e.message ?: texts.getString(R.string.session_save_error);saving=false }
                         }
                     }
                 },enabled=!saving,modifier=Modifier.fillMaxWidth().padding(top=12.dp).heightIn(min=56.dp)) {
-                    Text(if(saving) "Kaydediliyor" else "Bu oturumu kaydet")
+                    Text(if(saving) texts.getString(R.string.saving) else texts.getString(R.string.save_session))
                 }
             }
         }) { padding ->

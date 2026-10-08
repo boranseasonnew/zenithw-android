@@ -29,7 +29,7 @@ android {
         debug {
             applicationIdSuffix = ".preview"
             versionNameSuffix = "-preview"
-            resValue("string", "app_name", "ZenithW 2.0 Preview")
+            resValue("string", "app_name", "ZenithW 2.1 Preview")
         }
         release {
             applicationIdSuffix = ".stable"

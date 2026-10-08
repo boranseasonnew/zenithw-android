@@ -17,6 +17,7 @@ class ReleaseSmokeTest {
         networkMode="ipv4",filenameTemplate="%(title)s.%(ext)s")
 
     @Test fun saveSettings() {
+        app.store.language="de"
         app.store.autoUpdate=false
         app.store.channel="nightly"
         app.store.defaultOptions=options().copy(scheduledAt=1234,selectedFormat="temporary",cookieId="temporary")
@@ -28,6 +29,7 @@ class ReleaseSmokeTest {
 
     @Test fun restoreSettings() {
         val restored=LocalStore(app)
+        assertEquals("de",restored.language)
         assertFalse(restored.autoUpdate)
         assertEquals("nightly",restored.channel)
         assertEquals(options(),restored.defaultOptions)
@@ -39,6 +41,49 @@ class ReleaseSmokeTest {
         assertEquals(id,model.screen.value.cookieId)
         assertEquals("nightly",model.screen.value.channel)
         assertFalse(model.screen.value.autoUpdate)
+        assertEquals("de",model.screen.value.language)
+    }
+
+    private val instrumentation get()=InstrumentationRegistry.getInstrumentation()
+    private fun waitForLabel(label: String): android.view.accessibility.AccessibilityNodeInfo {
+        val deadline=android.os.SystemClock.uptimeMillis()+8000
+        while(android.os.SystemClock.uptimeMillis()<deadline) {
+            instrumentation.uiAutomation.rootInActiveWindow?.findAccessibilityNodeInfosByText(label)
+                ?.firstOrNull { it.text?.toString()==label }?.let { return it }
+            android.os.SystemClock.sleep(100)
+        }
+        error("UI label missing: $label")
+    }
+    private fun clickLabel(label: String) {
+        var node: android.view.accessibility.AccessibilityNodeInfo?=waitForLabel(label)
+        while(node!=null) {
+            if(node.isClickable) {
+                assertTrue(node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK))
+                return
+            }
+            node=node.parent
+        }
+        error("UI label not clickable: $label")
+    }
+    @Test fun languages() {
+        app.startActivity(android.content.Intent(app,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        clickLabel("Einstellungen")
+        val labels=listOf("tr" to "Dil","en" to "Language","de" to "Sprache","fr" to "Langue","ru" to "Язык")
+        for((tag,label) in labels) {
+            clickLabel(AppLanguage.choices.first { it.first==tag }.second)
+            waitForLabel(label)
+            assertEquals(tag,app.store.language)
+            val localized=AppLanguage.context(app,tag)
+            assertEquals(localized.getString(R.string.download_error),
+                AppLanguage.message(localized,"İndirme tamamlanamadı. Bağlantıyı veya seçili oturumu kontrol et."))
+            val paste=mapOf("tr" to "Yapıştır","en" to "Paste","de" to "Einfügen","fr" to "Coller","ru" to "Вставить")
+            assertEquals(paste[tag],localized.getString(R.string.paste))
+            val eta=AppLanguage.message(localized,"Yaklaşık 2 dk 5 sn")
+            assertTrue(eta.contains("2") && eta.contains("5"))
+        }
+        clickLabel("Türkçe")
+        waitForLabel("Dil")
+        app.getSharedPreferences("zenithw_v2",0).edit().putBoolean("languagesChecked",true).commit()
     }
 
     @Test fun updateChannels()=runBlocking {

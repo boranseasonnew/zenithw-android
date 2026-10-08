@@ -44,6 +44,17 @@ private val CardShape=RoundedCornerShape(26.dp)
 
 @Composable fun ZenithApp(model: ZenithViewModel,onDownload: (DownloadOptions)->Unit) {
     val screen by model.screen.collectAsStateWithLifecycle()
+    val base=LocalContext.current
+    val configuration=LocalConfiguration.current
+    val localized=remember(base,configuration,screen.language) { AppLanguage.context(base,screen.language) }
+    CompositionLocalProvider(LocalAppContext provides localized,LocalConfiguration provides localized.resources.configuration) {
+        ZenithContent(model,onDownload)
+    }
+}
+
+@Composable private fun ZenithContent(model: ZenithViewModel,onDownload: (DownloadOptions)->Unit) {
+    val texts=LocalAppContext.current
+    val screen by model.screen.collectAsStateWithLifecycle()
     val jobs by model.jobs.collectAsStateWithLifecycle()
     val engine by model.engine.collectAsStateWithLifecycle()
     var cookies by rememberSaveable { mutableStateOf(false) }
@@ -58,7 +69,7 @@ private val CardShape=RoundedCornerShape(26.dp)
         uri?.let(model::importCookies)
     }
     LaunchedEffect(screen.message) {
-        screen.message?.let { snackbar.showSnackbar(it); model.dismissMessage() }
+        screen.message?.let { snackbar.showSnackbar(AppLanguage.message(texts,it)); model.dismissMessage() }
     }
     val keyboardOpen=WindowInsets.ime.getBottom(LocalDensity.current)>0
     Scaffold(containerColor=Ink,snackbarHost={ SnackbarHost(snackbar) },
@@ -68,11 +79,11 @@ private val CardShape=RoundedCornerShape(26.dp)
                 0 -> HomeScreen(screen,model::url,model::analyze)
                 1 -> DownloadsScreen(jobs,model::cancel,model::retry) { job,share ->
                     runCatching { openFiles(context,job.files,share) }.onFailure {
-                        model.showMessage("Dosyayı açabilecek bir uygulama bulunamadı.")
+                        model.showMessage(texts.getString(R.string.no_opener))
                     }
                 }
                 else -> SettingsScreen(screen,engine,model::automatic,model::channel,
-                    model::updateEngine,{ cookies=true })
+                    model::updateEngine,{ cookies=true },model::language)
             }
         }
     }
@@ -93,38 +104,43 @@ private val CardShape=RoundedCornerShape(26.dp)
 }
 
 @Composable private fun HomeScreen(screen: ScreenState,onUrl: (String)->Unit,onAnalyze: ()->Unit) {
+    val texts=LocalAppContext.current
     val clipboard=LocalClipboardManager.current
     val keyboard=LocalSoftwareKeyboardController.current
     fun analyze() { keyboard?.hide(); onAnalyze() }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp)) {
+    BoxWithConstraints(Modifier.fillMaxSize().padding(24.dp)) {
         BrandRow()
-        Spacer(Modifier.height(32.dp))
-        OutlinedTextField(screen.url,onUrl,placeholder={ Text("URL",color=Muted) },
-            modifier=Modifier.fillMaxWidth(),singleLine=true,shape=RoundedCornerShape(16.dp),
-            keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Uri,imeAction=ImeAction.Go),
-            keyboardActions=KeyboardActions(onGo={ if(screen.url.isNotBlank() && !screen.analyzing) analyze() }),
-            trailingIcon={ if(screen.url.isNotEmpty()) IconButton(onClick={ onUrl("") }) {
-                Icon(Icons.Outlined.Close,"Bağlantıyı temizle")
-            } })
-        Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(onClick={ clipboard.getText()?.text?.takeIf { it.isNotBlank() }?.let(onUrl) },
-                modifier=Modifier.weight(1f).heightIn(min=52.dp),shape=RoundedCornerShape(16.dp)) {
-                Icon(Icons.Outlined.ContentPaste,null,Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp)); Text("Yapıştır")
-            }
-            Button(onClick=::analyze,enabled=screen.url.isNotBlank() && !screen.analyzing,
-                modifier=Modifier.weight(1f).heightIn(min=52.dp),shape=RoundedCornerShape(16.dp)) {
-                if(screen.analyzing) CircularProgressIndicator(Modifier.size(18.dp),strokeWidth=2.dp,color=Ink)
-                else Icon(Icons.Outlined.FileDownload,null,Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp)); Text("İndir")
+        val offset=if(maxHeight>360.dp) maxHeight*.12f else 24.dp
+        Column(Modifier.align(Alignment.Center).offset(y=offset).fillMaxWidth()
+            .heightIn(max=(maxHeight-80.dp).coerceAtLeast(120.dp)).verticalScroll(rememberScrollState())) {
+            OutlinedTextField(screen.url,onUrl,placeholder={ Text("URL",color=Muted) },
+                modifier=Modifier.fillMaxWidth(),singleLine=true,shape=RoundedCornerShape(16.dp),
+                keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Uri,imeAction=ImeAction.Go),
+                keyboardActions=KeyboardActions(onGo={ if(screen.url.isNotBlank() && !screen.analyzing) analyze() }),
+                trailingIcon={ if(screen.url.isNotEmpty()) IconButton(onClick={ onUrl("") }) {
+                    Icon(Icons.Outlined.Close,texts.getString(R.string.clear_link))
+                } })
+            Spacer(Modifier.height(12.dp))
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick={ clipboard.getText()?.text?.takeIf { it.isNotBlank() }?.let(onUrl) },
+                    modifier=Modifier.weight(1f).heightIn(min=52.dp),shape=RoundedCornerShape(16.dp)) {
+                    Icon(Icons.Outlined.ContentPaste,null,Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp)); Text(texts.getString(R.string.paste))
+                }
+                Button(onClick=::analyze,enabled=screen.url.isNotBlank() && !screen.analyzing,
+                    modifier=Modifier.weight(1f).heightIn(min=52.dp),shape=RoundedCornerShape(16.dp)) {
+                    if(screen.analyzing) CircularProgressIndicator(Modifier.size(18.dp),strokeWidth=2.dp,color=Ink)
+                    else Icon(Icons.Outlined.FileDownload,null,Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp)); Text(texts.getString(R.string.download))
+                }
             }
         }
     }
 }
 
 @Composable private fun Dock(selected: Int,onSelect: (Int)->Unit) {
-    val names=listOf("İndir","Dosyalar","Ayarlar")
+    val texts=LocalAppContext.current
+    val names=listOf(texts.getString(R.string.download),texts.getString(R.string.files),texts.getString(R.string.settings))
     val icons=listOf(Icons.Outlined.Link,Icons.Outlined.FolderOpen,Icons.Outlined.Tune)
     Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal=22.dp,vertical=12.dp)) {
         Surface(color=Panel,shape=RoundedCornerShape(25.dp),border=BorderStroke(1.dp,Hairline)) {
@@ -149,18 +165,19 @@ private val CardShape=RoundedCornerShape(26.dp)
 
 @Composable private fun DownloadsScreen(jobs: List<DownloadJob>,onCancel: (String)->Unit,
     onRetry: (DownloadJob)->Unit,onOpen: (DownloadJob,Boolean)->Unit) {
+    val texts=LocalAppContext.current
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(24.dp),
         verticalArrangement=Arrangement.spacedBy(16.dp)) {
         item { BrandRow() }
         item {
-            Text("Dosyalar",style=MaterialTheme.typography.headlineMedium,modifier=Modifier.padding(top=12.dp))
+            Text(texts.getString(R.string.files),style=MaterialTheme.typography.headlineMedium,modifier=Modifier.padding(top=12.dp))
         }
         if(jobs.isEmpty()) item {
             Surface(color=Panel,shape=CardShape,modifier=Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(28.dp),horizontalAlignment=Alignment.CenterHorizontally) {
                     Icon(Icons.Outlined.FileDownload,null,tint=Muted,modifier=Modifier.size(34.dp))
                     Spacer(Modifier.height(16.dp))
-                    Text("Henüz dosya yok",style=MaterialTheme.typography.titleMedium)
+                    Text(texts.getString(R.string.empty_files),style=MaterialTheme.typography.titleMedium)
                 }
             }
         }
@@ -173,26 +190,26 @@ private val CardShape=RoundedCornerShape(26.dp)
                         Column(Modifier.weight(1f)) {
                             Text(job.title,maxLines=2,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.titleMedium)
                             val format=if(job.options.mode==MediaMode.AUDIO) job.options.audioFormat else job.options.container
-                            Text(job.options.mode.label+" · "+format.uppercase(),color=Muted,
+                            Text(AppLanguage.message(texts,job.options.mode.label)+" · "+format.uppercase(),color=Muted,
                                 style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=4.dp))
                         }
                     }
                     Spacer(Modifier.height(15.dp))
-                    Text(job.detail,color=if(job.state==JobState.COMPLETED) Success else Muted,style=MaterialTheme.typography.bodyMedium)
+                    Text(AppLanguage.message(texts,job.detail),color=if(job.state==JobState.COMPLETED) Success else Muted,style=MaterialTheme.typography.bodyMedium)
                     if(job.state in listOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING)) {
                         Spacer(Modifier.height(12.dp))
                         if(job.progress<=0 || job.state!=JobState.RUNNING)
                             LinearProgressIndicator(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape),color=Silver,trackColor=Hairline)
                         else LinearProgressIndicator(progress={ job.progress/100f },
                             modifier=Modifier.fillMaxWidth().height(3.dp).clip(CircleShape),color=Silver,trackColor=Hairline)
-                        TextButton(onClick={ onCancel(job.id) }) { Text("İptal et",color=Muted) }
+                        TextButton(onClick={ onCancel(job.id) }) { Text(texts.getString(R.string.cancel_download),color=Muted) }
                     }
-                    job.notes.forEach { Text(it,color=Muted,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=10.dp)) }
+                    job.notes.forEach { Text(AppLanguage.message(texts,it),color=Muted,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=10.dp)) }
                     if(job.state==JobState.COMPLETED) Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick={ onOpen(job,false) }) { Icon(Icons.Outlined.OpenInNew,null,Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Aç") }
-                        TextButton(onClick={ onOpen(job,true) }) { Icon(Icons.Outlined.Share,null,Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Paylaş") }
+                        TextButton(onClick={ onOpen(job,false) }) { Icon(Icons.Outlined.OpenInNew,null,Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(texts.getString(R.string.open)) }
+                        TextButton(onClick={ onOpen(job,true) }) { Icon(Icons.Outlined.Share,null,Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(texts.getString(R.string.share)) }
                     }
-                    if(job.state in listOf(JobState.FAILED,JobState.CANCELLED)) TextButton(onClick={ onRetry(job) }) { Text("Tekrar dene") }
+                    if(job.state in listOf(JobState.FAILED,JobState.CANCELLED)) TextButton(onClick={ onRetry(job) }) { Text(texts.getString(R.string.retry)) }
                 }
             }
         }
@@ -200,20 +217,27 @@ private val CardShape=RoundedCornerShape(26.dp)
 }
 
 @Composable private fun SettingsScreen(screen: ScreenState,engine: EngineStatus,onAuto: (Boolean)->Unit,
-    onChannel: (String)->Unit,onUpdate: ()->Unit,onCookies: ()->Unit) {
+    onChannel: (String)->Unit,onUpdate: ()->Unit,onCookies: ()->Unit,onLanguage: (String)->Unit) {
+    val texts=LocalAppContext.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
         BrandRow()
-        Text("Ayarlar",style=MaterialTheme.typography.headlineMedium,modifier=Modifier.padding(top=12.dp))
+        Text(texts.getString(R.string.settings),style=MaterialTheme.typography.headlineMedium,modifier=Modifier.padding(top=12.dp))
+        Surface(color=Panel,shape=CardShape) {
+            Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                Text(texts.getString(R.string.language),style=MaterialTheme.typography.titleLarge)
+                Choices(AppLanguage.choices,screen.language,onLanguage)
+            }
+        }
         Surface(color=Panel,shape=CardShape) {
             Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                Text("İndirme motoru",style=MaterialTheme.typography.titleLarge)
-                Text(engine.version.ifBlank { "yt-dlp hazırlanıyor" },color=Muted,style=MaterialTheme.typography.bodyMedium)
-                OptionSwitch("Otomatik güncelle",value=screen.autoUpdate,onChange=onAuto)
-                Choices(listOf("stable" to "Kararlı","nightly" to "Nightly"),screen.channel,onChannel)
-                engine.warning?.let { Text(it,color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodyMedium) }
+                Text(texts.getString(R.string.engine),style=MaterialTheme.typography.titleLarge)
+                Text(engine.version.ifBlank { texts.getString(R.string.preparing_engine) },color=Muted,style=MaterialTheme.typography.bodyMedium)
+                OptionSwitch(texts.getString(R.string.auto_update),value=screen.autoUpdate,onChange=onAuto)
+                Choices(listOf("stable" to texts.getString(R.string.stable),"nightly" to "Nightly"),screen.channel,onChannel)
+                engine.warning?.let { Text(AppLanguage.message(texts,it),color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodyMedium) }
                 OutlinedButton(onClick=onUpdate,enabled=!engine.updating,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp)) {
                     if(engine.updating) { CircularProgressIndicator(Modifier.size(16.dp),strokeWidth=2.dp); Spacer(Modifier.width(8.dp)) }
-                    Text(if(engine.updating) "Kontrol ediliyor" else "Şimdi kontrol et")
+                    Text(if(engine.updating) texts.getString(R.string.checking) else texts.getString(R.string.check_now))
                 }
             }
         }
@@ -221,8 +245,8 @@ private val CardShape=RoundedCornerShape(26.dp)
             Row(Modifier.fillMaxWidth().padding(20.dp),verticalAlignment=Alignment.CenterVertically) {
                 Icon(Icons.Outlined.Lock,null,tint=Muted); Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Bağlı oturumlar",style=MaterialTheme.typography.titleMedium)
-                    Text("${screen.profiles.size} oturum · cihazda şifreli saklanır",color=Muted,style=MaterialTheme.typography.bodyMedium)
+                    Text(texts.getString(R.string.sessions),style=MaterialTheme.typography.titleMedium)
+                    Text(texts.getString(R.string.session_count,screen.profiles.size),color=Muted,style=MaterialTheme.typography.bodyMedium)
                 }
                 Icon(Icons.Outlined.ChevronRight,null,tint=Muted)
             }
@@ -273,6 +297,7 @@ private val CardShape=RoundedCornerShape(26.dp)
 }
 private fun openFiles(context: android.content.Context,files: List<String>,share: Boolean) {
     require(files.isNotEmpty())
+    val texts=AppLanguage.context(context)
     val uris=files.map(Uri::parse)
     val intent=if(share && uris.size>1)
         Intent(Intent.ACTION_SEND_MULTIPLE).setType("*/*").putParcelableArrayListExtra(Intent.EXTRA_STREAM,ArrayList(uris))
@@ -280,5 +305,5 @@ private fun openFiles(context: android.content.Context,files: List<String>,share
     else Intent(Intent.ACTION_VIEW).setDataAndType(uris.first(),context.contentResolver.getType(uris.first()) ?: "*/*")
     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     intent.clipData=ClipData.newUri(context.contentResolver,"ZenithW files",uris.first()).apply { uris.drop(1).forEach { addItem(ClipData.Item(it)) } }
-    context.startActivity(if(share) Intent.createChooser(intent,"Dosyaları paylaş") else intent)
+    context.startActivity(if(share) Intent.createChooser(intent,texts.getString(R.string.share_files)) else intent)
 }
