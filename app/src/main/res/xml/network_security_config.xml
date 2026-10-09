@@ -5,10 +5,10 @@
     <!-- Android 7 predates ISRG Root X1. Keep this extra public CA scoped to
          the official update hosts; hostname and certificate checks stay enabled. -->
     <domain-config cleartextTrafficPermitted="false">
-        <domain>github.com</domain>
-        <domain>api.github.com</domain>
-        <domain>release-assets.githubusercontent.com</domain>
-        <domain>objects.githubusercontent.com</domain>
+        <domain includeSubdomains="false">github.com</domain>
+        <domain includeSubdomains="false">api.github.com</domain>
+        <domain includeSubdomains="false">release-assets.githubusercontent.com</domain>
+        <domain includeSubdomains="false">objects.githubusercontent.com</domain>
         <trust-anchors>
             <certificates src="system"/>
             <certificates src="@raw/isrg_root_x1"/>
