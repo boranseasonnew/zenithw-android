@@ -1,0 +1,3 @@
+<resources>
+    <string name="fdroid_engine_updates">This edition does not download external engine updates. The engine is updated with application releases distributed through F-Droid.</string>
+</resources>

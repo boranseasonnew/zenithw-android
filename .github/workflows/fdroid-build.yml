@@ -1,0 +1,43 @@
+name: F-Droid build check
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'gradle/**'
+      - '*.gradle.kts'
+      - '.github/workflows/fdroid-build.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - run: chmod +x gradlew
+      - name: Build unsigned F-Droid edition and normal debug edition
+        run: |
+          ./gradlew --no-daemon assembleRelease -Pfdroid=true
+          grep 'boolean F_DROID = true' app/build/generated/source/buildConfig/release/space/zenithw/app/BuildConfig.java
+          cp app/build/outputs/apk/release/app-release-unsigned.apk /tmp/zenithw-fdroid.apk
+          ./gradlew --no-daemon assembleDebug
+          grep 'boolean F_DROID = false' app/build/generated/source/buildConfig/debug/space/zenithw/app/BuildConfig.java
+      - name: Verify F-Droid APK identity and engine update flag
+        run: |
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging /tmp/zenithw-fdroid.apk | head -n 1 | grep "name='space.zenithw.app.fdroid'"
+          ! unzip -l /tmp/zenithw-fdroid.apk | grep 'META-INF/.*\.[RS]SA'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zenithw-fdroid-unsigned
+          path: /tmp/zenithw-fdroid.apk
+          retention-days: 7

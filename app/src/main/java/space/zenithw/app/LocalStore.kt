@@ -24,7 +24,7 @@ class LocalStore(context: Context) {
         get()=AppLanguage.valid(preferences.getString("language","tr") ?: "tr")
         set(value) { preferences.edit().putString("language",AppLanguage.valid(value)).apply() }
     var autoUpdate: Boolean
-        get()=preferences.getBoolean("autoUpdate",true)
+        get()=!BuildConfig.F_DROID && preferences.getBoolean("autoUpdate",true)
         set(value) { preferences.edit().putBoolean("autoUpdate",value).apply() }
     var channel: String
         get()=preferences.getString("channel","stable") ?: "stable"

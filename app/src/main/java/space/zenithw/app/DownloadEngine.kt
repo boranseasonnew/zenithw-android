@@ -67,9 +67,10 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         updateGate.withLock {
             try {
                 gate.withLock { init() }
-                mutableStatus.value=EngineStatus(true,store.autoUpdate || force,
-                    if(store.autoUpdate || force) "Güncellemeler kontrol ediliyor" else "İndirmeye hazır",store.lastEngineVersion)
-                if(store.autoUpdate || force) { store.log("ENGINE  ${store.channel} kontrol ediliyor");updateVerifiedBinary() }
+                val shouldUpdate = !BuildConfig.F_DROID && (store.autoUpdate || force)
+                mutableStatus.value=EngineStatus(true,shouldUpdate,
+                    if(shouldUpdate) "Güncellemeler kontrol ediliyor" else "İndirmeye hazır",store.lastEngineVersion)
+                if(shouldUpdate) { store.log("ENGINE  ${store.channel} kontrol ediliyor");updateVerifiedBinary() }
                 store.log("ENGINE  Hazır · ${store.lastEngineVersion}")
                 mutableStatus.value=EngineStatus(true,false,"İndirmeye hazır",store.lastEngineVersion)
             } catch(cancelled: CancellationException) {

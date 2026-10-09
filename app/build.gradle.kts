@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+val fdroidBuild = providers.gradleProperty("fdroid").map(String::toBoolean).getOrElse(false)
 android {
     namespace = "space.zenithw.app"
     compileSdk = 36
@@ -13,6 +14,7 @@ android {
         targetSdk = 36
         versionCode = 2001003
         versionName = "2.1.3"
+        buildConfigField("boolean", "F_DROID", fdroidBuild.toString())
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
@@ -32,8 +34,8 @@ android {
             resValue("string", "app_name", "ZenithW 2.1 Preview")
         }
         release {
-            applicationIdSuffix = ".stable"
-            signingConfig = signingConfigs.getByName("release")
+            applicationIdSuffix = if (fdroidBuild) ".fdroid" else ".stable"
+            if (!fdroidBuild) signingConfig = signingConfigs.getByName("release")
             resValue("string", "app_name", "Zenith")
             isMinifyEnabled = false
         }
@@ -48,7 +50,7 @@ android {
     packaging { jniLibs.useLegacyPackaging = true }
     splits {
         abi {
-            isEnable = true
+            isEnable = !fdroidBuild
             reset()
             include("arm64-v8a", "armeabi-v7a", "x86_64")
             isUniversalApk = false
