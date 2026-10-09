@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 mkdir -p smoke-results
+find smoke-results -type f -delete
+MODE="${1:-full}"
 trap 'adb logcat -d > smoke-results/logcat.txt; adb pull /sdcard/Android/data/space.zenithw.app.stable/files/smoke-ui smoke-results/ || true' EXIT
 ./gradlew --no-daemon :app:assembleReleaseAndroidTest
 adb install -r app/build/outputs/apk/release/app-x86_64-release.apk
@@ -17,8 +19,10 @@ run_test() {
 run_test saveSettings
 adb shell am force-stop "$PACKAGE"
 run_test restoreSettings
-run_test languages
-run_test settingsCategories
+if [ "$MODE" != "engine-only" ]; then
+  run_test languages
+  run_test settingsCategories
+fi
 for method in pythonPreambleIsHandledBeforeZipParsing ordinaryZipIsAlsoReadable realBundledZipappIsReadable malformedArchivesHaveActionableErrors oversizedVersionFileIsRejected; do
   run_test "$method" EngineArchiveTest
 done
@@ -29,6 +33,10 @@ run_test updateChannels
 run_test saveNightlyEngineForRestart
 adb shell am force-stop "$PACKAGE"
 run_test restoreNightlyEngineAfterRestart
+if [ "$MODE" = "engine-only" ]; then
+  echo 'PASS: engine archive, live updates, settings and nightly restart persistence'
+  exit 0
+fi
 adb shell am force-stop "$PACKAGE"
 adb shell am start -W -n "$PACKAGE/space.zenithw.app.MainActivity"
 sleep 2

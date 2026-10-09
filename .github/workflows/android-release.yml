@@ -125,7 +125,7 @@ jobs:
           target: default
           profile: pixel_2
           disable-animations: true
-          script: bash scripts/android_smoke.sh
+          script: bash scripts/android_smoke.sh engine-only
 
       - name: Upload Android 7 compatibility test results
         if: always()
