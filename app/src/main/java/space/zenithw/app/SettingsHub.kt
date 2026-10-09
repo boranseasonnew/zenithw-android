@@ -103,7 +103,10 @@ private val categories=listOf(
                                 Text(engine.version.ifBlank { "yt-dlp hazırlanıyor" },style=MaterialTheme.typography.titleMedium)
                                 OptionSwitch("Açılışta otomatik güncelle","İndirmeyi bekletmeden arka planda kontrol eder.",screen.autoUpdate,model::automatic)
                                 Pick("Sürüm kanalı",listOf("stable" to "Kararlı","nightly" to "Nightly"),screen.channel,model::channel)
-                                engine.warning?.let { Text(AppLanguage.message(texts,it),color=MaterialTheme.colorScheme.error) }
+                                engine.warning?.let {
+                                    Text(AppLanguage.message(texts,it),color=MaterialTheme.colorScheme.error)
+                                    TextButton(onClick={ active="terminal" }) { Text(AppLanguage.message(texts,"İşlem günlüğü")) }
+                                }
                                 Button(onClick=model::updateEngine,enabled=!engine.updating,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp)) {
                                     Text(AppLanguage.message(texts,if(engine.updating) "Kontrol ediliyor…" else "Şimdi güncelle"))
                                 }

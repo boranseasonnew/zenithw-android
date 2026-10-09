@@ -1,1 +1,17 @@
-<network-security-config><base-config cleartextTrafficPermitted="false"><trust-anchors><certificates src="system"/></trust-anchors></base-config></network-security-config>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors><certificates src="system"/></trust-anchors>
+    </base-config>
+    <!-- Android 7 predates ISRG Root X1. Keep this extra public CA scoped to
+         the official update hosts; hostname and certificate checks stay enabled. -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="false">github.com</domain>
+        <domain includeSubdomains="false">api.github.com</domain>
+        <domain includeSubdomains="false">release-assets.githubusercontent.com</domain>
+        <domain includeSubdomains="false">objects.githubusercontent.com</domain>
+        <trust-anchors>
+            <certificates src="system"/>
+            <certificates src="@raw/isrg_root_x1"/>
+        </trust-anchors>
+    </domain-config>
+</network-security-config>
