@@ -19,10 +19,16 @@ adb shell am force-stop "$PACKAGE"
 run_test restoreSettings
 run_test languages
 run_test settingsCategories
-for method in releasePageFailureUsesAssetRoute blockedRedirectsUseOfficialApi blockedAssetUsesApiDownloadAndKeepsVersion untrustedRedirectIsNeverRequested oversizedResponseIsRejectedAndCacheIsDisabled failureNamesLookupStageAndHttpStatus corruptUpdatePreservesWorkingEngine; do
+for method in pythonPreambleIsHandledBeforeZipParsing ordinaryZipIsAlsoReadable realBundledZipappIsReadable malformedArchivesHaveActionableErrors oversizedVersionFileIsRejected; do
+  run_test "$method" EngineArchiveTest
+done
+for method in releasePageFailureUsesAssetRoute blockedRedirectsUseOfficialApi blockedAssetUsesApiDownloadAndKeepsVersion untrustedRedirectIsNeverRequested oversizedResponseIsRejectedAndCacheIsDisabled failureNamesLookupStageAndHttpStatus corruptUpdatePreservesWorkingEngine mismatchedVersionKeepsWorkingEngineAndNamesBothVersions; do
   run_test "$method" EngineUpdateSourceTest
 done
 run_test updateChannels
+run_test saveNightlyEngineForRestart
+adb shell am force-stop "$PACKAGE"
+run_test restoreNightlyEngineAfterRestart
 adb shell am force-stop "$PACKAGE"
 adb shell am start -W -n "$PACKAGE/space.zenithw.app.MainActivity"
 sleep 2

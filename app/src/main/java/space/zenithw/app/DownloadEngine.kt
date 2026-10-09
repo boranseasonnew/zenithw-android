@@ -35,14 +35,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         installBundledFloor()
         initialized=true
     }
-    private fun binaryVersion(file: File): String? = runCatching {
-        java.util.zip.ZipFile(file).use { zip ->
-            zip.getEntry("yt_dlp/version.py")?.let { entry ->
-                zip.getInputStream(entry).bufferedReader().use { it.readText() }
-                    .let { Regex("__version__\\s*=\\s*['\"]([0-9]{4}\\.[0-9]{2}\\.[0-9]{2}(?:\\.[0-9]+)?)['\"]").find(it)?.groupValues?.get(1) }
-            }
-        }
-    }.getOrNull()
+    private fun binaryVersion(file: File): String? = runCatching { EngineArchive.version(file) }.getOrNull()
     private fun installBundledFloor() {
         val directory=File(context.noBackupFilesDir,"youtubedl-android/yt-dlp").apply { mkdirs() }
         val destination=File(directory,"yt-dlp")
@@ -115,7 +108,9 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
             val destination=File(directory,"yt-dlp")
             try {
                 java.io.FileOutputStream(staged).use { it.write(binary); it.fd.sync() }
-                require(binaryVersion(staged)==tag && tag >= BundledEngine.VERSION) { "UPDATE_VERSION: downloaded engine version differs from release" }
+                val downloadedVersion=EngineArchive.version(staged)
+                require(downloadedVersion==tag) { "UPDATE_VERSION: expected=$tag actual=$downloadedVersion" }
+                require(tag >= BundledEngine.VERSION) { "UPDATE_VERSION: $tag is older than bundled ${BundledEngine.VERSION}" }
                 require(staged.renameTo(destination)) { "UPDATE_INSTALL: cannot replace engine file" }
                 store.lastEngineVersion=version
                 store.lastEngineCheck=System.currentTimeMillis()

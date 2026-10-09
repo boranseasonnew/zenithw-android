@@ -11,8 +11,8 @@ android {
         applicationId = "space.zenithw.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 2001002
-        versionName = "2.1.2"
+        versionCode = 2001003
+        versionName = "2.1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {

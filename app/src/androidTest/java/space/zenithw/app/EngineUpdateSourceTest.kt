@@ -15,10 +15,10 @@ import org.junit.runner.RunWith
 class EngineUpdateSourceTest {
     private val repo="yt-dlp/yt-dlp"
     private val tag="2026.08.19"
-    private class Reply(url: URL, private val code: Int, private val body: String="", private val location: String?=null): HttpsURLConnection(url) {
+    private class Reply(url: URL, private val code: Int, private val body: String="", private val location: String?=null, private val bytes: ByteArray?=null): HttpsURLConnection(url) {
         override fun getResponseCode()=code
         override fun getHeaderField(name: String?): String?=if(name.equals("Location",true)) location else null
-        override fun getInputStream()=body.byteInputStream()
+        override fun getInputStream()=bytes?.inputStream() ?: body.byteInputStream()
         override fun connect() {}
         override fun disconnect() {}
         override fun usingProxy()=false
@@ -99,6 +99,31 @@ class EngineUpdateSourceTest {
             assertEquals(before,engine.runtimeVersion())
             assertEquals(oldVersion,app.store.lastEngineVersion)
             assertTrue(app.store.logs.value.last().contains("UPDATE_CHECKSUM"))
+        } finally { app.store.channel=oldChannel }
+    }
+    @Test fun mismatchedVersionKeepsWorkingEngineAndNamesBothVersions()=runBlocking {
+        val app=InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as ZenithApplication
+        val oldChannel=app.store.channel
+        val oldVersion=app.store.lastEngineVersion
+        val before=app.engine.runtimeVersion()
+        val nightly="2026.09.27.232945"
+        val stable=app.resources.openRawResource(R.raw.ytdlp).use { it.readBytes() }
+        val http=EngineHttp { url -> when {
+            url.path.endsWith("/latest") -> Reply(url,302,location="/yt-dlp/yt-dlp-nightly-builds/releases/tag/$nightly")
+            url.path.endsWith("SHA2-256SUMS") -> Reply(url,200,"${BundledEngine.SHA256}  yt-dlp\n")
+            else -> Reply(url,200,bytes=stable)
+        } }
+        try {
+            app.store.channel="nightly"
+            val engine=DownloadEngine(app,app.store,app.vault,http)
+            engine.initializeAndUpdate(force=true)
+            assertTrue(engine.status.value.ready)
+            assertNotNull(engine.status.value.warning)
+            assertEquals(before,engine.runtimeVersion())
+            assertEquals(oldVersion,app.store.lastEngineVersion)
+            val detail=app.store.logs.value.last()
+            assertTrue(detail.contains("expected=$nightly"))
+            assertTrue(detail.contains("actual=${BundledEngine.VERSION}"))
         } finally { app.store.channel=oldChannel }
     }
 }

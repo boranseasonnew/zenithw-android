@@ -112,6 +112,25 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+      - name: Test zipapp compatibility and engine persistence on Android 7
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 24
+          arch: x86_64
+          target: default
+          profile: pixel_2
+          disable-animations: true
+          script: bash scripts/android_smoke.sh
+
+      - name: Upload Android 7 compatibility test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-7-compatibility-results
+          path: smoke-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Verify and prepare signed release files
         env:
           TAG_NAME: ${{ inputs.release_tag || github.ref_name }}

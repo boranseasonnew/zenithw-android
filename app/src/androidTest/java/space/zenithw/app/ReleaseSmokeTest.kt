@@ -173,8 +173,30 @@ class ReleaseSmokeTest {
             assertNull("$channel update failed: ${status.warning}",status.warning)
             assertTrue(status.version.startsWith("$channel · "))
             assertEquals(status.version.substringAfter(" · "),app.engine.runtimeVersion())
+            println("ENGINE VERIFIED: ${status.version}; actual runtime=${app.engine.runtimeVersion()}")
             assertEquals(status.version,app.store.lastEngineVersion)
             assertTrue(app.store.lastEngineCheck>0)
         }
+    }
+    @Test fun saveNightlyEngineForRestart()=runBlocking {
+        app.store.autoUpdate=false
+        app.store.channel="nightly"
+        app.engine.initializeAndUpdate(force=true)
+        assertNull(app.engine.status.value.warning)
+        val actual=app.engine.runtimeVersion()
+        assertEquals("nightly · $actual",app.store.lastEngineVersion)
+        assertTrue(app.getSharedPreferences("zenithw_v2",0).edit().putString("smokeNightlyVersion",actual).commit())
+        println("NIGHTLY SAVED: $actual")
+    }
+    @Test fun restoreNightlyEngineAfterRestart()=runBlocking {
+        val saved=app.getSharedPreferences("zenithw_v2",0).getString("smokeNightlyVersion",null)
+        assertNotNull(saved)
+        assertEquals("nightly",app.store.channel)
+        assertFalse(app.store.autoUpdate)
+        app.engine.initializeAndUpdate(force=false)
+        assertNull(app.engine.status.value.warning)
+        assertEquals(saved,app.engine.runtimeVersion())
+        assertEquals("nightly · $saved",app.store.lastEngineVersion)
+        println("NIGHTLY RESTORED WITHOUT NETWORK UPDATE: $saved")
     }
 }
