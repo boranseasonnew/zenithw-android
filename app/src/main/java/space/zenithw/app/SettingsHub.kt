@@ -101,6 +101,9 @@ private val categories=listOf(
                             "language" -> Choices(AppLanguage.choices,screen.language,model::language)
                             "engine" -> {
                                 Text(engine.version.ifBlank { "yt-dlp hazırlanıyor" },style=MaterialTheme.typography.titleMedium)
+                                if (BuildConfig.F_DROID) {
+                                    Text(texts.getString(R.string.fdroid_engine_updates),color=Muted)
+                                } else {
                                 OptionSwitch("Açılışta otomatik güncelle","İndirmeyi bekletmeden arka planda kontrol eder.",screen.autoUpdate,model::automatic)
                                 Pick("Sürüm kanalı",listOf("stable" to "Kararlı","nightly" to "Nightly"),screen.channel,model::channel)
                                 engine.warning?.let {
@@ -109,6 +112,7 @@ private val categories=listOf(
                                 }
                                 Button(onClick=model::updateEngine,enabled=!engine.updating,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp)) {
                                     Text(AppLanguage.message(texts,if(engine.updating) "Kontrol ediliyor…" else "Şimdi güncelle"))
+                                }
                                 }
                             }
                             "video" -> {

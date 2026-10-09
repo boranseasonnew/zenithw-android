@@ -1,0 +1,7 @@
+ZenithW, desteklenen kaynaklardan video ve ses indirmek için cihazında yt-dlp ve FFmpeg kullanan ücretsiz, açık kaynaklı bir Android uygulamasıdır.
+
+Video kalitesi, ses formatı ve altyazı seçimi; indirme kuyruğu, oynatma listesi, isteğe bağlı SponsorBlock, proxy ve şifreli çerez oturumları sunar. Tercihler uygulama yeniden açıldığında korunur. Arayüz Türkçe, İngilizce, Almanca, Fransızca ve Rusçayı destekler.
+
+F-Droid sürümü birlikte gelen indirme motorunu kullanır. Harici stable ve nightly motor güncellemeleri kapalıdır; motor yeni uygulama sürümleriyle yenilenir. Ayrı uygulama kimliği sayesinde GitHub kararlı sürümüyle birlikte kurulabilir.
+
+Yalnızca indirme ve kullanma hakkına sahip olduğun içerikler için kullan. Kaynak ve formatların kullanılabilirliği servisin erişim koşullarına bağlıdır.
