@@ -81,9 +81,10 @@ class EngineUpdateSourceTest {
     }
     @Test fun corruptUpdatePreservesWorkingEngine()=runBlocking {
         val app=InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as ZenithApplication
+        app.engine.initializeAndUpdate(force=false)
         val oldChannel=app.store.channel
-        val oldVersion=app.store.lastEngineVersion
         val before=app.engine.runtimeVersion()
+        val oldVersion=app.store.lastEngineVersion
         val nightly="2026.09.27.232945"
         val http=EngineHttp { url -> when {
             url.path.endsWith("/latest") -> Reply(url,302,location="/yt-dlp/yt-dlp-nightly-builds/releases/tag/$nightly")
@@ -103,9 +104,10 @@ class EngineUpdateSourceTest {
     }
     @Test fun mismatchedVersionKeepsWorkingEngineAndNamesBothVersions()=runBlocking {
         val app=InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as ZenithApplication
+        app.engine.initializeAndUpdate(force=false)
         val oldChannel=app.store.channel
-        val oldVersion=app.store.lastEngineVersion
         val before=app.engine.runtimeVersion()
+        val oldVersion=app.store.lastEngineVersion
         val nightly="2026.09.27.232945"
         val stable=app.resources.openRawResource(R.raw.ytdlp).use { it.readBytes() }
         val http=EngineHttp { url -> when {
