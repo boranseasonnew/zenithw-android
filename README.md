@@ -1,450 +1,172 @@
 <div align="center">
 
-# ⚡ Zenith Android 2.1.1
+# ⚡ ZenithW Android
 
-### **Fast. Native. Rebuilt.**
+**A native, open-source video and audio downloader for Android.**
 
-A native **Kotlin + Jetpack Compose** reconstruction of the original **ZenithW Android** application.
+Built with **Kotlin + Jetpack Compose**, powered by **yt-dlp**, **FFmpeg** and **Aria2c**.
 
-**Video • Audio • Subtitles • yt-dlp • Aria2c**
+![Version](https://img.shields.io/badge/version-2.1.3-222222?style=for-the-badge)
+![Android](https://img.shields.io/badge/Android-7.0%2B-444444?style=for-the-badge&logo=android)
+![License](https://img.shields.io/badge/license-AGPL--3.0-555555?style=for-the-badge)
 
----
+**[🌐 Website](https://zenithw.space)** · **[📥 Downloads](https://zenithw.space/downloads)** · **[🚀 GitHub Releases](https://github.com/boranseasonnew/zenithw-android/releases/latest)** · **[🇹🇷 Türkçe README](tr-readme.md)**
 
-> 🧩 **The Android source code is back.**  
-> The original project files were no longer accessible after the old account was banned and was not restored.  
-> The application was reconstructed from the existing APK using **JADX GUI**, then cleaned up, rewritten and modernized into a maintainable native Android project.
+**Download without the clutter.**
 
 </div>
 
 ---
 
-## ✨ What's inside?
+> [!IMPORTANT]
+> **ZenithW Android is back with its source code.** The original Android project became inaccessible after the previous GitHub account was banned. Its existing APK was inspected using **JADX GUI** to recover a reference for the behavior, then the app was rebuilt, rewritten and modernized as a maintainable native Android project. This repository is **not** a raw decompilation export.
 
-### Changes in 2.1.1
+## ✨ Features
 
-- Restores the original home URL card and controls; removes promotional headings.
-- Restores clickable settings categories for engine, cookies/browser, video/audio, subtitles, SponsorBlock, Aria2c, proxy/network, playlists, files/archive, presets and logs.
-- Cookie sessions accept any HTTPS site address instead of fixed site shortcuts.
-- Turkish, English, German, French and Russian settings; choices persist across restarts.
-- Stable/nightly update lookup uses official release redirects, with the official GitHub API as a fallback and retries for transient download failures.
-- Complete nightly version numbers and checksum verification before installation.
-- Download choices and selected encrypted sessions survive app restarts.
-- Android 13 emulator checks cover category navigation, actual engine execution, channel switching, force-stop persistence and the home screen before publishing.
+| | |
+| --- | --- |
+| 🎬 **Video & audio** | Select video quality, audio format and subtitles. |
+| 🔗 **Easy link handling** | Paste a URL, clear it or send it through Android's Share menu. Cancel media inspection when needed. |
+| 📚 **Download management** | Queue, notifications, scheduled tasks, file opening and sharing. |
+| 🧩 **Advanced controls** | Playlists, SponsorBlock, Aria2c, speed limits, presets, proxy/network settings and logs. |
+| 🍪 **Private sessions** | Encrypted cookie profiles, custom HTTPS cookie browser and Netscape cookie import. |
+| ⚙️ **Engine management** | Bundled yt-dlp, verified stable/nightly updates on the GitHub edition, and recovery from invalid updates. |
+| 🎨 **Native interface** | Matte black/gray theme, Jetpack Compose, bottom navigation, native sheets and touch-friendly controls. |
+| 🌍 **Five languages** | Turkish, English, German, French and Russian; the selected language is preserved after restarting. |
 
-### Stable APK signing
+Settings include separate categories for engine, cookies/browser, video, audio, subtitles, SponsorBlock, Aria2c, proxy/network, playlists, files/archive, presets and logs.
 
-Stable releases use `space.zenithw.app.stable` and install alongside the original
-`space.zenithw.app` and preview. The original app's signing key is unavailable;
-its settings are not migrated. Stable builds use the retained key at
-`.signing/preview.keystore`, restored in Actions from `ANDROID_SIGNING_KEY_BASE64`.
-Release builds fail if that key is missing; they never generate a replacement.
-Keep this key for future updates. The public certificate fingerprint is recorded
-in `release-certificate.sha256`; no private key is committed.
+## 🚀 What's new in 2.1.3?
 
-Actions verifies all three APK signatures, the stable certificate, package,
-version and ABI before uploading. For a build without publishing, run the Android
-release workflow with `publish_release` disabled and download `android-signed-apks`.
-The original automated v2.0.0 signing issue has been fixed. Stable updates retain
-the same package and signing key, so installing v2.1 over v2.0 preserves app data.
+- **More reliable yt-dlp updates.** Version detection supports executable Python ZIP archives on older Android versions, without relying on a platform ZIP parser that may reject the header.
+- **Nightly persistence.** The selected engine and its verified version survive app restarts; failed updates do not replace a working engine.
+- **Better diagnostics.** Version mismatches, checksum failures and update network errors are recorded more precisely.
+- **Android 7 compatibility work.** Official update-certificate support and focused tests for engine integrity and persistence.
+- **F-Droid-ready build variant.** A separate, unsigned, universal APK can be built from source with external engine updates disabled. **This does not imply F-Droid has approved or published the app.**
 
-ZenithW 2.0 is not just a visual refresh.
+Earlier **2.1.1** improvements restored the original URL card, complete settings categories, custom HTTPS cookie addresses, five-language UI and official stable/nightly update handling.
 
-The Android application has been reconstructed around a cleaner native architecture while preserving the core functionality of the original app.
+## 📥 Get ZenithW
 
-### 🎨 Interface
+**Download signed stable APKs from [GitHub Releases](https://github.com/boranseasonnew/zenithw-android/releases/latest)** or visit the [official download page](https://zenithw.space/downloads).
 
-- 🖤 Matte **black / dark gray** design
-- 📱 Native **Jetpack Compose** interface
-- 👆 Large touch targets for easier mobile usage
-- 🧭 Bottom navigation dock
-- 📑 Native bottom sheets
-- ✨ Lightweight selection animations
-- 📐 Layout designed with one-handed usage in mind
+The **2.1.3** GitHub release provides APKs for:
 
-### 🔗 URL handling
+| APK architecture | Typical devices |
+| --- | --- |
+| **arm64-v8a** | Most modern Android phones |
+| **armeabi-v7a** | Older 32-bit ARM devices |
+| **x86_64** | Compatible emulators and x86_64 devices |
 
-- 📋 Paste links directly
-- 🧹 Clear URL button
-- 📤 Receive links through Android's **Share** menu
-- 🔎 Cancellable media inspection
-- 🌐 Cleaner URL input workflow
+Minimum supported OS: **Android 7.0 (API 24)**. The project targets **Android API 36**.
 
-### 🎬 Download options
+Check the release's **SHA256SUMS.txt** when verifying downloaded APKs. Only install packages from sources you trust.
 
-The important settings stay visible while less frequently used controls stay out of the way.
+### 📦 Editions and updates
 
-**Primary options:**
+| Edition | Application ID | Update behavior |
+| --- | --- | --- |
+| **GitHub stable** | `space.zenithw.app.stable` | Signed stable APKs can update previous stable installs when the signing certificate matches. Supports verified in-app yt-dlp stable/nightly updates. |
+| **Preview / debug** | `space.zenithw.app.preview` | Separate install for testing; updates require the same locally generated signing key. |
+| **F-Droid build variant** | `space.zenithw.app.fdroid` | Separate package; bundled engine is updated **only with app releases**, not through external in-app downloads. |
+| **Original legacy app** | `space.zenithw.app` | Cannot be directly replaced by these builds because the original signing key is unavailable. |
 
-- 🎞️ Video quality
-- 🎵 Audio format
-- 💬 Subtitles
+These package IDs allow the editions to coexist. They **do not automatically transfer** settings or encrypted sessions between editions.
 
-**Advanced options:**
+**F-Droid status:** packaging, metadata and a dedicated build workflow have been added, but inclusion and publication depend on F-Droid's separate review. See **[docs/FDROID.md](docs/FDROID.md)**.
 
-- ⚡ Aria2c
-- 🚦 Download speed limits
-- ⏰ Scheduled downloads
-- 📶 Unmetered-network-only downloads
+## 🛠️ Engine and security
 
-### 📥 Download system
+ZenithW uses the **yt-dlp** download engine and the **youtubedl-android** integration with FFmpeg and Aria2c.
 
-- 📚 Download queue
-- 🔔 Android notifications
-- 📂 Open downloaded files
-- 📤 Share downloaded files
-- ⏱️ Scheduled downloads
-- 📡 Wi-Fi / unmetered network restrictions
-- 🖼️ Thumbnail and cover handling improvements
-- ⚙️ Native fallback when Aria2c cannot be used
+- **Bundled yt-dlp:** `2026.08.19`; upstream URL and SHA-256 are documented in **[yt-dlp-bundle.json](yt-dlp-bundle.json)**. This is the version **included in source builds**, not necessarily the latest version available through an in-app update.
+- **GitHub stable edition:** supports official **stable** and **nightly** yt-dlp channels. Update downloads are version- and checksum-verified, with fallback to official GitHub endpoints when appropriate.
+- **Safety checks:** invalid, corrupted or version-mismatched updates are rejected without discarding the working installed engine.
+- **F-Droid edition:** no external engine updater, including forced/manual updates. The bundled engine changes only when the application is rebuilt and released.
 
-See [`DOWNLOAD_FIXES.md`](DOWNLOAD_FIXES.md) for technical details about the Aria2c and thumbnail fixes.
+Cookie sessions are stored as encrypted profiles. A saved session can be selected again, and a cookie file in Netscape format can be imported. Treat exported cookies as sensitive account data.
 
----
+> [!NOTE]
+> Source support and media availability depend on upstream yt-dlp, the service and the content. Use ZenithW only for media you have the right to download and use.
 
-## 🛠️ yt-dlp
+## 🔨 Build from source
 
-ZenithW uses **yt-dlp** as its download engine.
+**Requirements:** JDK **17**, Android SDK **36**, Android Build Tools **36.0.0**, and accepted Android SDK licenses. Android Studio is recommended but optional.
 
-The app includes:
+Set your SDK path in **local.properties** if Android Studio has not configured it:
 
-- 🔄 Automatic update checking at startup
-- ✅ Verified yt-dlp downloads
-- 📦 Patched offline bundled binary
-- 🔐 Version and checksum verification
+~~~properties
+sdk.dir=/path/to/android/sdk
+~~~
 
-Current bundled version:
+**Linux / macOS / WSL:**
 
-```text
-yt-dlp 2026.08.19
-```
-
-Bundle information, source and checksum are stored in:
-
-```text
-yt-dlp-bundle.json
-```
-
----
-
-## 🍪 Cookies
-
-ZenithW 2.0 includes a redesigned cookie system.
-
-- 🔒 Encrypted cookie profiles
-- 🌐 Cookie browser with `https://` prefilled
-- 💾 Saved session selection
-- 📄 Netscape-format cookie file import
-- ⚡ Previously saved profiles can be reused automatically
-
----
-
-# 🔨 Building
-
-## Requirements
-
-You will need:
-
-- **JDK 17 or newer**
-- **Android SDK 36**
-- **Android Build Tools 36.0.0**
-- Accepted Android SDK licenses
-
-Android Studio is recommended, but it is not strictly required.
-
-Configure the SDK through Android Studio or create:
-
-```text
-local.properties
-```
-
-with:
-
-```properties
-sdk.dir=/path/to/your/android/sdk
-```
-
----
-
-## 🐧 Linux / WSL
-
-Build using:
-
-```bash
+~~~bash
 ./gradlew :app:assembleDebug
-```
+~~~
 
----
+**Windows:**
 
-## 🪟 Windows
-
-Use:
-
-```bat
+~~~bat
 gradlew.bat :app:assembleDebug
-```
+~~~
 
-> ⚠️ **Important**
->
-> Do not build the project directly from a WSL network path such as:
->
-> ```text
-> \\wsl$\Ubuntu\...
-> ```
->
-> Copy or extract the project into a normal Windows folder before running Gradle.
+Build from a local Windows folder rather than a **\\wsl$** network path when using Windows Gradle.
 
-The Windows Gradle runtime may fail when the project is built directly through the WSL network filesystem.
+**Unsigned universal F-Droid variant:**
 
----
+~~~bash
+./gradlew --no-daemon assembleRelease -Pfdroid=true
+~~~
 
-## 🔐 Preview signing
+Output: **app/build/outputs/apk/release/app-release-unsigned.apk**. This APK is **unsigned** and intended for F-Droid packaging, not direct installation as a trusted signed release. See [F-Droid packaging notes](docs/FDROID.md).
 
-The Gradle wrapper currently pins:
+### 🔐 Signing and CI
 
-```text
-Gradle 8.13
-```
+- The first debug/preview build generates a **local** key at **.signing/preview.keystore**; keep it private and retain it if you want preview updates to install over previous previews.
+- Official stable builds require the **existing** retained signing key, restored in GitHub Actions from **ANDROID_SIGNING_KEY_BASE64**. A missing key fails release signing rather than silently generating another.
+- **[release-certificate.sha256](release-certificate.sha256)** records the public certificate fingerprint. No private key is committed to the repository.
+- The [Android release workflow](.github/workflows/android-release.yml) checks release APK signatures, package IDs, versions and ABIs, and runs Android **13** and **7** emulator checks before publication.
+- The [F-Droid build workflow](.github/workflows/fdroid-build.yml) separately checks its unsigned APK and build flags.
 
-Its distribution is verified using **SHA-256**.
+## 📐 Compatibility and known limitations
 
-The first preview build automatically creates a local signing key inside:
+- **Android 16 KB memory pages:** ARM64 executables have been checked for 16 KB alignment, but five WebP shared libraries in the bundled FFmpeg runtime still use **4 KB ELF alignment**. Android's per-app compatibility mode helps on supported devices, but this is **not full native 16 KB support**.
+- Downloads, thumbnail conversion and affected FFmpeg operations still need verification on real 16 KB-page devices.
+- Automated emulator checks are not a substitute for comprehensive testing across physical Android devices.
+- Upstream websites and engine releases can change independently of ZenithW.
 
-```text
-.signing/
-```
+Technical notes: **[DOWNLOAD_FIXES.md](DOWNLOAD_FIXES.md)** · **[Android page-size guidance](https://developer.android.com/guide/practices/page-sizes)** · **[update certificate notes](docs/update-ca.md)**.
 
-### ⚠️ Keep this key private
+## 🧱 Technology
 
-The same key is required to install future preview builds as updates over previous preview versions.
+- **Kotlin**, **Jetpack Compose** and AndroidX
+- **WorkManager**, Kotlin Coroutines and Coil
+- **youtubedl-android 0.18.1** (library, FFmpeg and Aria2c components)
+- **yt-dlp** (bundled upstream engine)
 
-The `.signing` directory is:
+Third-party components are governed by their respective licenses and notices.
 
-- 🚫 Excluded from Git
-- 🚫 Excluded from distributed source archives
-- 🔒 Intended to remain local
+## 🧩 Source recovery and development
 
----
+The previous Android source repository was lost with access to the old account. The existing APK provided a reference via JADX GUI. The codebase was then reorganized, rewritten where necessary and adapted to modern Android APIs, while preserving the app's core download workflows.
 
-# 📦 APK builds
+**Current development priorities:** physical-device testing, download reliability, native 16 KB compatibility, F-Droid source/license review, bug fixes and further interface polish.
 
-The earlier 2.0 preview application used:
+Found a bug or want to suggest something? **[Open a GitHub issue](https://github.com/boranseasonnew/zenithw-android/issues)** with your Android version, APK edition and reproduction steps. Please **do not** share cookie files or private tokens in reports.
 
-```text
-Package:
-space.zenithw.app.preview
+## ⚖️ License
 
-Application:
-ZenithW 2.0 Preview
-
-Version:
-2.0.0-preview
-
-Version Code:
-20000
-```
-
-Minimum Android version:
-
-```text
-Android 7.0
-API 24
-```
-
----
-
-## 🧱 Supported architectures
-
-Preview APKs have been successfully built for:
-
-| Architecture | Status |
-|---|---|
-| **ARM64 / arm64-v8a** | ✅ Built |
-| **ARM32 / armeabi-v7a** | ✅ Built |
-| **x86_64** | ✅ Built |
-
-Build date:
-
-**7 October 2026**
-
-The APK signatures and bundled **yt-dlp 2026.08.19** binary were checked successfully.
-
-> 🧪 These builds have not yet been fully tested on a physical Android device.
-
-Generated APKs and build reports are stored locally under:
-
-```text
-ZenithW-Builds/Android-2.0
-```
-
-This directory is intentionally ignored by Git.
-
----
-
-# 📐 Android 16 KB page-size compatibility
-
-Modern Android devices are moving toward **16 KB memory page sizes**.
-
-ZenithW's ARM64 executables are currently:
-
-```text
-✅ 16 KB aligned
-```
-
-However, five **WebP shared libraries** inside the bundled FFmpeg runtime still use:
-
-```text
-⚠️ 4 KB ELF alignment
-```
-
-To improve compatibility, ZenithW explicitly enables Android's **per-app page-size compatibility mode** on supported devices.
-
-### Important
-
-This compatibility mode is **not a replacement** for fully native 16 KB-compatible upstream binaries.
-
-The following areas still require real-device verification on 16 KB devices:
-
-- 📥 Downloads
-- 🖼️ Thumbnail conversion
-- 🎬 FFmpeg operations involving the affected libraries
-
-Android documentation:
-
-https://developer.android.com/guide/practices/page-sizes
-
----
-
-# 🔄 Updating the original ZenithW app
-
-The original Android application uses:
-
-```text
-space.zenithw.app
-```
-
-Android requires updates to an installed application to be signed with the **same signing certificate** as the original APK.
-
-The original signing key has **not been recovered**.
-
-Because of this, the earlier preview used a separate package:
-
-```text
-space.zenithw.app.preview
-```
-
-This allows **ZenithW 2.0 Preview** to be installed alongside the original ZenithW application.
-
-### Stable release builds
-
-The signed release package is `space.zenithw.app.stable`. It uses the retained stable key and updates the stable app without replacing the original package.
-
----
-
-# 🧩 Source recovery
-
-The previous Android source repository became inaccessible after the old account was banned and the account was not restored.
-
-Instead of abandoning the Android version, the existing APK was inspected using **JADX GUI**.
-
-Recovered application logic was then used as a reference to reconstruct the project.
-
-This repository is therefore **not simply a raw JADX export**.
-
-Large portions have been:
-
-- 🧹 Cleaned up
-- 🧱 Reorganized
-- ✍️ Rewritten
-- 🎨 Redesigned
-- ⚙️ Reimplemented using modern Android APIs
-- 🧪 Prepared for continued development
-
-The result is a maintainable **Kotlin + Jetpack Compose** project intended to continue ZenithW Android development properly.
-
----
-
-# 📚 Third-party components
-
-ZenithW Android uses several open-source components.
-
-### yt-dlp
-
-Official verified release.
-
-Source, version and checksum information can be found in:
-
-```text
-yt-dlp-bundle.json
-```
-
-### Native download components
-
-ZenithW currently uses:
-
-```text
-youtubedl-android 0.18.1
-FFmpeg Android packages
-Aria2c Android packages
-```
-
-### Android libraries
-
-Including:
-
-- Jetpack Compose
-- AndroidX
-- WorkManager
-- Kotlin Coroutines
-- Coil
-
----
-
-# ⚖️ License
-
-The original ZenithW Android project is licensed under:
-
-**GNU Affero General Public License v3.0**
-
-See:
-
-[`LICENSE`](LICENSE)
-
-Third-party libraries remain subject to their respective licenses and notices.
-
-Licenses and notices inherited from the original Android project and dependency packages continue to apply.
-
----
-
-# 🚧 Project status
-
-> **Zenith Android 2.1 is the stable release.**
-
-The project builds successfully, but additional device testing and compatibility work is still planned.
-
-Current priorities include:
-
-- 📱 Physical-device testing
-- 🧪 Android version compatibility testing
-- 📐 Full 16 KB native-library compatibility
-- ⚡ Download reliability improvements
-- 🐛 Bug fixes
-- 🎨 UI polishing
-- 🚀 Signed stable releases through GitHub Actions
+ZenithW Android source is released under **GNU Affero General Public License v3.0 (AGPL-3.0)**. See **[LICENSE](LICENSE)**. Third-party dependencies remain under their own applicable licenses.
 
 ---
 
 <div align="center">
 
-## ⚡ ZenithW
+### ⚡ ZenithW
 
-**Download without the clutter.**
+**Android · Open source · Kotlin · Jetpack Compose · yt-dlp**
 
-`Android • Kotlin • Jetpack Compose • yt-dlp`
+[Website](https://zenithw.space) · [Downloads](https://zenithw.space/downloads) · [Releases](https://github.com/boranseasonnew/zenithw-android/releases)
 
 </div>
-
-### Android 2.1 language and layout
-
-Settings includes Turkish, English, German, French and Russian. The chosen language is saved locally and changes the UI immediately, including download options, status messages and session screens. Media titles and entered links stay unchanged. The logo stays at the top left; the URL form sits slightly below the center and adapts when the keyboard opens.
-
-The Android 13 release smoke test clicks all five language choices, checks translated labels, verifies German survives a process restart, and checks the URL position from the screen hierarchy before publishing.
