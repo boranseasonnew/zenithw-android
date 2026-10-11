@@ -1,476 +1,172 @@
 <div align="center">
 
-# ⚡ Zenith Android 2.1.1
+# ⚡ ZenithW Android
 
-### **Hızlı. Native. Yeniden İnşa Edildi.**
+**Android için yerel, açık kaynaklı video ve ses indirici.**
 
-Orijinal **ZenithW Android** uygulamasının **Kotlin + Jetpack Compose** ile yeniden oluşturulmuş sürümü.
+**Kotlin + Jetpack Compose** ile geliştirildi. **yt-dlp**, **FFmpeg** ve **Aria2c** ile çalışır.
 
-**Video • Ses • Altyazı • yt-dlp • Aria2c**
+![Sürüm](https://img.shields.io/badge/s%C3%BCr%C3%BCm-2.1.3-222222?style=for-the-badge)
+![Android](https://img.shields.io/badge/Android-7.0%2B-444444?style=for-the-badge&logo=android)
+![Lisans](https://img.shields.io/badge/lisans-AGPL--3.0-555555?style=for-the-badge)
 
----
+**[🌐 Web sitesi](https://zenithw.space)** · **[📥 İndir](https://zenithw.space/downloads)** · **[🚀 GitHub Sürümleri](https://github.com/boranseasonnew/zenithw-android/releases/latest)** · **[🇬🇧 English README](README.md)**
 
-> 🧩 **Android kaynak kodu geri döndü.**  
-> Eski hesabın banlanmasının ardından orijinal proje dosyalarına erişim kaybedildi ve hesap geri açılamadı.  
-> Uygulama, mevcut APK üzerinden **JADX GUI** kullanılarak kurtarıldı; ardından kodlar temizlendi, yeniden düzenlendi, gerektiği yerlerde tekrar yazıldı ve modern bir Android projesine dönüştürüldü.
+**Gereksiz kalabalık olmadan indir.**
 
 </div>
 
 ---
 
-## ✨ Neler var?
+> [!IMPORTANT]
+> **ZenithW Android kaynak koduyla geri döndü.** Önceki GitHub hesabının yasaklanmasının ardından eski Android projesine erişim kaybedildi. Eldeki APK, **JADX GUI** ile incelenerek uygulamanın davranışı referans alındı. Ardından proje yeniden oluşturuldu, önemli bölümleri tekrar yazıldı ve modern bir yerel Android mimarisine taşındı. Bu depo **ham bir decompile çıktısı değildir**.
 
-### 2.1.1 değişiklikleri
+## ✨ Özellikler
 
-- Ana ekrandaki eski URL kartı ve düğmeler korunur; tanıtım yazıları kaldırılır.
-- Motor, cookie/tarayıcı, video/ses, altyazı, SponsorBlock, Aria2c, proxy/ağ, oynatma listesi, dosya/arşiv, profil ve günlük için tıklanabilir ayar kategorileri geri gelir.
-- Cookie oturumunda hazır site kısayolları yerine istediğiniz HTTPS adresini girebilirsiniz.
-- Türkçe, İngilizce, Almanca, Fransızca ve Rusça; tercihler yeniden açılışta korunur.
-- Stable/nightly güncellemeleri resmi sürüm adresinden alınır; gerektiğinde resmi GitHub API kullanılır ve geçici bağlantı hatalarında yeniden denenir.
-- Nightly sürüm numarası tam olarak okunur; motor kurulmadan önce checksum doğrulanır.
-- İndirme seçenekleri ve seçili şifreli oturum uygulama yeniden açıldığında korunur.
-- Yayın öncesinde Android 13 emülatöründe ayar kategorileri, motorun gerçek çalışması, kanal geçişi, zorla kapatma sonrası ayarlar ve ana ekran kontrol edilir.
+| | |
+| --- | --- |
+| 🎬 **Video ve ses** | Video kalitesi, ses formatı ve altyazı seçimi. |
+| 🔗 **Kolay bağlantı girişi** | URL yapıştırma ve temizleme, Android'in Paylaş menüsünden bağlantı alma, medya incelemesini iptal etme. |
+| 📚 **İndirme yönetimi** | Kuyruk, bildirimler, zamanlanmış işler, dosya açma ve paylaşma. |
+| 🧩 **Gelişmiş seçenekler** | Oynatma listeleri, SponsorBlock, Aria2c, hız sınırları, hazır ayarlar, proxy/ağ seçenekleri ve günlükler. |
+| 🍪 **Gizli oturumlar** | Şifrelenmiş cookie profilleri, özel HTTPS adresleriyle cookie tarayıcısı ve Netscape cookie içe aktarma. |
+| ⚙️ **Motor yönetimi** | Dahili yt-dlp, GitHub sürümünde doğrulanmış stable/nightly güncellemeleri ve hatalı güncellemelerden korunma. |
+| 🎨 **Yerel arayüz** | Mat siyah/gri tema, Jetpack Compose, alt gezinme çubuğu, yerel alt paneller ve rahat dokunma alanları. |
+| 🌍 **Beş dil** | Türkçe, İngilizce, Almanca, Fransızca ve Rusça; seçilen dil yeniden açılışta korunur. |
 
-### Stable APK imzası
+Ayarlar; motor, cookie/tarayıcı, video, ses, altyazı, SponsorBlock, Aria2c, proxy/ağ, oynatma listeleri, dosyalar/arşiv, hazır ayarlar ve günlükler olarak kategorilere ayrılmıştır.
 
-Stable sürümün paket kimliği `space.zenithw.app.stable`; eski uygulama ve preview
-yanına ayrı kurulur. Eski uygulamanın imza anahtarı bulunamadığından ayarları
-taşınmaz. Release derlemesi `.signing/preview.keystore` içindeki mevcut anahtarı
-kullanır; Actions bunu `ANDROID_SIGNING_KEY_BASE64` secret değerinden yükler.
-Anahtar yoksa release derlemesi durur, yeni anahtar üretilmez. Güncellemeler için
-bu anahtarı saklayın. Yalnızca açık sertifika özeti `release-certificate.sha256`
-dosyasında tutulur; özel anahtar Git'e eklenmez.
+## 🚀 2.1.3 sürümünde neler değişti?
 
-Actions üç APK'nın imzasını, sertifikasını, paketini, sürümünü ve mimarisini
-yayından önce kontrol eder. Yayınlamadan denemek için Android release akışında
-`publish_release` seçeneğini kapatıp `android-signed-apks` çıktısını indirin.
-v2.0.0 imza sorunu düzeltildi. v2.1 aynı stable paketini ve anahtarı kullanır;
-mevcut uygulamanın üzerine kurulduğunda verileri korunur.
+- **Daha güvenilir yt-dlp güncellemeleri.** Çalıştırılabilir Python ZIP dosyalarının sürümü, eski Android sürümlerinde de okunabilir. Dosyanın başlığını reddedebilen sistem ZIP okuyucusuna bağımlılık azaltıldı.
+- **Nightly sürüm kalıcılığı.** Seçili motor ve doğrulanmış sürümü uygulama yeniden açıldığında korunur; başarısız güncelleme çalışan motorun yerini almaz.
+- **Daha açıklayıcı hata kayıtları.** Sürüm uyuşmazlığı, checksum doğrulama ve ağ kaynaklı güncelleme hataları daha ayrıntılı kaydedilir.
+- **Android 7 uyumluluk çalışmaları.** Resmî güncelleme sertifikaları için destek; motor bütünlüğü ve kayıtlı sürüm üzerinde odaklanmış testler.
+- **F-Droid için ayrı derleme.** Harici motor güncellemelerini kapatan, kaynaktan üretilebilen, imzasız ve evrensel APK çeşidi. **Bu, uygulamanın F-Droid tarafından onaylandığı veya yayımlandığı anlamına gelmez.**
 
-ZenithW 2.0 sadece görsel bir yenileme değil.
+Önceki **2.1.1** yenilikleri arasında orijinal URL kartı, kapsamlı ayar kategorileri, özel HTTPS cookie adresleri, beş dil ve resmî stable/nightly güncelleme akışı bulunuyor.
 
-Android uygulaması, orijinal uygulamanın temel özelliklerini korurken daha temiz ve sürdürülebilir bir native yapı etrafında yeniden inşa edildi.
+## 📥 ZenithW'yi indir
 
-### 🎨 Arayüz
+İmzalı kararlı sürümleri **[GitHub Releases](https://github.com/boranseasonnew/zenithw-android/releases/latest)** üzerinden veya **[resmî indirme sayfasından](https://zenithw.space/downloads)** edinebilirsin.
 
-- 🖤 Mat **siyah / koyu gri** tasarım
-- 📱 Native **Jetpack Compose** arayüzü
-- 👆 Daha rahat kullanım için büyük dokunma alanları
-- 🧭 Alt gezinme çubuğu
-- 📑 Native bottom sheet yapıları
-- ✨ Hafif seçim animasyonları
-- 📐 Tek elle kullanıma uygun yerleşim
+GitHub'daki **2.1.3** sürümü şu mimariler için APK içerir:
 
-### 🔗 URL işlemleri
+| APK mimarisi | Uygun cihazlar |
+| --- | --- |
+| **arm64-v8a** | Modern Android telefonların çoğu |
+| **armeabi-v7a** | Eski 32 bit ARM cihazlar |
+| **x86_64** | Uyumlu emülatörler ve x86_64 cihazlar |
 
-- 📋 Bağlantıyı doğrudan yapıştırma
-- 🧹 URL temizleme butonu
-- 📤 Android **Paylaş** menüsünden link alma
-- 🔎 İptal edilebilir medya inceleme
-- 🌐 Daha sade URL giriş akışı
+Minimum Android: **7.0 (API 24)**. Hedeflenen Android API düzeyi: **36**.
 
-### 🎬 İndirme seçenekleri
+İndirdiğin APK dosyalarını doğrulamak için sürümdeki **SHA256SUMS.txt** dosyasını kullanabilirsin. Yalnızca güvendiğin kaynaklardan uygulama yükle.
 
-Önemli ayarlar doğrudan görünürken, daha az kullanılan seçenekler açılır bölümlerde tutulur.
+### 📦 Sürümler ve güncellemeler
 
-**Ana seçenekler:**
+| Sürüm | Paket kimliği | Güncelleme davranışı |
+| --- | --- | --- |
+| **GitHub Stable** | `space.zenithw.app.stable` | Aynı sertifikayla imzalanırsa önceki Stable sürümünü güncelleyebilir. Doğrulanmış stable/nightly yt-dlp güncellemelerini destekler. |
+| **Preview / Debug** | `space.zenithw.app.preview` | Testler için ayrı kurulur. Önceki preview üzerine güncelleme kurmak için aynı yerel imza anahtarı gerekir. |
+| **F-Droid derleme çeşidi** | `space.zenithw.app.fdroid` | Ayrı paket. Dahili motor **yalnızca uygulama sürümleriyle** güncellenir; uygulama içinden harici motor indirilmez. |
+| **Eski orijinal uygulama** | `space.zenithw.app` | Orijinal imza anahtarı bulunamadığı için yeni APK'larla doğrudan güncellenemez. |
 
-- 🎞️ Video kalitesi
-- 🎵 Ses formatı
-- 💬 Altyazılar
+Bu paketler aynı cihazda yan yana bulunabilir. Ancak ayarlar ve şifrelenmiş oturumlar **otomatik olarak birbirine aktarılmaz**.
 
-**Gelişmiş seçenekler:**
+**F-Droid durumu:** Paketleme, mağaza açıklamaları ve ayrı derleme iş akışı hazırlandı. Mağazaya kabul ve yayın süreci F-Droid'in bağımsız incelemesine bağlıdır. Ayrıntılar: **[docs/FDROID.md](docs/FDROID.md)**.
 
-- ⚡ Aria2c
-- 🚦 İndirme hız sınırı
-- ⏰ Zamanlanmış indirmeler
-- 📶 Sadece ölçülmeyen ağlarda indirme
+## 🛠️ İndirme motoru ve güvenlik
 
-### 📥 İndirme sistemi
+ZenithW, indirme motoru olarak **yt-dlp**, Android entegrasyonunda ise **youtubedl-android**, **FFmpeg** ve **Aria2c** kullanır.
 
-- 📚 İndirme kuyruğu
-- 🔔 Android bildirimleri
-- 📂 İndirilen dosyaları açma
-- 📤 İndirilen dosyaları paylaşma
-- ⏱️ Zamanlanmış indirmeler
-- 📡 Wi-Fi / ölçülmeyen ağ kısıtlamaları
-- 🖼️ Küçük resim ve kapak işleme geliştirmeleri
-- ⚙️ Aria2c kullanılamadığında native fallback sistemi
+- **Dahili yt-dlp:** `2026.08.19`. Kaynak adresi ve SHA-256 özeti **[yt-dlp-bundle.json](yt-dlp-bundle.json)** dosyasında kayıtlıdır. Bu, **kaynak koddan derlenen uygulamada bulunan sürümdür**; uygulama içinden yüklenebilen en yeni sürüm olmak zorunda değildir.
+- **GitHub Stable:** Resmî **stable** ve **nightly** kanallarını destekler. İndirilen motorun sürümü ve checksum değeri kontrol edilir; gerektiğinde resmî GitHub uç noktaları kullanılır.
+- **Hatalı güncelleme koruması:** Bozuk, doğrulanamayan veya beklenen sürümle uyuşmayan motor dosyaları reddedilir. Çalışan motor korunur.
+- **F-Droid:** Elle zorlananlar da dâhil olmak üzere harici motor güncellemeleri devre dışıdır. Motor, yeni uygulama sürümleriyle yenilenir.
 
-Aria2c ve küçük resim düzeltmeleriyle ilgili teknik ayrıntılar için:
+Cookie oturumları şifrelenmiş profillerde tutulur. Kaydedilen oturumlar yeniden seçilebilir ve Netscape biçimindeki cookie dosyaları içe aktarılabilir. Dışa aktarılan cookie dosyaları hesap erişimi sağlayabilecek hassas veriler içerebilir.
 
-[`DOWNLOAD_FIXES.md`](DOWNLOAD_FIXES.md)
+> [!NOTE]
+> Desteklenen kaynak ve biçimler, yt-dlp'nin durumuna, ilgili servise ve içeriğe bağlıdır. Yalnızca indirme ve kullanma hakkına sahip olduğun medyalar için ZenithW kullan.
 
----
+## 🔨 Kaynak koddan derleme
 
-## 🛠️ yt-dlp
+**Gereksinimler:** **JDK 17**, **Android SDK 36**, **Android Build Tools 36.0.0** ve kabul edilmiş Android SDK lisansları. Android Studio önerilir ama şart değildir.
 
-ZenithW indirme motoru olarak **yt-dlp** kullanır.
+Android Studio SDK yolunu ayarlamadıysa **local.properties** içine ekle:
 
-Uygulamada:
+~~~properties
+sdk.dir=/path/to/android/sdk
+~~~
 
-- 🔄 Açılışta otomatik güncelleme kontrolü
-- ✅ Doğrulanmış yt-dlp indirmeleri
-- 📦 Düzenlenmiş çevrimdışı yt-dlp paketi
-- 🔐 Sürüm ve checksum doğrulaması
+**Linux / macOS / WSL:**
 
-bulunur.
-
-Mevcut dahili sürüm:
-
-```text
-yt-dlp 2026.08.19
-```
-
-Kaynak, sürüm ve checksum bilgileri:
-
-```text
-yt-dlp-bundle.json
-```
-
-dosyasında tutulur.
-
----
-
-## 🍪 Cookie sistemi
-
-ZenithW 2.0 ile cookie sistemi de yeniden ele alındı.
-
-- 🔒 Şifrelenmiş cookie profilleri
-- 🌐 `https://` ile başlayan cookie tarayıcısı
-- 💾 Kayıtlı oturum seçimi
-- 📄 Netscape formatında cookie dosyası içe aktarma
-- ⚡ Daha önce kaydedilmiş profilleri otomatik kullanma
-
----
-
-# 🔨 Derleme
-
-## Gereksinimler
-
-Gerekli bileşenler:
-
-- **JDK 17 veya daha yeni**
-- **Android SDK 36**
-- **Android Build Tools 36.0.0**
-- Kabul edilmiş Android SDK lisansları
-
-Android Studio önerilir ancak zorunlu değildir.
-
-SDK yolunu Android Studio üzerinden ayarlayabilir veya:
-
-```text
-local.properties
-```
-
-dosyası oluşturup şunu ekleyebilirsin:
-
-```properties
-sdk.dir=/android/sdk/yolu
-```
-
----
-
-## 🐧 Linux / WSL
-
-Derlemek için:
-
-```bash
+~~~bash
 ./gradlew :app:assembleDebug
-```
+~~~
 
----
+**Windows:**
 
-## 🪟 Windows
-
-Windows üzerinde:
-
-```bat
+~~~bat
 gradlew.bat :app:assembleDebug
-```
+~~~
 
-kullanılır.
+Windows Gradle kullanıyorsan projeyi **\\wsl$** ağ yolu yerine normal bir Windows klasöründen derle.
 
-> ⚠️ **Önemli**
->
-> Projeyi doğrudan şu tarz bir WSL ağ yolundan derlemeyin:
->
-> ```text
-> \\wsl$\Ubuntu\...
-> ```
->
-> Gradle çalıştırmadan önce projeyi normal bir Windows klasörüne kopyalayın veya çıkartın.
+**F-Droid için imzasız evrensel APK:**
 
-Windows Gradle ortamı, WSL ağ sistemi üzerinden doğrudan derleme sırasında hata verebilir.
+~~~bash
+./gradlew --no-daemon assembleRelease -Pfdroid=true
+~~~
 
-Örneğin:
+Çıktı: **app/build/outputs/apk/release/app-release-unsigned.apk**. Bu APK **imzasızdır**; güvenilir, imzalı bir dağıtım paketi olarak doğrudan kurulum için değil, F-Droid paketleme süreci için hazırlanmıştır. Ayrıntılar: **[F-Droid derleme belgesi](docs/FDROID.md)**.
 
-```text
-C:\Projects\ZenithW-Android
-```
+### 🔐 İmzalama ve CI
 
----
+- İlk debug/preview derlemesi **.signing/preview.keystore** konumunda **yerel** imza anahtarı üretir. Bu anahtarı gizli tut; önceki preview üzerine güncelleme yapabilmek için sakla.
+- Resmî Stable derlemeleri, GitHub Actions'a **ANDROID_SIGNING_KEY_BASE64** gizli değişkeniyle aktarılan **mevcut** imza anahtarını kullanır. Anahtar eksikse yeni anahtar oluşturulmaz, release derlemesi başarısız olur.
+- **[release-certificate.sha256](release-certificate.sha256)** genel sertifikanın parmak izini içerir. Özel anahtar Git deposuna eklenmez.
+- **[Android yayın iş akışı](.github/workflows/android-release.yml)**, yayın öncesinde APK imzalarını, paket kimliklerini, sürümleri ve mimarileri kontrol eder; Android **13** ve **7** emülatörlerinde testler çalıştırır.
+- **[F-Droid derleme iş akışı](.github/workflows/fdroid-build.yml)** ise imzasız paketi ve derleme bayraklarını ayrı olarak denetler.
 
-## 🔐 Preview imzalama
+## 📐 Uyumluluk ve bilinen sınırlamalar
 
-Gradle wrapper şu anda:
+- **Android 16 KB bellek sayfaları:** ARM64 çalıştırılabilir dosyalar için 16 KB hizalaması kontrol edildi. Bununla birlikte, FFmpeg paketindeki beş WebP paylaşımlı kütüphanesi hâlâ **4 KB ELF hizalaması** kullanıyor. Desteklenen cihazlarda Android'in uygulama bazlı uyumluluk modu yardımcı olur ancak **tam yerel 16 KB uyumluluğu sağlamaz**.
+- İndirme, küçük resim dönüştürme ve ilgili FFmpeg işlemleri gerçek 16 KB sayfa boyutlu cihazlarda ayrıca doğrulanmalıdır.
+- Emülatör testleri, farklı gerçek cihazlarla yapılacak kapsamlı testlerin yerini tutmaz.
+- İnternet servisleri ve yt-dlp sürümleri ZenithW'den bağımsız olarak değişebilir.
 
-```text
-Gradle 8.13
-```
+Teknik belgeler: **[DOWNLOAD_FIXES.md](DOWNLOAD_FIXES.md)** · **[Android sayfa boyutu rehberi](https://developer.android.com/guide/practices/page-sizes)** · **[Güncelleme sertifikası notları](docs/update-ca.md)**.
 
-sürümünü sabitler.
+## 🧱 Kullanılan teknolojiler
 
-Gradle dağıtımı **SHA-256** ile doğrulanır.
+- **Kotlin**, **Jetpack Compose** ve AndroidX
+- **WorkManager**, Kotlin Coroutines ve Coil
+- **youtubedl-android 0.18.1** (library, FFmpeg ve Aria2c bileşenleri)
+- **yt-dlp** (pakete dâhil edilen motor)
 
-İlk preview derlemesi sırasında otomatik olarak yerel bir imza anahtarı oluşturulur:
+Üçüncü taraf bileşenler kendi lisans ve bildirim şartlarına tabidir.
 
-```text
-.signing/
-```
+## 🧩 Kaynak kod kurtarma ve geliştirme
 
-### ⚠️ Bu anahtarı gizli tut
+Eski hesaba erişimin kaybolmasıyla önceki Android kaynak deposu da erişilemez hâle geldi. Eldeki APK, JADX GUI üzerinden incelenerek referans alındı. Kod tabanı yeniden düzenlendi, gerekli bölümler yeniden yazıldı ve temel indirme akışı korunarak güncel Android API'lerine uyarlandı.
 
-Gelecekteki preview APK'larının mevcut preview sürümünün üzerine güncelleme olarak kurulabilmesi için aynı anahtar gerekir.
+**Geliştirme öncelikleri:** gerçek cihaz testleri, indirme kararlılığı, tam yerel 16 KB desteği, F-Droid kaynak/lisans incelemesi, hata düzeltmeleri ve arayüz iyileştirmeleri.
 
-`.signing` klasörü:
+Hata mı buldun, önerin mi var? Android sürümünü, kullandığın APK çeşidini ve hatanın nasıl tekrarlandığını belirterek **[GitHub Issues](https://github.com/boranseasonnew/zenithw-android/issues)** üzerinden bildirebilirsin. **Cookie dosyalarını veya özel erişim bilgilerini hata raporlarına ekleme.**
 
-- 🚫 Git'e dahil edilmez
-- 🚫 Kaynak kod arşivlerine eklenmez
-- 🔒 Sadece yerelde tutulur
+## ⚖️ Lisans
 
----
-
-# 📦 APK sürümleri
-
-Önceki 2.0 preview paket adı:
-
-```text
-space.zenithw.app.preview
-```
-
-Uygulama adı:
-
-```text
-ZenithW 2.0 Preview
-```
-
-Sürüm:
-
-```text
-2.0.0-preview
-```
-
-Version Code:
-
-```text
-20000
-```
-
-Minimum Android sürümü:
-
-```text
-Android 7.0
-API 24
-```
-
-Preview sürümü, eski ZenithW uygulamasının yanına kurulabilmesi için özellikle farklı bir package ID kullanır.
-
----
-
-## 🧱 Desteklenen mimariler
-
-Preview APK'ları başarıyla şu mimariler için derlendi:
-
-| Mimari | Durum |
-|---|---|
-| **ARM64 / arm64-v8a** | ✅ Derlendi |
-| **ARM32 / armeabi-v7a** | ✅ Derlendi |
-| **x86_64** | ✅ Derlendi |
-
-Derleme tarihi:
-
-**7 Ekim 2026**
-
-APK imzaları ve paket içindeki **yt-dlp 2026.08.19** dosyası başarıyla doğrulandı.
-
-> 🧪 Bu sürümler henüz fiziksel bir Android cihazda kapsamlı şekilde test edilmedi.
-
-Üretilen APK'lar ve derleme raporları yerelde şu klasörde tutulur:
-
-```text
-ZenithW-Builds/Android-2.0
-```
-
-Bu klasör bilerek Git dışında tutulur.
-
----
-
-# 📐 Android 16 KB sayfa boyutu uyumluluğu
-
-Yeni Android cihazlarda **16 KB bellek sayfa boyutu** desteği giderek daha önemli hale geliyor.
-
-ZenithW'nin ARM64 çalıştırılabilir dosyaları şu anda:
-
-```text
-✅ 16 KB hizalı
-```
-
-Ancak FFmpeg runtime paketinin içinde bulunan beş adet **WebP shared library** hâlâ:
-
-```text
-⚠️ 4 KB ELF hizalaması
-```
-
-kullanıyor.
-
-Uyumluluğu artırmak için ZenithW, desteklenen cihazlarda Android'in **uygulama bazlı page-size compatibility mode** özelliğini açıkça etkinleştirir.
-
-### Önemli
-
-Bu uyumluluk modu, tam anlamıyla 16 KB destekleyen upstream native binary'lerin yerini tutmaz.
-
-Aşağıdaki özellikler 16 KB kullanan gerçek cihazlarda hâlâ test edilmelidir:
-
-- 📥 İndirmeler
-- 🖼️ Thumbnail dönüştürme
-- 🎬 Etkilenen kütüphaneleri kullanan FFmpeg işlemleri
-
-Android dokümantasyonu:
-
-https://developer.android.com/guide/practices/page-sizes
-
----
-
-# 🔄 Orijinal ZenithW uygulamasını güncelleme
-
-Orijinal Android uygulaması şu package ID'yi kullanır:
-
-```text
-space.zenithw.app
-```
-
-Android, mevcut bir uygulamanın üzerine güncelleme kurulabilmesi için yeni APK'nın **orijinal uygulamayla aynı imza sertifikasıyla** imzalanmasını zorunlu tutar.
-
-Orijinal imza anahtarı şu anda **geri kazanılmış değil**.
-
-Bu nedenle mevcut preview sürümü farklı bir paket kullanır:
-
-```text
-space.zenithw.app.preview
-```
-
-Böylece **ZenithW 2.0 Preview**, eski ZenithW sürümünün yanına kurulabilir.
-
-### Stable release sürümleri
-
-İmzalı release paketinin adı `space.zenithw.app.stable`. Mevcut stable anahtarıyla imzalanır; eski uygulamayı değiştirmeden stable sürümün üzerine güncellenir.
-
----
-
-# 🧩 Kaynak kodun geri kazanılması
-
-Eski Android kaynak kodu deposu, eski hesabın banlanmasından sonra erişilemez hale geldi ve hesap geri açılamadı.
-
-Android sürümünü tamamen bırakmak yerine mevcut APK, **JADX GUI** ile incelendi.
-
-Kurtarılan uygulama mantığı daha sonra projenin yeniden oluşturulmasında referans olarak kullanıldı.
-
-Bu repository bu nedenle **sadece ham bir JADX çıktısı değildir**.
-
-Kaynak kodun önemli bölümleri:
-
-- 🧹 Temizlendi
-- 🧱 Yeniden düzenlendi
-- ✍️ Tekrar yazıldı
-- 🎨 Yeniden tasarlandı
-- ⚙️ Modern Android API'leriyle yeniden uygulandı
-- 🧪 Gelecekteki geliştirmelere uygun hale getirildi
-
-Sonuç olarak ortaya sürdürülebilir ve geliştirilebilir bir **Kotlin + Jetpack Compose** projesi çıktı.
-
----
-
-# 📚 Üçüncü taraf bileşenler
-
-ZenithW Android çeşitli açık kaynak bileşenler kullanır.
-
-### yt-dlp
-
-Resmî ve doğrulanmış sürüm kullanılır.
-
-Kaynak, sürüm ve checksum bilgileri:
-
-```text
-yt-dlp-bundle.json
-```
-
-dosyasında bulunur.
-
-### Native indirme bileşenleri
-
-ZenithW şu bileşenleri kullanır:
-
-```text
-youtubedl-android 0.18.1
-FFmpeg Android paketleri
-Aria2c Android paketleri
-```
-
-### Android kütüphaneleri
-
-Bunlara şunlar dahildir:
-
-- Jetpack Compose
-- AndroidX
-- WorkManager
-- Kotlin Coroutines
-- Coil
-
----
-
-# ⚖️ Lisans
-
-Orijinal ZenithW Android projesi:
-
-**GNU Affero General Public License v3.0**
-
-lisansı altındadır.
-
-Detaylar için:
-
-[`LICENSE`](LICENSE)
-
-Üçüncü taraf kütüphaneler kendi lisans ve bildirim şartlarına tabidir.
-
-Orijinal Android projesinden ve bağımlılıklardan gelen lisans / notice şartları geçerliliğini korur.
-
----
-
-# 🚧 Proje durumu
-
-> **Zenith Android 2.1 kararlı sürümdür.**
-
-Proje başarıyla derlenmektedir ancak daha fazla cihaz testi ve uyumluluk çalışması planlanmaktadır.
-
-Şu anki öncelikler:
-
-- 📱 Fiziksel cihaz testleri
-- 🧪 Farklı Android sürümlerinde test
-- 📐 Tam 16 KB native library uyumluluğu
-- ⚡ İndirme kararlılığı geliştirmeleri
-- 🐛 Hata düzeltmeleri
-- 🎨 Arayüz iyileştirmeleri
-- 🚀 GitHub Actions üzerinden imzalı stable sürümler
+ZenithW Android kaynak kodu **GNU Affero General Public License v3.0 (AGPL-3.0)** ile sunulur. Ayrıntılar: **[LICENSE](LICENSE)**. Üçüncü taraf bağımlılıklar kendi lisanslarına tabidir.
 
 ---
 
 <div align="center">
 
-## ⚡ ZenithW
+### ⚡ ZenithW
 
-**Gereksiz kalabalık olmadan indir.**
+**Android · Açık kaynak · Kotlin · Jetpack Compose · yt-dlp**
 
-`Android • Kotlin • Jetpack Compose • yt-dlp`
+[Web sitesi](https://zenithw.space) · [İndir](https://zenithw.space/downloads) · [Sürümler](https://github.com/boranseasonnew/zenithw-android/releases)
 
 </div>
