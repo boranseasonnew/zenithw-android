@@ -25,7 +25,8 @@ import java.text.DateFormat
 import java.util.Calendar
 
 @Composable fun DownloadSheet(preview: MediaPreview,cookieHost: String?,defaults: DownloadOptions,
-    onDefaults: (DownloadOptions)->Unit,onDismiss: ()->Unit,onDownload: (DownloadOptions)->Unit) {
+    onDefaults: (DownloadOptions)->Unit,onDismiss: ()->Unit,onDownload: (DownloadOptions)->Unit,
+    onPlaylistSelect: (DownloadOptions)->Unit) {
     var raw by rememberSaveable(preview.url) { mutableStateOf(defaults.json().toString()) }
     val o=remember(raw) { DownloadOptions.from(JSONObject(raw)) }
     fun update(value: DownloadOptions) { raw=value.json().toString(); onDefaults(value) }
@@ -48,6 +49,11 @@ import java.util.Calendar
                                 style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=5.dp))
                         }
                         IconButton(onClick=onDismiss) { Icon(Icons.Outlined.Close,texts.getString(R.string.close_window)) }
+                    }
+                }
+                if(preview.isPlaylist) item {
+                    OutlinedButton(onClick={ onPlaylistSelect(o) },modifier=Modifier.fillMaxWidth()) {
+                        Icon(Icons.Outlined.PlaylistPlay,null);Spacer(Modifier.width(10.dp));Text(texts.getString(R.string.playlist_open))
                     }
                 }
                 item {
@@ -77,7 +83,7 @@ import java.util.Calendar
                 }
                 if(o.mode!=MediaMode.SUBTITLES) item {
                     Column {
-                        OptionSwitch(texts.getString(R.string.thumbnail),texts.getString(R.string.thumbnail_hint),o.embedThumbnail) { update(o.copy(embedThumbnail=it)) }
+                        OptionSwitch(texts.getString(R.string.thumbnail),texts.getString(R.string.square_cover_hint),o.embedThumbnail) { update(o.copy(embedThumbnail=it)) }
                         plan.note?.let { Text(AppLanguage.message(texts,it),color=Muted,style=MaterialTheme.typography.bodyMedium) }
                     }
                 }

@@ -8,7 +8,10 @@ import java.util.UUID
 enum class MediaMode(val label: String) { VIDEO("Video"), AUDIO("Ses"), SUBTITLES("Altyazı") }
 enum class JobState { QUEUED, RUNNING, SAVING, COMPLETED, FAILED, CANCELLED }
 data class MediaPreview(val url: String, val title: String, val uploader: String = "",
-    val thumbnail: String? = null, val duration: Int = 0, val heights: List<Int> = emptyList())
+    val thumbnail: String? = null, val duration: Int = 0, val heights: List<Int> = emptyList(),
+    val isPlaylist: Boolean = false)
+
+data class PlaylistEntry(val index: Int, val title: String, val url: String)
 data class CookieProfile(val id: String, val host: String, val count: Int, val updatedAt: Long)
 data class DownloadOptions(
     val mode: MediaMode = MediaMode.VIDEO,
@@ -124,12 +127,16 @@ data class DownloadJob(
     val thumbnail: String? = null, val options: DownloadOptions = DownloadOptions(),
     val state: JobState = JobState.QUEUED, val progress: Float = 0f,
     val detail: String = "Sırada", val createdAt: Long = System.currentTimeMillis(),
-    val files: List<String> = emptyList(), val notes: List<String> = emptyList()
+    val files: List<String> = emptyList(), val notes: List<String> = emptyList(),
+    val phase: String = "queued", val progressKnown: Boolean = false, val etaSeconds: Long = -1,
+    val bytesDownloaded: Long = 0, val totalBytes: Long = 0
 ) {
     fun json() = JSONObject().apply {
         put("id",id); put("url",url); put("title",title); put("thumbnail",thumbnail)
         put("options",options.json()); put("state",state.name); put("progress",progress)
         put("detail",detail); put("createdAt",createdAt); put("files",JSONArray(files)); put("notes",JSONArray(notes))
+        put("phase",phase); put("progressKnown",progressKnown); put("etaSeconds",etaSeconds)
+        put("bytesDownloaded",bytesDownloaded); put("totalBytes",totalBytes)
     }
     companion object {
         fun from(o: JSONObject) = DownloadJob(
@@ -140,7 +147,9 @@ data class DownloadJob(
             progress=o.optDouble("progress").toFloat().coerceIn(0f,100f),
             detail=o.optString("detail"),createdAt=o.optLong("createdAt"),
             files=o.optJSONArray("files")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
-            notes=o.optJSONArray("notes")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList()
+            notes=o.optJSONArray("notes")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+            phase=o.optString("phase","queued"), progressKnown=o.optBoolean("progressKnown",o.optDouble("progress",0.0)>0),
+            etaSeconds=o.optLong("etaSeconds",-1),bytesDownloaded=o.optLong("bytesDownloaded",0),totalBytes=o.optLong("totalBytes",0)
         )
     }
 }

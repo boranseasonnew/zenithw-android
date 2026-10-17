@@ -58,9 +58,19 @@ class LocalStore(context: Context) {
         val array=JSONArray(preferences.getString("jobs","[]"))
         (0 until array.length()).mapNotNull { runCatching { DownloadJob.from(array.getJSONObject(it)) }.getOrNull() }
     }.getOrDefault(emptyList())
+    private var lastProgressSave=0L
     @Synchronized fun put(job: DownloadJob) {
         val list=(mutableJobs.value.filterNot { it.id==job.id } + job).sortedByDescending { it.createdAt }
-        preferences.edit().putString("jobs",JSONArray(list.map { it.json() }).toString()).commit()
+        val before=mutableJobs.value.firstOrNull { it.id==job.id }
+        val durable=before==null || before.state!=job.state || before.files!=job.files || before.notes!=job.notes || before.title!=job.title
+        val now=android.os.SystemClock.elapsedRealtime()
+        // Publish UI samples frequently; persist progress at most once a second.
+        // Queue changes, completed files and terminal states remain durable.
+        if(durable || now-lastProgressSave>=1000) {
+            val edit=preferences.edit().putString("jobs",JSONArray(list.map { it.json() }).toString())
+            if(durable) edit.commit() else edit.apply()
+            lastProgressSave=now
+        }
         mutableJobs.value=list
     }
     @Synchronized fun change(id: String, edit: (DownloadJob)->DownloadJob) {

@@ -5,6 +5,8 @@ import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.ensureActive
 import kotlin.coroutines.coroutineContext
 import androidx.lifecycle.AndroidViewModel
@@ -17,7 +19,8 @@ import java.util.UUID
 
 data class ScreenState(val tab: Int=0,val url: String="",val analyzing: Boolean=false,
     val preview: MediaPreview?=null,val message: String?=null,val profiles: List<CookieProfile> = emptyList(),
-    val cookieId: String?=null,val autoUpdate: Boolean=true,val channel: String="stable",val language: String="tr",val defaults: DownloadOptions=DownloadOptions())
+    val cookieId: String?=null,val autoUpdate: Boolean=true,val channel: String="stable",val language: String="tr",val defaults: DownloadOptions=DownloadOptions(),val showHistory: Boolean=false,
+    val playlistEntries: List<PlaylistEntry> = emptyList(),val playlistLoading: Boolean=false)
 class ZenithViewModel(application: Application): AndroidViewModel(application) {
     val app=application as ZenithApplication
     private val mutableScreen=MutableStateFlow(ScreenState(profiles=app.vault.profiles(),
@@ -27,11 +30,22 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     val logs=app.store.logs
     val engine=app.engine.status
     private var inspection: Job?=null
+    private val enqueueGate=Mutex()
+    private var generation=0L
+    private var playlistOptions: DownloadOptions?=null
+    private fun cancelInspection() { generation++;inspection?.cancel() }
+    fun library(history: Boolean=false) {
+        cancelInspection()
+        edit { it.copy(tab=1,showHistory=history,message=null,analyzing=false,playlistLoading=false,preview=null,playlistEntries=emptyList()) }
+    }
     private fun edit(update: (ScreenState)->ScreenState) { mutableScreen.value=update(mutableScreen.value) }
-    fun tab(tab: Int)=edit { it.copy(tab=tab,message=null) }
+    fun tab(tab: Int) {
+        cancelInspection()
+        edit { it.copy(tab=tab,message=null,analyzing=false,playlistLoading=false,preview=null,playlistEntries=emptyList()) }
+    }
     fun url(url: String) {
-        if(url!=mutableScreen.value.url) inspection?.cancel()
-        edit { it.copy(url=url,message=null,analyzing=false,preview=null) }
+        if(url!=mutableScreen.value.url) cancelInspection()
+        edit { it.copy(url=url,message=null,analyzing=false,preview=null,playlistEntries=emptyList(),playlistLoading=false) }
     }
     fun showMessage(value: String)=edit { it.copy(message=value) }
     fun importCookies(uri: Uri) {
@@ -54,9 +68,9 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     fun dismissMessage()=edit { it.copy(message=null) }
     fun dismissPreview()=edit { it.copy(preview=null) }
     fun cookie(id: String?) {
-        inspection?.cancel()
+        cancelInspection()
         app.store.selectedCookieId=id
-        edit { it.copy(cookieId=id,analyzing=false,preview=null) }
+        edit { it.copy(cookieId=id,analyzing=false,preview=null,playlistEntries=emptyList(),playlistLoading=false) }
     }
     fun refreshProfiles() {
         val profiles=app.vault.profiles()
@@ -68,39 +82,97 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         url(runCatching { normalizeUrl(text) }.getOrDefault(text))
         tab(0)
     }
+    private fun text(id: Int,vararg args: Any)=AppLanguage.context(getApplication()).getString(id,*args)
     fun analyze() {
-        if(mutableScreen.value.analyzing) return
         val state=mutableScreen.value
         val url=try { normalizeUrl(state.url) } catch(e: Exception) {
-            edit { it.copy(message=e.message ?: "Bağlantıyı kontrol et.") }; return
+            showMessage(e.message ?: text(R.string.check_link));return
         }
-        edit { it.copy(url=url,analyzing=true,message=null) }
+        cancelInspection();val request=generation
+        edit { it.copy(url=url,analyzing=true,message=null,playlistLoading=false,playlistEntries=emptyList()) }
         inspection=viewModelScope.launch {
             try {
                 val preview=app.engine.inspect(url,state.cookieId)
-                edit { it.copy(preview=preview,analyzing=false) }
-            } catch(e: CancellationException) { throw e }
-            catch(e: Exception) {
                 coroutineContext.ensureActive()
-                edit { it.copy(analyzing=false,message="Medya bilgisi alınamadı. Paylaşım bağlantısını kontrol et; gerekirse bir oturum bağla.") }
-            }
+                if(request==generation && mutableScreen.value.url==url && mutableScreen.value.cookieId==state.cookieId)
+                    edit { it.copy(preview=preview) }
+            } catch(cancelled: CancellationException) { throw cancelled }
+            catch(e: Exception) { if(request==generation) showMessage(text(R.string.media_error)) }
+            finally { if(request==generation) edit { it.copy(analyzing=false) } }
         }
     }
     fun enqueue(options: DownloadOptions) {
         defaults(options)
+        val state=mutableScreen.value;val preview=state.preview ?: return
+        if(options.playlist) { loadPlaylist(options);return }
+        enqueueBatch(listOf(DownloadJob(url=preview.url,title=preview.title,thumbnail=preview.thumbnail,
+            options=options.copy(cookieId=state.cookieId))))
+    }
+    fun enqueueBulk(raw: String,options: DownloadOptions): Boolean {
+        val lines=raw.lineSequence().map(String::trim).filter(String::isNotBlank).toList()
+        if(lines.size !in 1..50) { showMessage(text(R.string.bulk_limit));return false }
+        val urls=runCatching { lines.map(::normalizeUrl).distinct() }.getOrElse { showMessage(text(R.string.bulk_limit));return false }
+        val selected=options.copy(cookieId=mutableScreen.value.cookieId,playlist=false,playlistItems="",selectedFormat="")
+        enqueueBatch(urls.map { DownloadJob(url=it,title=Uri.parse(it).host ?: it,options=selected) })
+        return true
+    }
+    fun loadPlaylist(options: DownloadOptions=mutableScreen.value.defaults) {
         val state=mutableScreen.value
-        val preview=state.preview ?: return
-        val job=DownloadJob(url=preview.url,title=preview.title,thumbnail=preview.thumbnail,
-            detail=if(options.scheduledAt>System.currentTimeMillis()) "Zamanlandı" else "Sırada",
-            options=options.copy(cookieId=state.cookieId))
-        DownloadWorker.enqueue(app,job)
-        edit { it.copy(preview=null,url="",tab=1,message="İndirme sıraya eklendi.") }
+        val url=runCatching { normalizeUrl(state.preview?.url ?: state.url) }.getOrElse { showMessage(text(R.string.check_link));return }
+        cancelInspection();val request=generation;playlistOptions=options.copy(cookieId=state.cookieId)
+        edit { it.copy(playlistLoading=true,analyzing=false,preview=null,playlistEntries=emptyList(),message=null) }
+        inspection=viewModelScope.launch {
+            try {
+                val entries=app.engine.playlist(url,state.cookieId)
+                coroutineContext.ensureActive()
+                if(request==generation && mutableScreen.value.cookieId==state.cookieId) {
+                    if(entries.isEmpty()) showMessage(text(R.string.playlist_empty))
+                    else edit { it.copy(playlistEntries=entries) }
+                }
+            } catch(cancelled: CancellationException) { throw cancelled }
+            catch(e: Exception) { if(request==generation) showMessage(text(R.string.playlist_error)) }
+            finally { if(request==generation) edit { it.copy(playlistLoading=false) } }
+        }
+    }
+    fun dismissPlaylist() { cancelInspection();edit { it.copy(playlistEntries=emptyList(),playlistLoading=false) } }
+    fun enqueuePlaylist(indices: Set<Int>) {
+        val options=(playlistOptions ?: mutableScreen.value.defaults).copy(playlist=false,playlistItems="",selectedFormat="")
+        val entries=mutableScreen.value.playlistEntries.filter { it.index in indices }
+        if(entries.isEmpty()) return
+        enqueueBatch(entries.map { DownloadJob(url=it.url,title=it.title,options=options) })
+    }
+    private fun enqueueBatch(candidates: List<DownloadJob>) {
+        val expectedGeneration=generation
+        val expectedUrl=mutableScreen.value.url
+        val expectedTab=mutableScreen.value.tab
+        val active=setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING)
+        fun key(job: DownloadJob)=listOf(job.url,job.options.mode.name,job.options.height,job.options.container,
+            job.options.audioFormat,job.options.selectedFormat,job.options.cookieId,job.options.playlist).joinToString("|")
+        viewModelScope.launch {
+            try {
+                val count=withContext(Dispatchers.IO) { enqueueGate.withLock {
+                    val current=app.store.jobs.value.filter { it.state in active }
+                    val seen=current.map(::key).toMutableSet()
+                    val selected=candidates.filter { seen.add(key(it)) }
+                    require(current.size+selected.size<=200) { "capacity" }
+                    selected.forEachIndexed { index,job -> DownloadWorker.enqueue(app,job.copy(createdAt=System.currentTimeMillis()+index)) }
+                    selected.size
+                } }
+                if(count==0) showMessage(text(R.string.bulk_duplicates))
+                else {
+                    val sameInteraction=expectedGeneration==generation && mutableScreen.value.url==expectedUrl && mutableScreen.value.tab==expectedTab
+                    if(sameInteraction) edit { it.copy(preview=null,url="",tab=1,showHistory=false,playlistEntries=emptyList(),message=text(R.string.bulk_added,count)) }
+                    else showMessage(text(R.string.bulk_added,count))
+                }
+            } catch(cancelled: CancellationException) { throw cancelled }
+            catch(e: Exception) { showMessage(text(if(e.message=="capacity") R.string.queue_capacity else R.string.bulk_error)) }
+        }
     }
     fun cancel(id: String)=DownloadWorker.cancel(app,id)
     fun retry(job: DownloadJob) {
         val replacement=job.copy(id=UUID.randomUUID().toString(),state=JobState.QUEUED,progress=0f,
-            detail="Sırada",createdAt=System.currentTimeMillis(),files=emptyList(),notes=emptyList())
-        DownloadWorker.enqueue(app,replacement)
+            detail="Sırada",phase="queued",progressKnown=false,etaSeconds=-1,bytesDownloaded=0,totalBytes=0,createdAt=System.currentTimeMillis(),files=emptyList(),notes=emptyList())
+        enqueueBatch(listOf(replacement))
     }
     fun automatic(value: Boolean) { app.store.autoUpdate=value; edit { it.copy(autoUpdate=value) } }
     fun language(value: String) { app.store.language=value; edit { it.copy(language=app.store.language) } }

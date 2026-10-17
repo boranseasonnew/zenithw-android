@@ -1,0 +1,31 @@
+<resources>
+    <string name="about_title">О приложении</string>
+    <string name="about_back">Вернуться к настройкам</string>
+    <string name="about_version">Версия %1$s</string>
+    <string name="about_intro">Твоё пространство для медиа. Загружай, упорядочивай и храни видео и аудио на своём устройстве.</string>
+    <string name="about_creator">Разработано Бораном. Открытый исходный код, без рекламы и обязательной регистрации.</string>
+    <string name="about_updates_title">Обновления приложения</string>
+    <string name="about_updates_detail">Нажми эту кнопку, чтобы проверить последнюю стабильную версию на официальной странице GitHub Releases. Проверка ничего не загружает и не устанавливает автоматически.</string>
+    <string name="about_check_updates">Проверить обновления</string>
+    <string name="about_checking">Проверка версий…</string>
+    <string name="about_update_current">Обновлений пока нет. Ты используешь актуальную версию.</string>
+    <string name="about_update_ahead">Эта версия новее последнего опубликованного стабильного выпуска.</string>
+    <string name="about_update_available">Доступна новая версия: %1$s</string>
+    <string name="about_update_error">Не удалось проверить обновления. Возможны проблемы с подключением, ограничение доступа к GitHub или отсутствие совместимого пакета. Попробуй позже.</string>
+    <string name="about_view_release">Открыть официальную страницу выпуска</string>
+    <string name="about_fdroid_updates">Этот пакет обновляется через F-Droid. Используй клиент F-Droid для обновлений с той же подписью и именем пакета. APK с GitHub не предлагаются для замены этой установки.</string>
+    <string name="about_fdroid_open">Открыть страницу F-Droid</string>
+    <string name="about_preview_updates">Это предварительная версия или другой вариант пакета. Обновляй его вручную сборкой с тем же именем пакета и подписью. Стабильный APK не предлагается в качестве замены.</string>
+    <string name="about_privacy_title">Конфиденциальность и файлы</string>
+    <string name="about_privacy">Загрузка и преобразование выполняются на твоём устройстве. ZenithW не отправляет медиа на собственный сервер загрузки. История, настройки и используемые cookie сеансов остаются на твоём устройстве.</string>
+    <string name="about_connections">Для подготовки и загрузки ссылки выполняется обращение к исходному сайту. Дополнительные функции, например SponsorBlock и обновления движка, обращаются к соответствующим сервисам. Ты управляешь сохранёнными файлами самостоятельно.</string>
+    <string name="about_engine_title">Локальный движок и открытый код</string>
+    <string name="about_engine">yt-dlp получает сведения о медиа и выполняет загрузку. FFmpeg отвечает за преобразование, обработку аудио и встраивание обложек в поддерживаемые форматы. Эти инструменты работают на твоём устройстве через библиотеки Android.</string>
+    <string name="about_license">Исходный код ZenithW Android доступен по лицензии AGPL-3.0. yt-dlp, FFmpeg, aria2 и другие зависимости принадлежат своим разработчикам и имеют собственные лицензии. Информация о лицензиях и сборке находится в репозитории.</string>
+    <string name="about_source">Исходный код на GitHub</string>
+    <string name="about_support_title">Поддержка по желанию</string>
+    <string name="about_support">Ты не обязан помогать финансово. Небольшой взнос может покрыть часть расходов на разработку и серверы. ZenithW не заставит тебя регистрироваться или платить.</string>
+    <string name="about_support_button">Поддержать через GitHub Sponsors</string>
+    <string name="about_website">Сайт ZenithW</string>
+    <string name="about_open_error">Не удалось открыть ссылку. Проверь, включён ли на устройстве веб-браузер.</string>
+</resources>

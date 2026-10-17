@@ -19,6 +19,7 @@ class ZenithApplication : Application() {
         store=LocalStore(this)
         vault=CookieVault(this)
         engine=DownloadEngine(this,store,vault)
+        DownloadWorker.resumeQueue(this)
         applicationScope.launch { engine.initializeAndUpdate() }
     }
 }

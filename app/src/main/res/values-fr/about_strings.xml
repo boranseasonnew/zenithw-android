@@ -1,0 +1,31 @@
+<resources>
+    <string name="about_title">À propos</string>
+    <string name="about_back">Retour aux réglages</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_intro">Ton espace pour les médias. Télécharge, organise et conserve vidéos et fichiers audio sur ton appareil.</string>
+    <string name="about_creator">Créé par Boran. Open source, sans publicité ni compte obligatoire.</string>
+    <string name="about_updates_title">Mises à jour de l’application</string>
+    <string name="about_updates_detail">Appuie sur ce bouton pour vérifier la dernière version stable sur la page officielle GitHub Releases. La vérification ne lance aucun téléchargement ni aucune installation.</string>
+    <string name="about_check_updates">Rechercher des mises à jour</string>
+    <string name="about_checking">Vérification des versions…</string>
+    <string name="about_update_current">Aucune mise à jour pour le moment. Tu utilises la version actuelle.</string>
+    <string name="about_update_ahead">Cette version est plus récente que la dernière version stable publiée.</string>
+    <string name="about_update_available">Nouvelle version disponible : %1$s</string>
+    <string name="about_update_error">Impossible de vérifier les mises à jour. La connexion, une restriction d’accès à GitHub ou l’absence de paquet compatible peut être en cause. Réessaie plus tard.</string>
+    <string name="about_view_release">Ouvrir la page officielle de la version</string>
+    <string name="about_fdroid_updates">Ce paquet se met à jour via F-Droid. Utilise le client F-Droid pour recevoir des mises à jour avec la même signature et le même nom de paquet. Les APK GitHub ne sont pas proposés pour remplacer cette installation.</string>
+    <string name="about_fdroid_open">Ouvrir la page F-Droid</string>
+    <string name="about_preview_updates">Il s’agit d’un aperçu ou d’une autre variante du paquet. Mets-le à jour manuellement avec une version portant le même nom de paquet et la même signature. Aucun APK stable n’est proposé en remplacement.</string>
+    <string name="about_privacy_title">Confidentialité et fichiers</string>
+    <string name="about_privacy">Les téléchargements et les conversions se font sur ton appareil. ZenithW ne transfère pas tes médias vers son propre serveur de téléchargement. Historique, préférences et cookies de session restent sur ton appareil.</string>
+    <string name="about_connections">Le site source est contacté pour préparer et télécharger un lien. Les fonctions facultatives, comme SponsorBlock et les mises à jour du moteur, contactent leurs services respectifs. Tu gardes le contrôle des fichiers enregistrés.</string>
+    <string name="about_engine_title">Moteur local et open source</string>
+    <string name="about_engine">yt-dlp gère les informations des médias et les téléchargements. FFmpeg assure la conversion, le traitement audio et l’intégration des pochettes dans les formats compatibles. Ces outils fonctionnent directement sur ton appareil grâce à des bibliothèques Android.</string>
+    <string name="about_license">Le code source de ZenithW Android est disponible sous licence AGPL-3.0. yt-dlp, FFmpeg, aria2 et les autres dépendances appartiennent à leurs développeurs respectifs et possèdent leurs propres licences. Le dépôt contient les informations de licence et de compilation.</string>
+    <string name="about_source">Code source sur GitHub</string>
+    <string name="about_support_title">Soutenir, si tu le souhaites</string>
+    <string name="about_support">Tu n’as aucune obligation de contribuer. Un petit don peut aider à financer le développement et les serveurs. ZenithW ne t’imposera jamais de créer un compte ni de payer.</string>
+    <string name="about_support_button">Soutenir avec GitHub Sponsors</string>
+    <string name="about_website">Site web ZenithW</string>
+    <string name="about_open_error">Impossible d’ouvrir le lien. Vérifie qu’un navigateur web est activé sur ton appareil.</string>
+</resources>

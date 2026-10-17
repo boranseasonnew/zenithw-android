@@ -24,18 +24,20 @@ class MainActivity: ComponentActivity() {
         setContent {
             ZenithTheme {
                 ZenithApp(model,onDownload={ options ->
-                    if(Build.VERSION.SDK_INT>=33 && ContextCompat.checkSelfPermission(this,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED) {
-                        notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    }
+                    requestDownloadNotifications()
                     model.enqueue(options)
-                })
+                },onQueuedDownload=::requestDownloadNotifications)
             }
         }
+    }
+    private fun requestDownloadNotifications() {
+        if(Build.VERSION.SDK_INT>=33 && ContextCompat.checkSelfPermission(this,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
+            notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); receive(intent) }
     override fun onResume() { super.onResume(); model.refreshProfiles() }
     private fun receive(intent: Intent?) {
         if(intent?.action==Intent.ACTION_SEND && intent.type=="text/plain") intent.getStringExtra(Intent.EXTRA_TEXT)?.let(model::shareIntent)
-        if(intent?.getBooleanExtra("showQueue",false)==true) model.tab(1)
+        if(intent?.getBooleanExtra("showQueue",false)==true) model.library(false)
     }
 }

@@ -6,7 +6,10 @@ import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.ensureActive
 import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +18,7 @@ import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
@@ -25,9 +29,35 @@ data class EngineStatus(val ready: Boolean=false, val updating: Boolean=false,
 class DownloadEngine(private val context: Context, private val store: LocalStore, private val vault: CookieVault, private val updateHttp: EngineHttp=EngineHttp()) {
     private val gate=Mutex()
     private val updateGate=Mutex()
+    private var activeProcesses=0
+    private var idle=CompletableDeferred<Unit>().apply { complete(Unit) }
+    private data class CachedPreview(val created: Long,val preview: MediaPreview,val json: String?)
+    private val previews=linkedMapOf<String,CachedPreview>()
     private var initialized=false
     private val mutableStatus=MutableStateFlow(EngineStatus())
     val status=mutableStatus.asStateFlow()
+    private suspend fun <T> withEngine(block: suspend ()->T): T {
+        gate.withLock {
+            init()
+            if(activeProcesses++==0) idle=CompletableDeferred()
+        }
+        try { return block() }
+        finally { withContext(NonCancellable) { gate.withLock { if(--activeProcesses==0) idle.complete(Unit) } } }
+    }
+    private suspend fun installWhenIdle(block: ()->Unit) {
+        while(true) {
+            val wait=gate.withLock {
+                if(activeProcesses==0) { block(); null } else idle
+            }
+            if(wait==null) return
+            wait.await()
+        }
+    }
+    private fun cacheKey(url: String,cookieId: String?)=normalizeUrl(url)+"|"+cookieId.orEmpty()
+    private fun cached(url: String,cookieId: String?): CachedPreview?=synchronized(previews) {
+        previews[cacheKey(url,cookieId)]?.takeIf { android.os.SystemClock.elapsedRealtime()-it.created<90000 }
+    }
+    private fun forget(url: String,cookieId: String?) { synchronized(previews) { previews.remove(cacheKey(url,cookieId)) } }
     private fun init() {
         if(initialized) return
         YoutubeDL.getInstance().init(context)
@@ -102,8 +132,8 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         require(actual.equals(checksum,ignoreCase=true)) { "UPDATE_CHECKSUM: downloaded file does not match SHA-256" }
         // Fetch and verify outside the download lock. Startup update requests must
         // not prevent a download from starting on an already usable engine.
-        gate.withLock {
-            if(store.channel!=channel) return@withLock
+        installWhenIdle {
+            if(store.channel!=channel) return@installWhenIdle
             val directory=File(context.noBackupFilesDir,"youtubedl-android/yt-dlp").apply { mkdirs() }
             val staged=File(directory,"yt-dlp.download")
             val destination=File(directory,"yt-dlp")
@@ -119,41 +149,80 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         }
     }
     suspend fun runtimeVersion(): String=withContext(Dispatchers.IO) {
-        gate.withLock {
-            init()
+        withEngine {
             val request=YoutubeDLRequest(listOf<String>()).apply { addOption("--version") }
             runInterruptible { YoutubeDL.getInstance().execute(request).out.trim() }
         }
     }
-    private fun baseRequest(url: String)=YoutubeDLRequest(normalizeUrl(url)).apply {
+    private fun baseRequest(url: String?)=YoutubeDLRequest(url?.let { listOf(normalizeUrl(it)) } ?: emptyList<String>()).apply {
         addOption("--ignore-config")
         addOption("--socket-timeout","20")
-        addOption("--remote-components","ejs:github")
+        addOption("--cache-dir",File(context.cacheDir,"yt-dlp-cache").apply { mkdirs() }.absolutePath)
+        if(!BuildConfig.F_DROID) addOption("--remote-components","ejs:github")
     }
     suspend fun inspect(url: String, cookieId: String?): MediaPreview=withContext(Dispatchers.IO) {
-        gate.withLock {
-            init()
-            val directory=File(context.cacheDir,"inspect-${java.util.UUID.randomUUID()}").apply { mkdirs() }
+        cached(url,cookieId)?.let { return@withContext it.preview }
+        withEngine {
+            val processId="inspect-${java.util.UUID.randomUUID()}"
+            val directory=File(context.cacheDir,processId).apply { mkdirs() }
             try {
+                val uri=android.net.Uri.parse(normalizeUrl(url))
+                val listLink=uri.path.orEmpty().trimEnd('/').endsWith("/playlist")
                 val request=baseRequest(url).apply {
-                    addOption("--dump-single-json"); addOption("--no-playlist")
+                    addOption("--dump-single-json"); addOption("--skip-download")
+                    addOption("--playlist-end","1")
+                    if(listLink) addOption("--flat-playlist")
+                    else addOption("--no-playlist")
                     vault.temporaryFile(cookieId,directory)?.let { addOption("--cookies",it.absolutePath) }
                 }
-                val response=runInterruptible { YoutubeDL.getInstance().execute(request) }
+                val response=try { withTimeout(90000) { runInterruptible { YoutubeDL.getInstance().execute(request,processId=processId) } } }
+                    catch(timeout: TimeoutCancellationException) { throw java.io.IOException("Metadata request timed out after 90 seconds",timeout) }
+                coroutineContext.ensureActive()
+                require(response.out.length<=16*1024*1024) { "Metadata exceeds the safe size limit" }
                 val json=JSONObject(response.out)
                 val formats=json.optJSONArray("formats")
                 val heights=if(formats==null) emptyList() else (0 until formats.length())
                     .map { formats.getJSONObject(it).optInt("height") }.filter { it>0 }.distinct().sortedDescending()
-                MediaPreview(normalizeUrl(url),json.optString("title","Medya"),
+                val preview=MediaPreview(normalizeUrl(url),json.optString("title","Medya"),
                     json.optString("uploader"),json.optString("thumbnail").takeIf { it.startsWith("https://") },
-                    json.optInt("duration"),heights)
-            } finally { directory.deleteRecursively() }
+                    json.optInt("duration"),heights,listLink || json.has("entries") || uri.getQueryParameter("list")!=null)
+                synchronized(previews) {
+                    while(previews.size>=8) previews.remove(previews.keys.first())
+                    previews[cacheKey(url,cookieId)]=CachedPreview(android.os.SystemClock.elapsedRealtime(),preview,
+                        response.out.takeIf { !json.has("entries") && it.length<=4*1024*1024 })
+                }
+                preview
+            } finally { YoutubeDL.getInstance().destroyProcessById(processId); directory.deleteRecursively() }
+        }
+    }
+    suspend fun playlist(url: String,cookieId: String?): List<PlaylistEntry> = withContext(Dispatchers.IO) {
+        withEngine {
+            val processId="playlist-${java.util.UUID.randomUUID()}"
+            val directory=File(context.cacheDir,processId).apply { mkdirs() }
+            try {
+                val request=baseRequest(url).apply {
+                    addOption("--yes-playlist");addOption("--flat-playlist");addOption("--playlist-end","200")
+                    addOption("--dump-single-json");addOption("--skip-download")
+                    vault.temporaryFile(cookieId,directory)?.let { addOption("--cookies",it.absolutePath) }
+                }
+                val response=try { withTimeout(90000) { runInterruptible { YoutubeDL.getInstance().execute(request,processId=processId) } } }
+                    catch(timeout: TimeoutCancellationException) { throw java.io.IOException("Playlist request timed out after 90 seconds",timeout) }
+                require(response.out.length<=16*1024*1024) { "Playlist information is too large" }
+                val entries=JSONObject(response.out).optJSONArray("entries") ?: return@withEngine emptyList()
+                (0 until minOf(entries.length(),200)).mapNotNull { i ->
+                    val entry=entries.optJSONObject(i) ?: return@mapNotNull null
+                    val raw=entry.optString("webpage_url").takeIf { it.startsWith("http") }
+                        ?: entry.optString("url").takeIf { it.startsWith("http") }
+                        ?: entry.optString("id").takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }?.let { "https://www.youtube.com/watch?v=$it" }
+                    raw?.let { runCatching { PlaylistEntry(entry.optInt("playlist_index",i+1).coerceAtLeast(1),entry.optString("title","Medya").take(300),normalizeUrl(it)) }.getOrNull() }
+                }
+            } finally { YoutubeDL.getInstance().destroyProcessById(processId);directory.deleteRecursively() }
         }
     }
     suspend fun download(job: DownloadJob, directory: File, started: ()->Unit,
-                         progress: (Float,Long,String)->Unit): DownloadOutcome = gate.withLock {
-        init()
+                         progress: (Float,Long,String)->Unit): DownloadOutcome = withEngine {
         started()
+        progress(0f,-1,"ZenithWPreparing")
         val notes=mutableListOf<String>()
         val plan=DownloadPolicy.thumbnailPlan(job.options.mode.name,job.options.container,
             job.options.audioFormat,job.options.embedThumbnail,job.options.downloadThumbnail,job.options.thumbnailFormat)
@@ -172,33 +241,64 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                     notes.add("Aria2c hazırlanamadı; normal indirme motoru kullanıldı.")
                 }
             }
-            suspend fun execute(aria: Boolean) = runInterruptible(Dispatchers.IO) {
-                YoutubeDL.getInstance().execute(request(job,directory,cookie,aria),
-                    processId=job.id,redirectErrorStream=false,callback=progress)
+            var metadata=if(!job.options.playlist) cached(job.url,job.options.cookieId)?.json else null
+            suspend fun execute(aria: Boolean): com.yausername.youtubedl_android.YoutubeDLResponse {
+                val tracker=DownloadProgress()
+                progress(0f,-1,"ZenithWPreparing")
+                val snapshot=metadata?.let { File(directory,".source-info.json").apply { writeText(it) } }
+                return try { runInterruptible(Dispatchers.IO) {
+                    YoutubeDL.getInstance().execute(request(job,directory,cookie,aria,snapshot),
+                        processId=job.id,redirectErrorStream=false,callback={ _,_,line ->
+                            tracker.accept(line)?.let { progress(it.percent,it.eta,it.line) }
+                        })
+                } } finally { snapshot?.delete() }
             }
-            val response=try { execute(useAria) }
-            catch(cancelled: CancellationException) { throw cancelled }
-            catch(e: Exception) {
-                coroutineContext.ensureActive()
-                if(!useAria || !DownloadPolicy.isAriaDownloadFailure(e.message.orEmpty())) throw e
-                YoutubeDL.getInstance().destroyProcessById(job.id)
-                notes.add("Aria2c indirmesi tamamlanamadı; normal motorla yeniden denendi.")
-                progress(-1f,-1,"ZenithWNativeFallback")
-                execute(false)
+            var refreshed=false
+            var response: com.yausername.youtubedl_android.YoutubeDLResponse
+            while(true) {
+                try { response=execute(useAria);break }
+                catch(cancelled: CancellationException) { throw cancelled }
+                catch(e: Exception) {
+                    coroutineContext.ensureActive()
+                    YoutubeDL.getInstance().destroyProcessById(job.id)
+                    if(!refreshed && Regex("(?i)(?:HTTP Error|HTTP status|status=)\\s*(403|410)\\b").containsMatchIn(e.message.orEmpty())) {
+                        metadata=null;forget(job.url,job.options.cookieId);refreshed=true
+                        progress(0f,-1,"ZenithWRefreshing");continue
+                    }
+                    if(useAria && DownloadPolicy.isAriaDownloadFailure(e.message.orEmpty())) {
+                        useAria=false;notes.add("Aria2c indirmesi tamamlanamadı; normal motorla yeniden denendi.")
+                        progress(-1f,-1,"ZenithWNativeFallback");continue
+                    }
+                    throw e
+                }
             }
             // EmbedThumbnail can finish without embedding when the source has no usable image.
             DownloadPolicy.thumbnailWarning(response.out+"\n"+response.err)?.let { notes.add(it) }
+            if(job.options.embedThumbnail && job.options.mode!=MediaMode.SUBTITLES) {
+                progress(-1f,-1,"ZenithWSquareCover")
+                notes.addAll(SquareCover(context).applyTo(directory,job.id))
+            }
             DownloadOutcome(notes.distinct())
         } finally { cookie?.delete(); YoutubeDL.getInstance().destroyProcessById(job.id) }
     }
     private fun ariaCertificate()=File(context.noBackupFilesDir,"youtubedl-android/packages/python/usr/etc/tls/cert.pem")
     fun cancel(id: String) { YoutubeDL.getInstance().destroyProcessById(id) }
-    private fun request(job: DownloadJob,directory: File,cookie: File?,useAria: Boolean): YoutubeDLRequest {
+    private fun request(job: DownloadJob,directory: File,cookie: File?,useAria: Boolean,snapshot: File?=null): YoutubeDLRequest {
         val o=job.options
         require(!o.filenameTemplate.contains('/') && !o.filenameTemplate.contains('\\') && !o.filenameTemplate.contains(".."))
-        val r=baseRequest(job.url)
+        val r=baseRequest(if(snapshot==null) job.url else null)
+        snapshot?.let { r.addOption("--load-info-json",it.absolutePath) }
         r.addOption("-o",File(directory,o.filenameTemplate.ifBlank { "%(title).150B [%(id)s].%(ext)s" }).absolutePath)
         r.addOption("--newline"); r.addOption("--no-mtime")
+        r.addOption("--progress");r.addOption("--progress-delta","0.2");r.addOption("--no-simulate")
+        r.addOption("--output-na-placeholder","null")
+        r.addOption("--progress-template",DownloadProgress.TEMPLATE)
+        r.addOption("--progress-template",DownloadProgress.POST)
+        r.addOption("--print",DownloadProgress.PLAN)
+        // --print otherwise implies quiet mode, whose progress screen is stderr.
+        // The 0.18.1 wrapper forwards every stdout line to our callback; keep
+        // stderr separate so its original HTTP errors remain available for retry.
+        r.addOption("--no-quiet");r.addOption("--color","never")
         r.addOption("--retries",o.retries.toString()); r.addOption("--fragment-retries",o.fragmentRetries.toString())
         r.addOption("--concurrent-fragments",o.fragments.toString())
         r.addOption(if(o.playlist) "--yes-playlist" else "--no-playlist")

@@ -4,6 +4,7 @@ package space.zenithw.app
 import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -42,23 +43,25 @@ import coil.compose.AsyncImage
 
 private val CardShape=RoundedCornerShape(26.dp)
 
-@Composable fun ZenithApp(model: ZenithViewModel,onDownload: (DownloadOptions)->Unit) {
+@Composable fun ZenithApp(model: ZenithViewModel,onDownload: (DownloadOptions)->Unit,onQueuedDownload: ()->Unit={}) {
     val screen by model.screen.collectAsStateWithLifecycle()
     val base=LocalContext.current
     val configuration=LocalConfiguration.current
     val localized=remember(base,configuration,screen.language) { AppLanguage.context(base,screen.language) }
     CompositionLocalProvider(LocalAppContext provides localized,LocalConfiguration provides localized.resources.configuration) {
-        ZenithContent(model,onDownload)
+        ZenithContent(model,onDownload,onQueuedDownload)
     }
 }
 
-@Composable private fun ZenithContent(model: ZenithViewModel,onDownload: (DownloadOptions)->Unit) {
+@Composable private fun ZenithContent(model: ZenithViewModel,onDownload: (DownloadOptions)->Unit,onQueuedDownload: ()->Unit) {
     val texts=LocalAppContext.current
     val screen by model.screen.collectAsStateWithLifecycle()
     val jobs by model.jobs.collectAsStateWithLifecycle()
     val engine by model.engine.collectAsStateWithLifecycle()
     var cookies by rememberSaveable { mutableStateOf(false) }
     var newCookie by rememberSaveable { mutableStateOf(false) }
+    var bulk by rememberSaveable { mutableStateOf(false) }
+    BackHandler(screen.tab!=0 && screen.preview==null) { model.tab(0) }
     val snackbar=remember { SnackbarHostState() }
     val context=LocalContext.current
     val cookieBrowser=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -71,23 +74,31 @@ private val CardShape=RoundedCornerShape(26.dp)
     LaunchedEffect(screen.message) {
         screen.message?.let { snackbar.showSnackbar(AppLanguage.message(texts,it)); model.dismissMessage() }
     }
-    val keyboardOpen=WindowInsets.ime.getBottom(LocalDensity.current)>0
-    Scaffold(containerColor=Ink,snackbarHost={ SnackbarHost(snackbar) },
-        bottomBar={ if(!keyboardOpen) Dock(screen.tab,model::tab) }) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding).imePadding()) {
-            when(screen.tab) {
-                0 -> HomeScreen(screen,engine,jobs,model::url,model::analyze,{ cookies=true })
-                1 -> DownloadsScreen(jobs,model::cancel,model::retry) { job,share ->
-                    runCatching { openFiles(context,job.files,share) }.onFailure {
-                        model.showMessage(texts.getString(R.string.no_opener))
+    Scaffold(containerColor=Ink,snackbarHost={ SnackbarHost(snackbar) },topBar={
+        WorkspaceHeader(screen.tab,jobs.count { it.state in setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING) },
+            { model.tab(0) },{ model.library(it) },{ model.tab(2) },{ model.tab(3) })
+    }) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding).navigationBarsPadding().imePadding()) {
+            AnimatedContent(screen.tab,transitionSpec={
+                (fadeIn(tween(170))+slideInHorizontally(tween(190)) { 24 }) togetherWith fadeOut(tween(100))
+            },label="workspace-page") { page ->
+                when(page) {
+                    0 -> HomeScreen(screen,engine,jobs,model::url,model::analyze,{ cookies=true },{ bulk=true },{ model.loadPlaylist() })
+                    1 -> DownloadsScreen(jobs,model::cancel,model::retry,screen.showHistory) { job,share ->
+                        runCatching { openFiles(context,job.files,share) }.onFailure { model.showMessage(texts.getString(R.string.no_opener)) }
                     }
+                    3 -> AboutScreen { model.tab(2) }
+                    else -> SettingsHub(model,screen,engine,{ cookies=true })
                 }
-                else -> SettingsHub(model,screen,engine,{ cookies=true })
             }
         }
     }
+    if(bulk) BulkLinkSheet(screen.defaults,{ bulk=false }) { raw,options ->
+        if(model.enqueueBulk(raw,options)) { bulk=false;onQueuedDownload() }
+    }
+    if(screen.playlistEntries.isNotEmpty()) PlaylistSelectionSheet(screen.playlistEntries,model::dismissPlaylist) { indices -> onQueuedDownload();model.enqueuePlaylist(indices) }
     screen.preview?.let { DownloadSheet(it,screen.profiles.firstOrNull { p -> p.id==screen.cookieId }?.host,
-        model.app.store.defaultOptions,model::defaults,model::dismissPreview,onDownload) }
+        model.app.store.defaultOptions,model::defaults,model::dismissPreview,onDownload,model::loadPlaylist) }
     if(cookies) ProfileSheet(screen.profiles,screen.cookieId,{ cookies=false },
         { model.cookie(it); cookies=false },model::removeProfile,
         { cookies=false; newCookie=true },
@@ -103,118 +114,80 @@ private val CardShape=RoundedCornerShape(26.dp)
 }
 
 @Composable private fun HomeScreen(screen: ScreenState,engine: EngineStatus,jobs: List<DownloadJob>,
-    onUrl: (String)->Unit,onAnalyze: ()->Unit,onCookies: ()->Unit) {
-    val texts=LocalAppContext.current
-    val clipboard=LocalClipboardManager.current
-    val keyboard=LocalSoftwareKeyboardController.current
-    fun analyze() { keyboard?.hide(); onAnalyze() }
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val breathingRoom=(maxHeight.value*.10f).coerceIn(24f,68f).dp
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=24.dp,vertical=20.dp)) {
-            BrandRow()
-            Spacer(Modifier.height(breathingRoom))
-            Spacer(Modifier.height(120.dp))
-            Surface(color=Panel,shape=CardShape,border=BorderStroke(1.dp,Hairline)) {
-                Column(Modifier.padding(20.dp)) {
-                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                        Text(AppLanguage.message(texts,"BAĞLANTI"),color=Muted,style=MaterialTheme.typography.labelSmall)
-                        Spacer(Modifier.weight(1f))
-                        TextButton(onClick={ clipboard.getText()?.text?.takeIf { it.isNotBlank() }?.let(onUrl) }) {
-                            Icon(Icons.Outlined.ContentPaste,null,Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp)); Text(AppLanguage.message(texts,"Yapıştır"))
-                        }
-                    }
-                    OutlinedTextField(screen.url,onUrl,placeholder={ Text(AppLanguage.message(texts,"https://…"),color=Muted) },
-                        modifier=Modifier.fillMaxWidth(),minLines=2,maxLines=4,shape=RoundedCornerShape(16.dp),
-                        keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Uri,imeAction=ImeAction.Go),
-                        keyboardActions=KeyboardActions(onGo={ if(!screen.analyzing) analyze() }),
-                        trailingIcon={ if(screen.url.isNotEmpty()) IconButton(onClick={ onUrl("") }) {
-                            Icon(Icons.Outlined.Close,"Bağlantıyı temizle")
-                        } })
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick=::analyze,enabled=screen.url.isNotBlank() && !screen.analyzing,
-                        modifier=Modifier.fillMaxWidth().heightIn(min=58.dp),shape=RoundedCornerShape(18.dp)) {
-                        if(screen.analyzing) {
-                            CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp,color=Ink)
-                            Spacer(Modifier.width(10.dp)); Text(AppLanguage.message(texts,"Bağlantı hazırlanıyor"))
-                        } else {
-                            Text(AppLanguage.message(texts,"Devam et"),fontWeight=FontWeight.SemiBold)
-                            Spacer(Modifier.width(10.dp)); Icon(Icons.Outlined.ArrowForward,null,Modifier.size(20.dp))
-                        }
+    onUrl: (String)->Unit,onAnalyze: ()->Unit,onCookies: ()->Unit,onBulk: ()->Unit,onPlaylist: ()->Unit) {
+    val texts=LocalAppContext.current;val clipboard=LocalClipboardManager.current;val keyboard=LocalSoftwareKeyboardController.current
+    fun analyze() { keyboard?.hide();onAnalyze() }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=24.dp,vertical=20.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
+        Spacer(Modifier.height(12.dp))
+        Text(texts.getString(R.string.home_title),style=MaterialTheme.typography.displaySmall)
+        Text(texts.getString(R.string.home_description),color=Muted,style=MaterialTheme.typography.bodyLarge)
+        Surface(color=Panel,shape=CardShape,border=BorderStroke(1.dp,Hairline)) {
+            Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.Link,null,Modifier.size(19.dp),tint=Muted)
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick={ clipboard.getText()?.text?.takeIf(String::isNotBlank)?.let(onUrl) }) {
+                        Icon(Icons.Outlined.ContentPaste,null,Modifier.size(16.dp));Spacer(Modifier.width(7.dp));Text(texts.getString(R.string.paste))
                     }
                 }
-            }
-            Spacer(Modifier.height(14.dp))
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                Surface(onClick=onCookies,color=Panel,shape=CircleShape,modifier=Modifier.weight(1f)) {
-                    Row(Modifier.padding(horizontal=14.dp,vertical=12.dp),verticalAlignment=Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.Lock,null,Modifier.size(16.dp),tint=Muted)
-                        Spacer(Modifier.width(7.dp))
-                        Text(screen.profiles.firstOrNull { it.id==screen.cookieId }?.host ?: texts.getString(R.string.connect_session),
-                            style=MaterialTheme.typography.labelLarge,maxLines=1,overflow=TextOverflow.Ellipsis)
-                    }
+                OutlinedTextField(screen.url,onUrl,placeholder={ Text("https://…",color=Muted) },
+                    modifier=Modifier.fillMaxWidth(),minLines=2,maxLines=4,shape=RoundedCornerShape(16.dp),
+                    keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Uri,imeAction=ImeAction.Go),
+                    keyboardActions=KeyboardActions(onGo={ if(!screen.analyzing) analyze() }),
+                    trailingIcon={ if(screen.url.isNotEmpty()) IconButton(onClick={ onUrl("") }) { Icon(Icons.Outlined.Close,texts.getString(R.string.clear_link)) } })
+                Button(onClick=::analyze,enabled=screen.url.isNotBlank() && !screen.analyzing && !screen.playlistLoading,
+                    modifier=Modifier.fillMaxWidth().heightIn(min=56.dp),shape=RoundedCornerShape(17.dp)) {
+                    if(screen.analyzing) { CircularProgressIndicator(Modifier.size(19.dp),strokeWidth=2.dp,color=Ink);Spacer(Modifier.width(10.dp)) }
+                    Text(AppLanguage.message(texts,if(screen.analyzing) "Bağlantı hazırlanıyor" else "Devam et"));Spacer(Modifier.width(10.dp));Icon(Icons.Outlined.ArrowForward,null,Modifier.size(19.dp))
                 }
-                Spacer(Modifier.width(12.dp))
-                Row(verticalAlignment=Alignment.CenterVertically) {
-                    if(engine.updating) CircularProgressIndicator(Modifier.size(12.dp),strokeWidth=1.5.dp,color=Muted)
-                    else Box(Modifier.size(6.dp).background(if(engine.ready) Success else Muted,CircleShape))
-                    Spacer(Modifier.width(7.dp))
-                    Text(AppLanguage.message(texts,if(engine.updating) "Güncelleniyor" else if(engine.ready) "Motor hazır" else "Hazırlanıyor"),
-                        color=Muted,fontSize=11.sp)
-                }
-            }
-            val active=jobs.count { it.state in listOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING) }
-            if(active>0) Text(AppLanguage.message(texts,"$active indirme sırada veya devam ediyor"),color=Muted,
-                modifier=Modifier.padding(top=20.dp),style=MaterialTheme.typography.bodyMedium)
-
-        }
-    }
-}
-
-@Composable private fun Dock(selected: Int,onSelect: (Int)->Unit) {
-    val texts=LocalAppContext.current
-    val names=listOf(texts.getString(R.string.download),texts.getString(R.string.files),texts.getString(R.string.settings))
-    val icons=listOf(Icons.Outlined.Link,Icons.Outlined.FolderOpen,Icons.Outlined.Tune)
-    Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal=22.dp,vertical=12.dp)) {
-        Surface(color=Panel,shape=RoundedCornerShape(25.dp),border=BorderStroke(1.dp,Hairline)) {
-            Row(Modifier.fillMaxWidth().padding(7.dp),horizontalArrangement=Arrangement.spacedBy(5.dp)) {
-                names.forEachIndexed { index,label ->
-                    val active=selected==index
-                    val color by animateColorAsState(if(active) Silver else Color.Transparent,tween(180),label="dock")
-                    Surface(onClick={ onSelect(index) },modifier=Modifier.weight(1f).semantics { this.selected=active;role=Role.Tab },
-                        color=color,shape=RoundedCornerShape(19.dp)) {
-                        Column(Modifier.heightIn(min=58.dp).padding(7.dp),
-                            horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
-                            Icon(icons[index],null,Modifier.size(20.dp),tint=if(active) Ink else Muted)
-                            Spacer(Modifier.height(3.dp))
-                            Text(AppLanguage.message(LocalAppContext.current,label),color=if(active) Ink else Muted,style=MaterialTheme.typography.labelLarge)
-                        }
-                    }
-                }
+                if(screen.playlistLoading) { LinearProgressIndicator(Modifier.fillMaxWidth());Text(texts.getString(R.string.playlist_loading),color=Muted) }
             }
         }
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+            OutlinedButton(onClick=onBulk,modifier=Modifier.weight(1f).heightIn(min=50.dp),shape=RoundedCornerShape(16.dp)) {
+                Icon(Icons.Outlined.Queue,null,Modifier.size(18.dp));Spacer(Modifier.width(7.dp));Text(texts.getString(R.string.bulk_open))
+            }
+            OutlinedButton(onClick=onPlaylist,enabled=screen.url.isNotBlank() && !screen.playlistLoading,
+                modifier=Modifier.weight(1f).heightIn(min=50.dp),shape=RoundedCornerShape(16.dp)) {
+                Icon(Icons.Outlined.PlaylistPlay,null,Modifier.size(20.dp));Spacer(Modifier.width(6.dp));Text(texts.getString(R.string.playlist_open))
+            }
+        }
+        Surface(onClick=onCookies,color=Panel,shape=RoundedCornerShape(18.dp)) {
+            Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Lock,null,Modifier.size(18.dp),tint=Muted);Spacer(Modifier.width(12.dp))
+                Text(screen.profiles.firstOrNull { it.id==screen.cookieId }?.host ?: texts.getString(R.string.connect_session),Modifier.weight(1f),maxLines=1,overflow=TextOverflow.Ellipsis)
+                Icon(Icons.Outlined.ChevronRight,null,tint=Muted)
+            }
+        }
+        Row(verticalAlignment=Alignment.CenterVertically) {
+            Box(Modifier.size(6.dp).background(if(engine.ready) Success else Muted,CircleShape));Spacer(Modifier.width(9.dp))
+            Text(AppLanguage.message(texts,engine.label),color=Muted,style=MaterialTheme.typography.bodySmall)
+        }
+        val active=jobs.count { it.state in setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING) }
+        if(active>0) Text(texts.getString(R.string.active_downloads,active),color=Muted,style=MaterialTheme.typography.bodyMedium)
     }
 }
 
 @Composable private fun DownloadsScreen(jobs: List<DownloadJob>,onCancel: (String)->Unit,
-    onRetry: (DownloadJob)->Unit,onOpen: (DownloadJob,Boolean)->Unit) {
+    onRetry: (DownloadJob)->Unit,initialHistory: Boolean=false,onOpen: (DownloadJob,Boolean)->Unit) {
     val texts=LocalAppContext.current
-    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(24.dp),
-        verticalArrangement=Arrangement.spacedBy(16.dp)) {
-        item { BrandRow() }
+    var history by rememberSaveable(initialHistory) { mutableStateOf(initialHistory) }
+    val visible=jobs.filter { (it.state in setOf(JobState.COMPLETED,JobState.FAILED,JobState.CANCELLED))==history }
+    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+        item { Choices(listOf("queue" to texts.getString(R.string.queue_filter),"history" to texts.getString(R.string.history_filter)),if(history) "history" else "queue") { history=it=="history" } }
         item {
             Text(texts.getString(R.string.files),style=MaterialTheme.typography.headlineMedium,modifier=Modifier.padding(top=12.dp))
         }
-        if(jobs.isEmpty()) item {
+        if(visible.isEmpty()) item {
             Surface(color=Panel,shape=CardShape,modifier=Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(28.dp),horizontalAlignment=Alignment.CenterHorizontally) {
                     Icon(Icons.Outlined.FileDownload,null,tint=Muted,modifier=Modifier.size(34.dp))
                     Spacer(Modifier.height(16.dp))
-                    Text(texts.getString(R.string.empty_files),style=MaterialTheme.typography.titleMedium)
+                    Text(texts.getString(if(history) R.string.empty_files else R.string.empty_queue),style=MaterialTheme.typography.titleMedium)
                 }
             }
         }
-        items(jobs,key={ it.id }) { job ->
+        items(visible,key={ it.id }) { job ->
             Surface(color=Panel,shape=CardShape,modifier=Modifier.fillMaxWidth(),border=BorderStroke(1.dp,Hairline.copy(alpha=.7f))) {
                 Column(Modifier.padding(18.dp)) {
                     Row(verticalAlignment=Alignment.CenterVertically) {
@@ -231,14 +204,15 @@ private val CardShape=RoundedCornerShape(26.dp)
                     Text(AppLanguage.message(texts,job.detail),color=if(job.state==JobState.COMPLETED) Success else Muted,style=MaterialTheme.typography.bodyMedium)
                     if(job.state in listOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING)) {
                         Spacer(Modifier.height(12.dp))
-                        if(job.progress<=0 || job.state!=JobState.RUNNING)
+                        if(!job.progressKnown || job.state!=JobState.RUNNING)
                             LinearProgressIndicator(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape),color=Silver,trackColor=Hairline)
                         else LinearProgressIndicator(progress={ job.progress/100f },
                             modifier=Modifier.fillMaxWidth().height(3.dp).clip(CircleShape),color=Silver,trackColor=Hairline)
-                        TextButton(onClick={ onCancel(job.id) }) { Text(texts.getString(R.string.cancel_download),color=Muted) }
+                        if(job.progressKnown) Text("${job.progress.toInt()}%",color=Muted,style=MaterialTheme.typography.labelSmall,modifier=Modifier.padding(top=7.dp))
+                    TextButton(onClick={ onCancel(job.id) }) { Text(texts.getString(R.string.cancel_download),color=Muted) }
                     }
                     job.notes.forEach { Text(AppLanguage.message(texts,it),color=Muted,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=10.dp)) }
-                    if(job.state==JobState.COMPLETED) Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    if(job.files.isNotEmpty()) Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                         TextButton(onClick={ onOpen(job,false) }) { Icon(Icons.Outlined.OpenInNew,null,Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(texts.getString(R.string.open)) }
                         TextButton(onClick={ onOpen(job,true) }) { Icon(Icons.Outlined.Share,null,Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(texts.getString(R.string.share)) }
                     }
@@ -273,7 +247,7 @@ private val CardShape=RoundedCornerShape(26.dp)
 }
 @Composable fun ExpandableSection(title: String,summary: String,content: @Composable ColumnScope.()->Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(PanelRaised)) {
+    Column(Modifier.fillMaxWidth().animateContentSize(tween(180)).clip(RoundedCornerShape(20.dp)).background(PanelRaised)) {
         Row(Modifier.fillMaxWidth().clickable { expanded=!expanded }.padding(18.dp),verticalAlignment=Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(AppLanguage.message(LocalAppContext.current,title),style=MaterialTheme.typography.titleMedium)

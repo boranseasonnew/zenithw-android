@@ -1,0 +1,31 @@
+<resources>
+    <string name="about_title">Hakkında</string>
+    <string name="about_back">Ayarlara dön</string>
+    <string name="about_version">Sürüm %1$s</string>
+    <string name="about_intro">Medyan için sana ait bir alan. Video ve sesi cihazında indir, düzenle ve sakla.</string>
+    <string name="about_creator">Boran tarafından geliştirildi. Açık kaynaklı, reklamsız ve zorunlu üyelik olmadan.</string>
+    <string name="about_updates_title">Uygulama güncellemeleri</string>
+    <string name="about_updates_detail">Bu düğmeye dokunduğunda resmî GitHub Releases sayfasındaki son kararlı sürüm kontrol edilir. Kontrol kendiliğinden indirme veya kurulum başlatmaz.</string>
+    <string name="about_check_updates">Güncellemeleri kontrol et</string>
+    <string name="about_checking">Sürümler kontrol ediliyor…</string>
+    <string name="about_update_current">Şu anda güncelleme yok. Güncel sürümü kullanıyorsun.</string>
+    <string name="about_update_ahead">Bu sürüm, yayımlanan son kararlı sürümden daha yeni.</string>
+    <string name="about_update_available">Yeni sürüm mevcut: %1$s</string>
+    <string name="about_update_error">Güncelleme kontrol edilemedi. Bağlantı, GitHub erişimi veya cihazınla uyumlu paket bulunmasıyla ilgili bir sorun olabilir. Daha sonra tekrar dene.</string>
+    <string name="about_view_release">Resmî sürüm sayfasını aç</string>
+    <string name="about_fdroid_updates">Bu paket F-Droid üzerinden güncellenir. Aynı imzaya ve paket adına sahip güncellemeler için F-Droid istemcisini kullan. GitHub APK sürümleri bu kurulumun yerine önerilmez.</string>
+    <string name="about_fdroid_open">F-Droid sayfasını aç</string>
+    <string name="about_preview_updates">Bu bir önizleme veya farklı paket kurulumu. Güncellemeler, aynı paket adı ve imzayla hazırlanan dosyalar üzerinden elle yapılır; kararlı APK bu kurulumun yerine önerilmez.</string>
+    <string name="about_privacy_title">Gizlilik ve dosyaların</string>
+    <string name="about_privacy">İndirme ve dönüştürme cihazında yapılır. ZenithW, medya dosyalarını kendi indirme sunucusuna yüklemez. Geçmişin, tercihlerin ve kullandığın oturum çerezleri cihazında saklanır.</string>
+    <string name="about_connections">Bağlantıyı hazırlamak ve indirmek için kaynak siteyle iletişim kurulur. İsteğe bağlı SponsorBlock veya motor güncellemesi gibi özellikler ilgili hizmete bağlanır. Kaydettiğin dosyaları sen yönetirsin.</string>
+    <string name="about_engine_title">Yerel motor ve açık kaynak</string>
+    <string name="about_engine">Medya bilgileri ve indirmeler yt-dlp ile; dönüştürme, ses işlemleri ve desteklenen biçimlerde kapak gömme FFmpeg ile yürütülür. Bu araçlar Android kitaplıkları üzerinden doğrudan cihazında çalışır.</string>
+    <string name="about_license">ZenithW Android kaynak kodu AGPL-3.0 lisansıyla sunulur. yt-dlp, FFmpeg, aria2 ve diğer bağımlılıklar kendi geliştiricilerine ve lisanslarına aittir. Kaynak depoda lisans ve derleme bilgilerini bulabilirsin.</string>
+    <string name="about_source">GitHub’da kaynak kodu</string>
+    <string name="about_support_title">İstersen destek ol</string>
+    <string name="about_support">Destek olmak zorunda değilsin. Küçük bir katkı geliştirme ve sunucu giderlerine yardımcı olabilir. ZenithW seni üyeliğe veya ödeme yapmaya zorlamaz.</string>
+    <string name="about_support_button">GitHub Sponsors ile destek ol</string>
+    <string name="about_website">ZenithW web sitesi</string>
+    <string name="about_open_error">Bağlantı açılamadı. Cihazında bir web tarayıcısının etkin olduğundan emin ol.</string>
+</resources>

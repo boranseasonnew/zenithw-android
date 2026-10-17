@@ -36,7 +36,7 @@ object DownloadPolicy {
         Regex("(?i)(?:aria2c|libaria2c\\.so)[^\\n]*(?:not found|cannot execute|permission denied)").containsMatchIn(message)
 
     fun isPublicOutput(name: String): Boolean {
-        if(name.startsWith(".") || name.contains(".temp.") || name.contains(".part.")) return false
+        if(name.startsWith(".") || name.contains(".temp.") || name.contains(".part.") || name=="source-info.json") return false
         if(name.endsWith(".info.json") || name.endsWith(".description")) return true
         return name.substringAfterLast('.', "").lowercase() in setOf(
             "mp4","mkv","webm","mov","m4v","mp3","m4a","opus","wav","flac","ogg",
@@ -44,6 +44,9 @@ object DownloadPolicy {
         )
     }
     fun progressDetail(percent: Float, eta: Long, line: String): String = when {
+        line.contains("ZenithWSquareCover") -> "Kare kapak hazırlanıyor"
+        line.contains("ZenithWProcessing") -> "Son işlemler yapılıyor"
+        line.contains("ZenithWRefreshing") -> "İndirme bağlantısı yenileniyor"
         line.contains("[EmbedThumbnail]") -> "Kapak görseli gömülüyor"
         line.contains("[Metadata]") -> "Medya bilgileri gömülüyor"
         line.contains("[Merger]") -> "Ses ve video birleştiriliyor"
@@ -51,7 +54,8 @@ object DownloadPolicy {
         line.contains("[ExtractAudio]") -> "Ses dosyası hazırlanıyor"
         line.contains("ZenithWNativeFallback") -> "Aria2c yanıt vermedi; normal indirmeye geçiliyor"
         line.contains("[download] Destination") -> "İndirme başlıyor"
-        eta > 0 && percent >= 0 -> "Yaklaşık ${eta/60} dk ${eta%60} sn"
+        line.startsWith("ZenithWTransfer") && eta > 0 -> "İndirme için yaklaşık ${eta/60} dk ${eta%60} sn · son işlemler hariç"
+        line.startsWith("ZenithWTransfer") -> "İndiriliyor"
         percent >= 0 -> "İndiriliyor"
         else -> "Bağlantı ve medya hazırlanıyor"
     }

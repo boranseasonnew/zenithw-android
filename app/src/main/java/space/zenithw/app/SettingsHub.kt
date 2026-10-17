@@ -26,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 private data class SettingsCategory(val key: String,val title: String,val detail: String,val icon: ImageVector)
 private val categories=listOf(
+    SettingsCategory("about","Hakkında ve sürüm","ZenithW · ${BuildConfig.VERSION_NAME}",Icons.Outlined.Info),
     SettingsCategory("language","Dil","Uygulama dili",Icons.Outlined.Language),
     SettingsCategory("engine","İndirme motoru","Otomatik güncelleme ve sürüm kanalı",Icons.Outlined.Memory),
     SettingsCategory("cookies","Tarayıcı oturumları","Cihazda saklanan çerezler",Icons.Outlined.Lock),
@@ -47,6 +48,7 @@ private val categories=listOf(
     val logs by model.logs.collectAsStateWithLifecycle()
     val o=screen.defaults
     fun update(next: DownloadOptions)=model.defaults(next)
+    if(active=="about") { AboutScreen { active=null };return }
     BackHandler(active!=null) { active=null }
     AnimatedContent(active,transitionSpec={ fadeIn(tween(160)) togetherWith fadeOut(tween(100)) },label="settings-page") { category ->
         LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(24.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
@@ -72,7 +74,7 @@ private val categories=listOf(
                             }
                             Spacer(Modifier.width(15.dp))
                             Column(Modifier.weight(1f)) {
-                                Text(AppLanguage.message(texts,group.title),style=MaterialTheme.typography.titleMedium)
+                                Text(if(group.key=="about") texts.getString(R.string.workspace_about) else AppLanguage.message(texts,group.title),style=MaterialTheme.typography.titleMedium)
                                 Text(AppLanguage.message(texts,group.detail),color=Muted,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=4.dp))
                             }
                             Icon(Icons.Outlined.ChevronRight,null,tint=Muted)

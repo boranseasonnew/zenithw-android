@@ -165,10 +165,21 @@ object AppLanguage {
         "Güncellemeler kontrol ediliyor" to R.string.engine_checking,
         "Motor başlatılamadı" to R.string.engine_error,
         "Birlikte gelen sürüm" to R.string.bundled,
+        "Kuyruk en fazla 200 dosya alabilir." to R.string.queue_capacity,
+        "Kare kapak hazırlanıyor" to R.string.square_cover_preparing,
+        "Son işlemler yapılıyor" to R.string.processing_final,
+        "İndirme bağlantısı yenileniyor" to R.string.refresh_download_link,
+        "Kare kapak doğrulanamadı; asıl medya dosyası korundu." to R.string.square_cover_unverified,
+        "Kaydedilemeyen dosyalar cihazdaki özel kurtarma klasöründe korundu." to R.string.recovery_kept,
+        "Bu biçimde kare kapak gömme güvenilir biçimde desteklenmiyor; medya dosyası korundu." to R.string.square_cover_unsupported,
+        "Kare kapak doğrulama aracı bulunamadı; asıl medya dosyası korundu." to R.string.square_cover_tool_missing,
     )
     fun message(context: Context,value: String): String {
         SettingsText.labels[value]?.let { return context.getString(it) }
         legacy[value]?.let { return context.getString(it) }
+        Regex("İndirme için yaklaşık (\\d+) dk (\\d+) sn · son işlemler hariç").matchEntire(value)?.let {
+            return context.getString(R.string.transfer_eta,it.groupValues[1],it.groupValues[2])
+        }
         Regex("Yaklaşık (\\d+) dk (\\d+) sn").matchEntire(value)?.let {
             return context.getString(R.string.eta,it.groupValues[1],it.groupValues[2])
         }
