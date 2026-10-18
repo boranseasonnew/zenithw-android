@@ -6,7 +6,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -14,15 +17,19 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun WorkspaceHeader(page: Int,active: Int,onHome: ()->Unit,onLibrary: (Boolean)->Unit,
-    onSettings: ()->Unit,onAbout: ()->Unit) {
+    onSettings: ()->Unit,onBulk: ()->Unit) {
     val texts=LocalAppContext.current
-    var menu by remember { mutableStateOf(false) }
     Surface(color=Ink) {
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal=16.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
             if(page!=0) IconButton(onClick=onHome) { Icon(Icons.Outlined.ArrowBack,texts.getString(R.string.workspace_home)) }
@@ -35,48 +42,80 @@ fun WorkspaceHeader(page: Int,active: Int,onHome: ()->Unit,onLibrary: (Boolean)-
                     Icon(Icons.Outlined.FolderOpen,texts.getString(R.string.workspace_library))
                 }
             }
-            Box {
-                IconButton(onClick={ menu=true }) { Icon(Icons.Outlined.Settings,texts.getString(R.string.workspace_menu)) }
-                DropdownMenu(expanded=menu,onDismissRequest={ menu=false },containerColor=Panel) {
-                    DropdownMenuItem(text={ Text(texts.getString(R.string.workspace_home)) },leadingIcon={ Icon(Icons.Outlined.Add,null) },onClick={ menu=false;onHome() })
-                    DropdownMenuItem(text={ Text(texts.getString(R.string.queue_filter)) },leadingIcon={ Icon(Icons.Outlined.Queue,null) },onClick={ menu=false;onLibrary(false) })
-                    DropdownMenuItem(text={ Text(texts.getString(R.string.history_filter)) },leadingIcon={ Icon(Icons.Outlined.History,null) },onClick={ menu=false;onLibrary(true) })
-                    HorizontalDivider(color=Hairline)
-                    DropdownMenuItem(text={ Text(texts.getString(R.string.settings)) },leadingIcon={ Icon(Icons.Outlined.Tune,null) },onClick={ menu=false;onSettings() })
-                    DropdownMenuItem(text={ Text(texts.getString(R.string.workspace_about)) },leadingIcon={ Icon(Icons.Outlined.Info,null) },onClick={ menu=false;onAbout() })
+            IconButton(onClick=onBulk) {
+                Icon(Icons.Outlined.Terminal,texts.getString(R.string.bulk_title),tint=if(page==4) Silver else Muted)
+            }
+            IconButton(onClick=onSettings) { Icon(Icons.Outlined.Settings,texts.getString(R.string.settings),tint=if(page==2) Silver else Muted) }
+        }
+    }
+}
+
+@Composable
+fun BulkDownloadScreen(screen: ScreenState,onLink: (String,String)->Unit,onAdd: ()->Unit,onRemove: (String)->Unit,
+    onMode: (MediaMode)->Unit,onPlaylistUrl: (String)->Unit,onPlaylist: ()->Unit,onSubmit: ()->Unit) {
+    val texts=LocalAppContext.current
+    val keyboard=LocalSoftwareKeyboardController.current
+    val listState=rememberLazyListState()
+    var previousCount by remember { mutableIntStateOf(screen.bulkLinks.size) }
+    var pendingFocus by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(screen.bulkLinks.size) {
+        if(screen.bulkLinks.size>previousCount) {
+            pendingFocus=screen.bulkLinks.last().id
+            listState.animateScrollToItem(screen.bulkLinks.size+1)
+        }
+        previousCount=screen.bulkLinks.size
+    }
+    Column(Modifier.fillMaxSize()) {
+        LazyColumn(Modifier.weight(1f),state=listState,contentPadding=PaddingValues(24.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
+            item { Text(texts.getString(R.string.bulk_title),style=MaterialTheme.typography.headlineMedium) }
+            item {
+                Choices(listOf("VIDEO" to texts.getString(R.string.video),"AUDIO" to texts.getString(R.string.audio)),screen.bulkMode.name) { onMode(MediaMode.valueOf(it)) }
+            }
+            items(screen.bulkLinks,key={ it.id }) { row ->
+                val index=screen.bulkLinks.indexOf(row)+1
+                val focus=remember { FocusRequester() }
+                LaunchedEffect(pendingFocus) { if(pendingFocus==row.id) { focus.requestFocus();pendingFocus=null } }
+                Row(verticalAlignment=Alignment.CenterVertically) {
+                    OutlinedTextField(row.url,{ onLink(row.id,it) },label={ Text(texts.getString(R.string.bulk_link_number,index)) },
+                        placeholder={ Text("https://…") },singleLine=true,modifier=Modifier.weight(1f).focusRequester(focus),shape=RoundedCornerShape(16.dp),
+                        keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Uri,imeAction=ImeAction.Done),
+                        keyboardActions=KeyboardActions(onDone={ keyboard?.hide() }))
+                    IconButton(onClick={ onRemove(row.id) },enabled=screen.bulkLinks.size>1 || row.url.isNotEmpty()) {
+                        Icon(Icons.Outlined.Close,texts.getString(R.string.bulk_remove_link,index),tint=Muted)
+                    }
+                }
+            }
+            item {
+                OutlinedButton(onClick=onAdd,enabled=screen.bulkLinks.size<50,modifier=Modifier.fillMaxWidth().heightIn(min=50.dp),shape=RoundedCornerShape(16.dp)) {
+                    Icon(Icons.Outlined.Add,null);Spacer(Modifier.width(8.dp));Text(texts.getString(R.string.bulk_add_row))
+                }
+            }
+            item {
+                ExpandableSection(texts.getString(R.string.playlist_title),texts.getString(R.string.playlist_open)) {
+                    OutlinedTextField(screen.url,onPlaylistUrl,label={ Text(texts.getString(R.string.playlist_link)) },singleLine=true,
+                        modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp),
+                        keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Uri,imeAction=ImeAction.Go),
+                        keyboardActions=KeyboardActions(onGo={ if(screen.url.isNotBlank() && !screen.playlistLoading) { keyboard?.hide();onPlaylist() } }))
+                    OutlinedButton(onClick={ keyboard?.hide();onPlaylist() },enabled=screen.url.isNotBlank() && !screen.playlistLoading,modifier=Modifier.fillMaxWidth()) {
+                        if(screen.playlistLoading) CircularProgressIndicator(Modifier.size(18.dp),strokeWidth=2.dp)
+                        else Icon(Icons.Outlined.PlaylistPlay,null)
+                        Spacer(Modifier.width(8.dp));Text(texts.getString(if(screen.playlistLoading) R.string.playlist_loading else R.string.playlist_open))
+                    }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun BulkLinkSheet(defaults: DownloadOptions,onDismiss: ()->Unit,onSubmit: (String,DownloadOptions)->Unit) {
-    val texts=LocalAppContext.current
-    var links by rememberSaveable { mutableStateOf("") }
-    var mode by rememberSaveable { mutableStateOf(if(defaults.mode==MediaMode.AUDIO) "AUDIO" else "VIDEO") }
-    ModalBottomSheet(onDismissRequest=onDismiss,sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true),
-        containerColor=Panel,contentColor=Silver) {
-        Column(Modifier.fillMaxWidth().imePadding().padding(horizontal=24.dp).padding(bottom=24.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
-            Row(verticalAlignment=Alignment.CenterVertically) {
-                Text(texts.getString(R.string.bulk_title),Modifier.weight(1f),style=MaterialTheme.typography.headlineMedium)
-                IconButton(onClick=onDismiss) { Icon(Icons.Outlined.Close,texts.getString(R.string.close_window)) }
-            }
-            Text(texts.getString(R.string.bulk_description),color=Muted,style=MaterialTheme.typography.bodyMedium)
-            OutlinedTextField(links,{ links=it.take(120000) },label={ Text(texts.getString(R.string.bulk_links)) },
-                minLines=4,maxLines=7,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp))
-            Choices(listOf("VIDEO" to texts.getString(R.string.video),"AUDIO" to texts.getString(R.string.audio)),mode) { mode=it }
-            Text(texts.getString(R.string.format_defaults),color=Muted,style=MaterialTheme.typography.bodySmall)
-            Button(onClick={ onSubmit(links,defaults.copy(mode=MediaMode.valueOf(mode))) },enabled=links.isNotBlank(),
-                modifier=Modifier.fillMaxWidth().heightIn(min=54.dp),shape=RoundedCornerShape(17.dp)) {
-                Icon(Icons.Outlined.Add,null);Spacer(Modifier.width(9.dp));Text(texts.getString(R.string.bulk_submit))
-            }
+        HorizontalDivider(color=Hairline)
+        Button(onClick={ keyboard?.hide();onSubmit() },enabled=screen.bulkLinks.any { it.url.isNotBlank() } && !screen.submitting,
+            modifier=Modifier.fillMaxWidth().padding(horizontal=24.dp,vertical=14.dp).heightIn(min=54.dp),shape=RoundedCornerShape(17.dp)) {
+            if(screen.submitting) CircularProgressIndicator(Modifier.size(18.dp),strokeWidth=2.dp,color=Ink)
+            else Icon(Icons.Outlined.FileDownload,null)
+            Spacer(Modifier.width(9.dp));Text(texts.getString(R.string.bulk_submit))
         }
     }
 }
 
 @Composable
-fun PlaylistSelectionSheet(entries: List<PlaylistEntry>,onDismiss: ()->Unit,onSubmit: (Set<Int>)->Unit) {
+fun PlaylistSelectionSheet(entries: List<PlaylistEntry>,onDismiss: ()->Unit,submitting: Boolean=false,onSubmit: (Set<Int>)->Unit) {
     val texts=LocalAppContext.current
     var selected by rememberSaveable(entries) { mutableStateOf(entries.map { it.index }) }
     val height=(LocalConfiguration.current.screenHeightDp*.86f).dp
@@ -106,7 +145,7 @@ fun PlaylistSelectionSheet(entries: List<PlaylistEntry>,onDismiss: ()->Unit,onSu
             }
             HorizontalDivider(color=Hairline)
             Text(texts.getString(R.string.playlist_selected,selected.size),Modifier.padding(horizontal=24.dp,vertical=10.dp),color=Muted)
-            Button(onClick={ onSubmit(selected.toSet()) },enabled=selected.isNotEmpty(),modifier=Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(bottom=20.dp).heightIn(min=54.dp),shape=RoundedCornerShape(17.dp)) {
+            Button(onClick={ onSubmit(selected.toSet()) },enabled=selected.isNotEmpty() && !submitting,modifier=Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(bottom=20.dp).heightIn(min=54.dp),shape=RoundedCornerShape(17.dp)) {
                 Icon(Icons.Outlined.FileDownload,null);Spacer(Modifier.width(9.dp));Text(texts.getString(R.string.playlist_download))
             }
         }

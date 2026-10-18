@@ -3,7 +3,7 @@
     <string name="about_back">Вернуться к настройкам</string>
     <string name="about_version">Версия %1$s</string>
     <string name="about_intro">Твоё пространство для медиа. Загружай, упорядочивай и храни видео и аудио на своём устройстве.</string>
-    <string name="about_creator">Разработано Бораном. Открытый исходный код, без рекламы и обязательной регистрации.</string>
+    <string name="about_creator">Разработано boranseason.</string>
     <string name="about_updates_title">Обновления приложения</string>
     <string name="about_updates_detail">Нажми эту кнопку, чтобы проверить последнюю стабильную версию на официальной странице GitHub Releases. Проверка ничего не загружает и не устанавливает автоматически.</string>
     <string name="about_check_updates">Проверить обновления</string>

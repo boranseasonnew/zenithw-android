@@ -147,7 +147,7 @@
     <string name="engine_error">Could not start engine</string>
     <string name="bundled">Bundled version</string>
     <string name="session_count">%1$s sessions · encrypted on device</string>
-    <string name="cookie_count">%1$s cookies · encrypted</string>
+    <string name="cookie_count">%1$d cookies · encrypted</string>
     <string name="session_host">Session: %1$s</string>
     <string name="eta">About %1$s min %2$s sec</string>
 </resources>

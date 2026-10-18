@@ -100,7 +100,7 @@ private val categories=listOf(
                 Surface(shape=RoundedCornerShape(24.dp),color=Panel) {
                     Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
                         when(category) {
-                            "language" -> Choices(AppLanguage.choices,screen.language,model::language)
+                            "language" -> OptionPicker("Dil",AppLanguage.choices,screen.language,model::language)
                             "engine" -> {
                                 Text(engine.version.ifBlank { "yt-dlp hazırlanıyor" },style=MaterialTheme.typography.titleMedium)
                                 if (BuildConfig.F_DROID) {
@@ -200,9 +200,6 @@ private val categories=listOf(
 }
 
 @Composable private fun Pick(title: String,items: List<Pair<String,String>>,selected: String,onSelect: (String)->Unit) {
-    Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
-        Text(AppLanguage.message(LocalAppContext.current,title),style=MaterialTheme.typography.titleSmall)
-        Choices(items,selected,onSelect)
-    }
+    OptionPicker(title,items,selected,onSelect)
 }
 @Composable private fun Pick(title: String,vararg items: Pair<String,String>,selected: String,onSelect: (String)->Unit)=Pick(title,items.toList(),selected,onSelect)

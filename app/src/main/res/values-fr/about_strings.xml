@@ -3,7 +3,7 @@
     <string name="about_back">Retour aux réglages</string>
     <string name="about_version">Version %1$s</string>
     <string name="about_intro">Ton espace pour les médias. Télécharge, organise et conserve vidéos et fichiers audio sur ton appareil.</string>
-    <string name="about_creator">Créé par Boran. Open source, sans publicité ni compte obligatoire.</string>
+    <string name="about_creator">Créé par boranseason.</string>
     <string name="about_updates_title">Mises à jour de l’application</string>
     <string name="about_updates_detail">Appuie sur ce bouton pour vérifier la dernière version stable sur la page officielle GitHub Releases. La vérification ne lance aucun téléchargement ni aucune installation.</string>
     <string name="about_check_updates">Rechercher des mises à jour</string>

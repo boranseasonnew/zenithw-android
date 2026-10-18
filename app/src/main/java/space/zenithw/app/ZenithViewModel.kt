@@ -20,11 +20,13 @@ import java.util.UUID
 data class ScreenState(val tab: Int=0,val url: String="",val analyzing: Boolean=false,
     val preview: MediaPreview?=null,val message: String?=null,val profiles: List<CookieProfile> = emptyList(),
     val cookieId: String?=null,val autoUpdate: Boolean=true,val channel: String="stable",val language: String="tr",val defaults: DownloadOptions=DownloadOptions(),val showHistory: Boolean=false,
-    val playlistEntries: List<PlaylistEntry> = emptyList(),val playlistLoading: Boolean=false)
+    val playlistEntries: List<PlaylistEntry> = emptyList(),val playlistLoading: Boolean=false,
+    val bulkLinks: List<BulkLinkInput> = listOf(BulkLinkInput()),val bulkMode: MediaMode=MediaMode.VIDEO,val submitting: Boolean=false)
 class ZenithViewModel(application: Application): AndroidViewModel(application) {
     val app=application as ZenithApplication
     private val mutableScreen=MutableStateFlow(ScreenState(profiles=app.vault.profiles(),
-        autoUpdate=app.store.autoUpdate,channel=app.store.channel,cookieId=app.store.selectedCookieId,language=app.store.language,defaults=app.store.defaultOptions))
+        autoUpdate=app.store.autoUpdate,channel=app.store.channel,cookieId=app.store.selectedCookieId,language=app.store.language,defaults=app.store.defaultOptions,
+        bulkMode=if(app.store.defaultOptions.mode==MediaMode.AUDIO) MediaMode.AUDIO else MediaMode.VIDEO))
     val screen=mutableScreen.asStateFlow()
     val jobs=app.store.jobs
     val logs=app.store.logs
@@ -102,22 +104,40 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         }
     }
     fun enqueue(options: DownloadOptions) {
-        defaults(options)
         val state=mutableScreen.value;val preview=state.preview ?: return
+        if(state.submitting) return
+        defaults(options)
         if(options.playlist) { loadPlaylist(options);return }
         enqueueBatch(listOf(DownloadJob(url=preview.url,title=preview.title,thumbnail=preview.thumbnail,
             options=options.copy(cookieId=state.cookieId))))
     }
+    fun bulkMode(mode: MediaMode)=edit { it.copy(bulkMode=mode) }
+    fun addBulkLink()=edit { if(it.bulkLinks.size>=50) it else it.copy(bulkLinks=it.bulkLinks+BulkLinkInput()) }
+    fun removeBulkLink(id: String)=edit { state ->
+        val rows=state.bulkLinks.filterNot { it.id==id }
+        state.copy(bulkLinks=rows.ifEmpty { listOf(BulkLinkInput()) })
+    }
+    fun bulkLink(id: String,value: String)=edit { state ->
+        runCatching { replaceBulkLink(state.bulkLinks,id,value) }
+            .fold({ state.copy(bulkLinks=it) },{ state.copy(message=text(R.string.bulk_limit)) })
+    }
+    fun enqueueBulk(): Boolean {
+        val state=mutableScreen.value
+        if(state.submitting) return false
+        return enqueueBulk(state.bulkLinks.joinToString("\n") { it.url },state.defaults.copy(mode=state.bulkMode))
+    }
     fun enqueueBulk(raw: String,options: DownloadOptions): Boolean {
+        if(mutableScreen.value.submitting) return false
         val lines=raw.lineSequence().map(String::trim).filter(String::isNotBlank).toList()
         if(lines.size !in 1..50) { showMessage(text(R.string.bulk_limit));return false }
         val urls=runCatching { lines.map(::normalizeUrl).distinct() }.getOrElse { showMessage(text(R.string.bulk_limit));return false }
         val selected=options.copy(cookieId=mutableScreen.value.cookieId,playlist=false,playlistItems="",selectedFormat="")
-        enqueueBatch(urls.map { DownloadJob(url=it,title=Uri.parse(it).host ?: it,options=selected) })
+        enqueueBatch(urls.map { DownloadJob(url=it,title=Uri.parse(it).host ?: it,options=selected) },clearBulk=true)
         return true
     }
     fun loadPlaylist(options: DownloadOptions=mutableScreen.value.defaults) {
         val state=mutableScreen.value
+        if(state.submitting || state.playlistLoading) return
         val url=runCatching { normalizeUrl(state.preview?.url ?: state.url) }.getOrElse { showMessage(text(R.string.check_link));return }
         cancelInspection();val request=generation;playlistOptions=options.copy(cookieId=state.cookieId)
         edit { it.copy(playlistLoading=true,analyzing=false,preview=null,playlistEntries=emptyList(),message=null) }
@@ -141,11 +161,14 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         if(entries.isEmpty()) return
         enqueueBatch(entries.map { DownloadJob(url=it.url,title=it.title,options=options) })
     }
-    private fun enqueueBatch(candidates: List<DownloadJob>) {
+    private fun enqueueBatch(candidates: List<DownloadJob>,clearBulk: Boolean=false) {
+        if(mutableScreen.value.submitting) return
         val expectedGeneration=generation
         val expectedUrl=mutableScreen.value.url
         val expectedTab=mutableScreen.value.tab
+        val submittedLinks=mutableScreen.value.bulkLinks
         val active=setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING)
+        edit { it.copy(submitting=true) }
         fun key(job: DownloadJob)=listOf(job.url,job.options.mode.name,job.options.height,job.options.container,
             job.options.audioFormat,job.options.selectedFormat,job.options.cookieId,job.options.playlist).joinToString("|")
         viewModelScope.launch {
@@ -158,14 +181,20 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
                     selected.forEachIndexed { index,job -> DownloadWorker.enqueue(app,job.copy(createdAt=System.currentTimeMillis()+index)) }
                     selected.size
                 } }
-                if(count==0) showMessage(text(R.string.bulk_duplicates))
+                if(count==0) {
+                    val sameInteraction=expectedGeneration==generation && mutableScreen.value.url==expectedUrl && mutableScreen.value.tab==expectedTab
+                    if(sameInteraction) edit { it.copy(preview=null,tab=1,showHistory=false,playlistEntries=emptyList(),message=text(R.string.bulk_duplicates)) }
+                    else showMessage(text(R.string.bulk_duplicates))
+                }
                 else {
                     val sameInteraction=expectedGeneration==generation && mutableScreen.value.url==expectedUrl && mutableScreen.value.tab==expectedTab
-                    if(sameInteraction) edit { it.copy(preview=null,url="",tab=1,showHistory=false,playlistEntries=emptyList(),message=text(R.string.bulk_added,count)) }
+                    if(sameInteraction) edit { it.copy(preview=null,url="",tab=1,showHistory=false,playlistEntries=emptyList(),
+                        bulkLinks=if(clearBulk && it.bulkLinks==submittedLinks) listOf(BulkLinkInput()) else it.bulkLinks,message=text(R.string.bulk_added,count)) }
                     else showMessage(text(R.string.bulk_added,count))
                 }
             } catch(cancelled: CancellationException) { throw cancelled }
             catch(e: Exception) { showMessage(text(if(e.message=="capacity") R.string.queue_capacity else R.string.bulk_error)) }
+            finally { edit { it.copy(submitting=false) } }
         }
     }
     fun cancel(id: String)=DownloadWorker.cancel(app,id)

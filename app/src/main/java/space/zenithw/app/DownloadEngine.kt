@@ -208,14 +208,8 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                 val response=try { withTimeout(90000) { runInterruptible { YoutubeDL.getInstance().execute(request,processId=processId) } } }
                     catch(timeout: TimeoutCancellationException) { throw java.io.IOException("Playlist request timed out after 90 seconds",timeout) }
                 require(response.out.length<=16*1024*1024) { "Playlist information is too large" }
-                val entries=JSONObject(response.out).optJSONArray("entries") ?: return@withEngine emptyList()
-                (0 until minOf(entries.length(),200)).mapNotNull { i ->
-                    val entry=entries.optJSONObject(i) ?: return@mapNotNull null
-                    val raw=entry.optString("webpage_url").takeIf { it.startsWith("http") }
-                        ?: entry.optString("url").takeIf { it.startsWith("http") }
-                        ?: entry.optString("id").takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }?.let { "https://www.youtube.com/watch?v=$it" }
-                    raw?.let { runCatching { PlaylistEntry(entry.optInt("playlist_index",i+1).coerceAtLeast(1),entry.optString("title","Medya").take(300),normalizeUrl(it)) }.getOrNull() }
-                }
+                coroutineContext.ensureActive()
+                playlistEntries(JSONObject(response.out),url)
             } finally { YoutubeDL.getInstance().destroyProcessById(processId);directory.deleteRecursively() }
         }
     }

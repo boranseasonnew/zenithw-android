@@ -7,7 +7,7 @@
     <string name="home_description">Download video, audio and playlists on your device. No account, no ads.</string>
     <string name="bulk_open">Multiple links</string>
     <string name="playlist_open">Choose from playlist</string>
-    <string name="bulk_title">Multiple links</string>
+    <string name="bulk_title">Batch download</string>
     <string name="bulk_description">Add one link per line, up to 50 links. Duplicates are removed automatically.</string>
     <string name="bulk_links">Video or audio links</string>
     <string name="bulk_submit">Add to queue</string>
@@ -45,4 +45,8 @@
     <string name="recovery_kept">Files that could not be saved were kept in the private recovery folder on your device.</string>
     <string name="square_cover_unsupported">Embedding square artwork is not reliably supported in this format; the media file was kept.</string>
     <string name="square_cover_tool_missing">The square artwork verification tool was not found; the original media file was kept.</string>
+    <string name="bulk_link_number">Link %1$d</string>
+    <string name="bulk_remove_link">Remove link %1$d</string>
+    <string name="bulk_add_row">Add row</string>
+    <string name="playlist_link">Playlist link</string>
 </resources>

@@ -147,7 +147,7 @@
     <string name="engine_error">Не удалось запустить модуль</string>
     <string name="bundled">Встроенная версия</string>
     <string name="session_count">%1$s сеансов · зашифрованы на устройстве</string>
-    <string name="cookie_count">%1$s cookie · зашифрованы</string>
+    <string name="cookie_count">%1$d cookie · зашифрованы</string>
     <string name="session_host">Сеанс: %1$s</string>
     <string name="eta">Примерно %1$s мин %2$s с</string>
 </resources>

@@ -147,7 +147,7 @@
     <string name="engine_error">Impossible de démarrer le moteur</string>
     <string name="bundled">Version intégrée</string>
     <string name="session_count">%1$s sessions · chiffrées sur l’appareil</string>
-    <string name="cookie_count">%1$s cookies · chiffrés</string>
+    <string name="cookie_count">%1$d cookies · chiffrés</string>
     <string name="session_host">Session : %1$s</string>
     <string name="eta">Environ %1$s min %2$s s</string>
 </resources>

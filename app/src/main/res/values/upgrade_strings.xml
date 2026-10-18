@@ -7,7 +7,7 @@
     <string name="home_description">Video, ses ve oynatma listelerini cihazında indir. Hesap yok, reklam yok.</string>
     <string name="bulk_open">Çoklu bağlantı</string>
     <string name="playlist_open">Listeden seç</string>
-    <string name="bulk_title">Birden fazla bağlantı</string>
+    <string name="bulk_title">Toplu indirme</string>
     <string name="bulk_description">Her satıra bir bağlantı ekle. En fazla 50 bağlantı; tekrarlar otomatik ayıklanır.</string>
     <string name="bulk_links">Video veya ses bağlantıları</string>
     <string name="bulk_submit">Kuyruğa ekle</string>
@@ -45,4 +45,8 @@
     <string name="recovery_kept">Kaydedilemeyen dosyalar cihazdaki özel kurtarma klasöründe korundu.</string>
     <string name="square_cover_unsupported">Bu biçimde kare kapak gömme güvenilir biçimde desteklenmiyor; medya dosyası korundu.</string>
     <string name="square_cover_tool_missing">Kare kapak doğrulama aracı bulunamadı; asıl medya dosyası korundu.</string>
+    <string name="bulk_link_number">Bağlantı %1$d</string>
+    <string name="bulk_remove_link">Bağlantı %1$d satırını sil</string>
+    <string name="bulk_add_row">Satır ekle</string>
+    <string name="playlist_link">Oynatma listesi bağlantısı</string>
 </resources>

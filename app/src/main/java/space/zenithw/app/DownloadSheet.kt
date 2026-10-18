@@ -26,7 +26,7 @@ import java.util.Calendar
 
 @Composable fun DownloadSheet(preview: MediaPreview,cookieHost: String?,defaults: DownloadOptions,
     onDefaults: (DownloadOptions)->Unit,onDismiss: ()->Unit,onDownload: (DownloadOptions)->Unit,
-    onPlaylistSelect: (DownloadOptions)->Unit) {
+    onPlaylistSelect: (DownloadOptions)->Unit,submitting: Boolean=false) {
     var raw by rememberSaveable(preview.url) { mutableStateOf(defaults.json().toString()) }
     val o=remember(raw) { DownloadOptions.from(JSONObject(raw)) }
     fun update(value: DownloadOptions) { raw=value.json().toString(); onDefaults(value) }
@@ -35,22 +35,22 @@ import java.util.Calendar
     val plan=DownloadPolicy.thumbnailPlan(o.mode.name,o.container,o.audioFormat,o.embedThumbnail,o.downloadThumbnail,o.thumbnailFormat)
     val maxHeight=(LocalConfiguration.current.screenHeightDp*.90f).dp
     ModalBottomSheet(onDismissRequest=onDismiss,sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true),
+        sheetGesturesEnabled=false,dragHandle=null,
         containerColor=Panel,contentColor=Silver,shape=RoundedCornerShape(topStart=30.dp,topEnd=30.dp)) {
-        Column(Modifier.fillMaxWidth().heightIn(max=maxHeight).imePadding()) {
-            LazyColumn(Modifier.weight(1f,fill=false),contentPadding=PaddingValues(horizontal=24.dp),
-                verticalArrangement=Arrangement.spacedBy(20.dp)) {
-                item {
-                    Row(verticalAlignment=Alignment.CenterVertically) {
-                        AsyncImage(preview.thumbnail,null,Modifier.size(68.dp).clip(RoundedCornerShape(16.dp)))
-                        Spacer(Modifier.width(14.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(preview.title,style=MaterialTheme.typography.titleMedium,maxLines=2,overflow=TextOverflow.Ellipsis)
-                            Text(preview.uploader.ifBlank { texts.getString(R.string.media_ready) },color=Muted,
-                                style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=5.dp))
-                        }
-                        IconButton(onClick=onDismiss) { Icon(Icons.Outlined.Close,texts.getString(R.string.close_window)) }
-                    }
+        Column(Modifier.fillMaxWidth().heightIn(max=maxHeight).fillMaxHeight()) {
+            Row(Modifier.padding(start=24.dp,end=16.dp,top=16.dp,bottom=12.dp),verticalAlignment=Alignment.CenterVertically) {
+                AsyncImage(preview.thumbnail,null,Modifier.size(68.dp).clip(RoundedCornerShape(16.dp)))
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(preview.title,style=MaterialTheme.typography.titleMedium,maxLines=2,overflow=TextOverflow.Ellipsis)
+                    Text(preview.uploader.ifBlank { texts.getString(R.string.media_ready) },color=Muted,
+                        style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=5.dp))
                 }
+                IconButton(onClick=onDismiss) { Icon(Icons.Outlined.Close,texts.getString(R.string.close_window)) }
+            }
+            HorizontalDivider(color=Hairline)
+            LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(horizontal=24.dp,vertical=16.dp),
+                verticalArrangement=Arrangement.spacedBy(20.dp)) {
                 if(preview.isPlaylist) item {
                     OutlinedButton(onClick={ onPlaylistSelect(o) },modifier=Modifier.fillMaxWidth()) {
                         Icon(Icons.Outlined.PlaylistPlay,null);Spacer(Modifier.width(10.dp));Text(texts.getString(R.string.playlist_open))
@@ -61,23 +61,20 @@ import java.util.Calendar
                 }
                 if(o.mode==MediaMode.VIDEO) item {
                     Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                        Text(texts.getString(R.string.quality),style=MaterialTheme.typography.titleMedium)
-                        val heights=preview.heights.take(4)
-                        Choices(listOf("0" to texts.getString(R.string.best))+heights.map { it.toString() to "${it}p" },o.height.toString()) {
+                        val heights=(preview.heights+listOf(o.height)).filter { it>0 }.distinct().sortedDescending()
+                        OptionPicker(texts.getString(R.string.quality),listOf("0" to texts.getString(R.string.best))+heights.map { it.toString() to "${it}p" },o.height.toString()) {
                             update(o.copy(height=it.toInt()))
                         }
                         Spacer(Modifier.height(4.dp))
-                        Text(texts.getString(R.string.file_format),style=MaterialTheme.typography.titleMedium)
-                        Choices(listOf("mp4" to "MP4","mkv" to "MKV","webm" to "WebM"),o.container) { update(o.copy(container=it)) }
+                        OptionPicker(texts.getString(R.string.file_format),listOf("mp4" to "MP4","mkv" to "MKV","webm" to "WebM"),o.container) { update(o.copy(container=it)) }
                     }
                 }
                 if(o.mode==MediaMode.AUDIO) item {
                     Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                        Text(texts.getString(R.string.audio_format),style=MaterialTheme.typography.titleMedium)
-                        Choices(listOf("m4a" to "M4A","mp3" to "MP3","opus" to "Opus","flac" to "FLAC","wav" to "WAV"),o.audioFormat) {
+                        OptionPicker(texts.getString(R.string.audio_format),listOf("m4a" to "M4A","mp3" to "MP3","opus" to "Opus","flac" to "FLAC","wav" to "WAV"),o.audioFormat) {
                             update(o.copy(audioFormat=it))
                         }
-                        Choices(listOf("0" to texts.getString(R.string.best),"320" to "320 kbps","192" to "192 kbps","128" to "128 kbps"),
+                        OptionPicker(AppLanguage.message(texts,"Ses kalitesi"),listOf("0" to texts.getString(R.string.best),"320" to "320 kbps","256" to "256 kbps","192" to "192 kbps","128" to "128 kbps"),
                             o.audioBitrate.toString()) { update(o.copy(audioBitrate=it.toInt())) }
                     }
                 }
@@ -163,9 +160,11 @@ import java.util.Calendar
                 item { Spacer(Modifier.height(6.dp)) }
             }
             HorizontalDivider(color=Hairline,modifier=Modifier.padding(top=12.dp))
-            Button(onClick={ onDownload(o) },modifier=Modifier.fillMaxWidth().padding(horizontal=24.dp,vertical=14.dp).heightIn(min=58.dp),
+            Button(onClick={ onDownload(o) },enabled=!submitting,modifier=Modifier.fillMaxWidth().padding(horizontal=24.dp,vertical=14.dp).heightIn(min=58.dp),
                 shape=RoundedCornerShape(18.dp)) {
-                Icon(Icons.Outlined.FileDownload,null,Modifier.size(20.dp)); Spacer(Modifier.width(10.dp))
+                if(submitting) CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp,color=Ink)
+                else Icon(Icons.Outlined.FileDownload,null,Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
                 Text(if(o.scheduledAt>System.currentTimeMillis()) texts.getString(R.string.schedule) else texts.getString(R.string.start_download))
             }
         }

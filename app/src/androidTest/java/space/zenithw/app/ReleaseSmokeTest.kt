@@ -60,7 +60,7 @@ class ReleaseSmokeTest {
         while(android.os.SystemClock.uptimeMillis()<deadline) {
             // Compose exposes virtual accessibility nodes. Walk them directly instead of
             // using the platform text-search method, which need not search virtual children.
-            nodes().firstOrNull { it.text?.toString()==label }?.let { return it }
+            nodes().firstOrNull { it.text?.toString()==label || it.contentDescription?.toString()==label }?.let { return it }
             android.os.SystemClock.sleep(100)
         }
         captureUi("missing-label")
@@ -69,7 +69,7 @@ class ReleaseSmokeTest {
     private fun clickLabel(label: String) {
         val deadline=android.os.SystemClock.uptimeMillis()+8000
         while(android.os.SystemClock.uptimeMillis()<deadline) {
-            var node=nodes().firstOrNull { it.text?.toString()==label && it.isVisibleToUser }
+            var node=nodes().firstOrNull { (it.text?.toString()==label || it.contentDescription?.toString()==label) && it.isVisibleToUser }
             while(node!=null) {
                 if(node.isClickable && node.isEnabled && node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)) {
                     println("Clicked: $label")
@@ -88,8 +88,11 @@ class ReleaseSmokeTest {
         clickLabel("Einstellungen")
         clickLabel("Sprache")
         val labels=listOf("tr" to "Dil","en" to "Language","de" to "Sprache","fr" to "Langue","ru" to "Язык")
+        var current="Deutsch"
         for((tag,label) in labels) {
+            clickLabel(current)
             clickLabel(AppLanguage.choices.first { it.first==tag }.second)
+            current=AppLanguage.choices.first { it.first==tag }.second
             waitForLabel(label)
             assertEquals(tag,app.store.language)
             val localized=AppLanguage.context(app,tag)
@@ -100,7 +103,7 @@ class ReleaseSmokeTest {
             val eta=AppLanguage.message(localized,"Yaklaşık 2 dk 5 sn")
             assertTrue(eta.contains("2") && eta.contains("5"))
         }
-        clickLabel("Türkçe")
+        clickLabel(current);clickLabel("Türkçe")
         waitForLabel("Dil")
         instrumentation.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
         app.getSharedPreferences("zenithw_v2",0).edit().putBoolean("languagesChecked",true).commit()
@@ -143,7 +146,7 @@ class ReleaseSmokeTest {
     }
     @Test fun settingsCategories() {
         app.store.language="tr"
-        val entries=listOf("Dil" to "English","İndirme motoru" to "Şimdi güncelle","Video ve ses" to "Video kalitesi",
+        val entries=listOf("Dil" to "Türkçe","İndirme motoru" to "Şimdi güncelle","Video ve ses" to "Video kalitesi",
             "Dosya içeriği" to "Medya bilgilerini göm","Altyazılar" to "Altyazıları indir","SponsorBlock" to "Kategoriler",
             "Aria2c" to "Bağlantı sayısı","Bağlantı ve hız" to "Hız sınırı","Oynatma listeleri" to "Liste indirmeye izin ver",
             "Dosyalar ve arşiv" to "Dosya adı","Hazır profiller" to "Günlük","İşlem günlüğü" to "Temizle")
@@ -198,5 +201,55 @@ class ReleaseSmokeTest {
         assertEquals(saved,app.engine.runtimeVersion())
         assertEquals("nightly · $saved",app.store.lastEngineVersion)
         println("NIGHTLY RESTORED WITHOUT NETWORK UPDATE: $saved")
+    }
+    @Test fun singleMediaPlaylistSelection() {
+        val source="https://www.instagram.com/reel/fixture/"
+        val single=org.json.JSONObject("""{"id":"fixture","title":"Reel","url":"https://cdn.example.org/expiring.mp4"}""")
+        assertEquals(listOf(PlaylistEntry(1,"Reel",source)),playlistEntries(single,source))
+        assertTrue(playlistEntries(org.json.JSONObject("""{"_type":"playlist","entries":[]}"""),source).isEmpty())
+        val list=org.json.JSONObject("""{"entries":[null,{"id":"dQw4w9WgXcQ","title":"First","playlist_index":1},{"url":"https://example.org/second","title":"Second","playlist_index":1}]}""")
+        val entries=playlistEntries(list,source)
+        assertEquals(2,entries.size)
+        assertEquals(2,entries.map { it.index }.toSet().size)
+        assertEquals("https://www.youtube.com/watch?v=dQw4w9WgXcQ",entries.first().url)
+    }
+
+    @Test fun bulkLinkDraft() {
+        instrumentation.runOnMainSync {
+            val model=ZenithViewModel(app)
+            val first=model.screen.value.bulkLinks.single().id
+            model.bulkLink(first,"https://example.org/one")
+            model.addBulkLink()
+            val second=model.screen.value.bulkLinks.last().id
+            model.bulkLink(second,"https://example.org/two\nhttps://example.org/three")
+            model.bulkMode(MediaMode.AUDIO)
+            model.tab(2);model.tab(4)
+            assertEquals(listOf("https://example.org/one","https://example.org/two","https://example.org/three"),model.screen.value.bulkLinks.map { it.url })
+            assertEquals(MediaMode.AUDIO,model.screen.value.bulkMode)
+            model.removeBulkLink(first)
+            assertEquals(second,model.screen.value.bulkLinks.first().id)
+            repeat(60) { model.addBulkLink() }
+            assertEquals(50,model.screen.value.bulkLinks.size)
+            model.bulkLink(second,"https://example.org/a\nhttps://example.org/b")
+            assertEquals("https://example.org/two",model.screen.value.bulkLinks.first().url)
+            model.screen.value.bulkLinks.map { it.id }.forEach(model::removeBulkLink)
+            assertEquals("",model.screen.value.bulkLinks.single().url)
+        }
+    }
+
+    @Test fun bulkWorkspace() {
+        app.store.language="tr"
+        app.startActivity(android.content.Intent(app,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
+        clickLabel("Toplu indirme")
+        waitForLabel("Bağlantı 1")
+        clickLabel("Satır ekle")
+        waitForLabel("Bağlantı 2")
+        clickLabel("Ayarlar")
+        waitForLabel("Uygulama dili")
+        clickLabel("Toplu indirme")
+        waitForLabel("Bağlantı 2")
+        clickLabel("Bağlantı 2 satırını sil")
+        waitForLabel("Bağlantı 1")
+        captureUi("bulk-workspace")
     }
 }

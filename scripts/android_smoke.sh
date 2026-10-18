@@ -22,6 +22,9 @@ run_test restoreSettings
 if [ "$MODE" != "engine-only" ]; then
   run_test languages
   run_test settingsCategories
+  run_test singleMediaPlaylistSelection
+  run_test bulkLinkDraft
+  run_test bulkWorkspace
 fi
 for method in pythonPreambleIsHandledBeforeZipParsing ordinaryZipIsAlsoReadable realBundledZipappIsReadable malformedArchivesHaveActionableErrors oversizedVersionFileIsRejected; do
   run_test "$method" EngineArchiveTest
@@ -48,14 +51,14 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 nodes=list(ET.parse('smoke-results/home.xml').getroot().iter('node'))
 labels=[node.get('text','') or node.get('content-desc','') for node in nodes]
-for label in ('Zenith','Yapıştır','İndir','Ayarlar'):
+for label in ('Zenith','Yapıştır','Devam et','Ayarlar','Toplu indirme'):
     assert label in labels, (label,labels)
-for slogan in ('Bir bağlantı.', 'Hepsi senin.', 'DAHA AZ ADIM'):
+for slogan in ('Bir bağlantı.', 'Hepsi senin.', 'DAHA AZ ADIM','Bağlantını getir.','Video, ses ve oynatma listelerini cihazında indir.'):
     assert not any(slogan in label for label in labels), labels
 import re
 bounds=lambda node: list(map(int,re.findall(r'\d+',node.get('bounds',''))))
 url=next(node for node in nodes if node.get('class')=='android.widget.EditText')
-logo=next(node for node in nodes if node.get('content-desc')=='Zenith')
+logo=next(node for node in nodes if node.get('text')=='Zenith')
 root_bounds=bounds(nodes[0])
 y=bounds(url)
 ratio=(y[1]+y[3])/2/root_bounds[3]

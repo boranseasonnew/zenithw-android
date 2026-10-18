@@ -147,7 +147,7 @@
     <string name="engine_error">Engine konnte nicht gestartet werden</string>
     <string name="bundled">Mitgelieferte Version</string>
     <string name="session_count">%1$s Sitzungen · auf dem Gerät verschlüsselt</string>
-    <string name="cookie_count">%1$s Cookies · verschlüsselt</string>
+    <string name="cookie_count">%1$d Cookies · verschlüsselt</string>
     <string name="session_host">Sitzung: %1$s</string>
     <string name="eta">Etwa %1$s Min. %2$s Sek.</string>
 </resources>

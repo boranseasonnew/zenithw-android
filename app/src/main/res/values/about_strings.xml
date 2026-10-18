@@ -3,7 +3,7 @@
     <string name="about_back">Ayarlara dön</string>
     <string name="about_version">Sürüm %1$s</string>
     <string name="about_intro">Medyan için sana ait bir alan. Video ve sesi cihazında indir, düzenle ve sakla.</string>
-    <string name="about_creator">Boran tarafından geliştirildi. Açık kaynaklı, reklamsız ve zorunlu üyelik olmadan.</string>
+    <string name="about_creator">boranseason tarafından yapılmıştır.</string>
     <string name="about_updates_title">Uygulama güncellemeleri</string>
     <string name="about_updates_detail">Bu düğmeye dokunduğunda resmî GitHub Releases sayfasındaki son kararlı sürüm kontrol edilir. Kontrol kendiliğinden indirme veya kurulum başlatmaz.</string>
     <string name="about_check_updates">Güncellemeleri kontrol et</string>

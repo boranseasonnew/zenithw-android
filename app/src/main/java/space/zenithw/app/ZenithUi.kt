@@ -17,6 +17,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -25,19 +28,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.*
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 
@@ -60,7 +58,6 @@ private val CardShape=RoundedCornerShape(26.dp)
     val engine by model.engine.collectAsStateWithLifecycle()
     var cookies by rememberSaveable { mutableStateOf(false) }
     var newCookie by rememberSaveable { mutableStateOf(false) }
-    var bulk by rememberSaveable { mutableStateOf(false) }
     BackHandler(screen.tab!=0 && screen.preview==null) { model.tab(0) }
     val snackbar=remember { SnackbarHostState() }
     val context=LocalContext.current
@@ -76,29 +73,30 @@ private val CardShape=RoundedCornerShape(26.dp)
     }
     Scaffold(containerColor=Ink,snackbarHost={ SnackbarHost(snackbar) },topBar={
         WorkspaceHeader(screen.tab,jobs.count { it.state in setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING) },
-            { model.tab(0) },{ model.library(it) },{ model.tab(2) },{ model.tab(3) })
+            { model.tab(0) },{ model.library(it) },{ model.tab(2) },{ model.tab(4) })
     }) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).navigationBarsPadding().imePadding()) {
             AnimatedContent(screen.tab,transitionSpec={
                 (fadeIn(tween(170))+slideInHorizontally(tween(190)) { 24 }) togetherWith fadeOut(tween(100))
             },label="workspace-page") { page ->
                 when(page) {
-                    0 -> HomeScreen(screen,engine,jobs,model::url,model::analyze,{ cookies=true },{ bulk=true },{ model.loadPlaylist() })
+                    0 -> HomeScreen(screen,model::url,model::analyze,{ cookies=true })
                     1 -> DownloadsScreen(jobs,model::cancel,model::retry,screen.showHistory) { job,share ->
                         runCatching { openFiles(context,job.files,share) }.onFailure { model.showMessage(texts.getString(R.string.no_opener)) }
                     }
                     3 -> AboutScreen { model.tab(2) }
+                    4 -> BulkDownloadScreen(screen,model::bulkLink,model::addBulkLink,model::removeBulkLink,model::bulkMode,
+                        model::url,{ model.loadPlaylist() }) {
+                        if(model.enqueueBulk()) onQueuedDownload()
+                    }
                     else -> SettingsHub(model,screen,engine,{ cookies=true })
                 }
             }
         }
     }
-    if(bulk) BulkLinkSheet(screen.defaults,{ bulk=false }) { raw,options ->
-        if(model.enqueueBulk(raw,options)) { bulk=false;onQueuedDownload() }
-    }
-    if(screen.playlistEntries.isNotEmpty()) PlaylistSelectionSheet(screen.playlistEntries,model::dismissPlaylist) { indices -> onQueuedDownload();model.enqueuePlaylist(indices) }
+    if(screen.playlistEntries.isNotEmpty()) PlaylistSelectionSheet(screen.playlistEntries,model::dismissPlaylist,submitting=screen.submitting) { indices -> onQueuedDownload();model.enqueuePlaylist(indices) }
     screen.preview?.let { DownloadSheet(it,screen.profiles.firstOrNull { p -> p.id==screen.cookieId }?.host,
-        model.app.store.defaultOptions,model::defaults,model::dismissPreview,onDownload,model::loadPlaylist) }
+        model.app.store.defaultOptions,model::defaults,model::dismissPreview,onDownload,model::loadPlaylist,submitting=screen.submitting) }
     if(cookies) ProfileSheet(screen.profiles,screen.cookieId,{ cookies=false },
         { model.cookie(it); cookies=false },model::removeProfile,
         { cookies=false; newCookie=true },
@@ -109,18 +107,13 @@ private val CardShape=RoundedCornerShape(26.dp)
     }
 }
 
-@Composable private fun BrandRow() {
-    Image(painterResource(R.drawable.zenithw),"Zenith",Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)))
-}
-
-@Composable private fun HomeScreen(screen: ScreenState,engine: EngineStatus,jobs: List<DownloadJob>,
-    onUrl: (String)->Unit,onAnalyze: ()->Unit,onCookies: ()->Unit,onBulk: ()->Unit,onPlaylist: ()->Unit) {
+@Composable private fun HomeScreen(screen: ScreenState,
+    onUrl: (String)->Unit,onAnalyze: ()->Unit,onCookies: ()->Unit) {
     val texts=LocalAppContext.current;val clipboard=LocalClipboardManager.current;val keyboard=LocalSoftwareKeyboardController.current
     fun analyze() { keyboard?.hide();onAnalyze() }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=24.dp,vertical=20.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
-        Spacer(Modifier.height(12.dp))
-        Text(texts.getString(R.string.home_title),style=MaterialTheme.typography.displaySmall)
-        Text(texts.getString(R.string.home_description),color=Muted,style=MaterialTheme.typography.bodyLarge)
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxWidth().heightIn(min=maxHeight).verticalScroll(rememberScrollState()).padding(horizontal=24.dp,vertical=20.dp),
+        verticalArrangement=Arrangement.spacedBy(16.dp,Alignment.CenterVertically)) {
         Surface(color=Panel,shape=CardShape,border=BorderStroke(1.dp,Hairline)) {
             Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
@@ -131,25 +124,15 @@ private val CardShape=RoundedCornerShape(26.dp)
                     }
                 }
                 OutlinedTextField(screen.url,onUrl,placeholder={ Text("https://…",color=Muted) },
-                    modifier=Modifier.fillMaxWidth(),minLines=2,maxLines=4,shape=RoundedCornerShape(16.dp),
+                    modifier=Modifier.fillMaxWidth(),singleLine=true,shape=RoundedCornerShape(16.dp),
                     keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Uri,imeAction=ImeAction.Go),
-                    keyboardActions=KeyboardActions(onGo={ if(!screen.analyzing) analyze() }),
+                    keyboardActions=KeyboardActions(onGo={ if(screen.url.isNotBlank() && !screen.analyzing && !screen.playlistLoading) analyze() }),
                     trailingIcon={ if(screen.url.isNotEmpty()) IconButton(onClick={ onUrl("") }) { Icon(Icons.Outlined.Close,texts.getString(R.string.clear_link)) } })
                 Button(onClick=::analyze,enabled=screen.url.isNotBlank() && !screen.analyzing && !screen.playlistLoading,
                     modifier=Modifier.fillMaxWidth().heightIn(min=56.dp),shape=RoundedCornerShape(17.dp)) {
                     if(screen.analyzing) { CircularProgressIndicator(Modifier.size(19.dp),strokeWidth=2.dp,color=Ink);Spacer(Modifier.width(10.dp)) }
                     Text(AppLanguage.message(texts,if(screen.analyzing) "Bağlantı hazırlanıyor" else "Devam et"));Spacer(Modifier.width(10.dp));Icon(Icons.Outlined.ArrowForward,null,Modifier.size(19.dp))
                 }
-                if(screen.playlistLoading) { LinearProgressIndicator(Modifier.fillMaxWidth());Text(texts.getString(R.string.playlist_loading),color=Muted) }
-            }
-        }
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-            OutlinedButton(onClick=onBulk,modifier=Modifier.weight(1f).heightIn(min=50.dp),shape=RoundedCornerShape(16.dp)) {
-                Icon(Icons.Outlined.Queue,null,Modifier.size(18.dp));Spacer(Modifier.width(7.dp));Text(texts.getString(R.string.bulk_open))
-            }
-            OutlinedButton(onClick=onPlaylist,enabled=screen.url.isNotBlank() && !screen.playlistLoading,
-                modifier=Modifier.weight(1f).heightIn(min=50.dp),shape=RoundedCornerShape(16.dp)) {
-                Icon(Icons.Outlined.PlaylistPlay,null,Modifier.size(20.dp));Spacer(Modifier.width(6.dp));Text(texts.getString(R.string.playlist_open))
             }
         }
         Surface(onClick=onCookies,color=Panel,shape=RoundedCornerShape(18.dp)) {
@@ -159,12 +142,7 @@ private val CardShape=RoundedCornerShape(26.dp)
                 Icon(Icons.Outlined.ChevronRight,null,tint=Muted)
             }
         }
-        Row(verticalAlignment=Alignment.CenterVertically) {
-            Box(Modifier.size(6.dp).background(if(engine.ready) Success else Muted,CircleShape));Spacer(Modifier.width(9.dp))
-            Text(AppLanguage.message(texts,engine.label),color=Muted,style=MaterialTheme.typography.bodySmall)
-        }
-        val active=jobs.count { it.state in setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING) }
-        if(active>0) Text(texts.getString(R.string.active_downloads,active),color=Muted,style=MaterialTheme.typography.bodyMedium)
+    }
     }
 }
 
@@ -224,23 +202,45 @@ private val CardShape=RoundedCornerShape(26.dp)
 }
 
 @Composable fun OptionSwitch(title: String,subtitle: String="",value: Boolean,onChange: (Boolean)->Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min=58.dp).clickable { onChange(!value) }.padding(vertical=6.dp),verticalAlignment=Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().heightIn(min=58.dp).toggleable(value=value,role=Role.Switch,onValueChange=onChange).padding(vertical=6.dp),verticalAlignment=Alignment.CenterVertically) {
         Column(Modifier.weight(1f).padding(end=12.dp)) {
             Text(AppLanguage.message(LocalAppContext.current,title),style=MaterialTheme.typography.bodyLarge)
             if(subtitle.isNotBlank()) Text(AppLanguage.message(LocalAppContext.current,subtitle),color=Muted,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=3.dp))
         }
-        Switch(value,onChange)
+        Switch(value,onCheckedChange=null)
     }
 }
 @Composable fun Choices(items: List<Pair<String,String>>,selected: String,onSelect: (String)->Unit) {
-    FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+    FlowRow(modifier=Modifier.selectableGroup(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
         items.forEach { (value,label) ->
             val active=selected==value
             val color by animateColorAsState(if(active) Silver else PanelRaised,tween(160),label="choice")
-            Surface(onClick={ onSelect(value) },modifier=Modifier.semantics { this.selected=active;role=Role.RadioButton },
+            Surface(modifier=Modifier.clip(RoundedCornerShape(14.dp)).selectable(selected=active,role=Role.RadioButton,onClick={ onSelect(value) }),
                 color=color,shape=RoundedCornerShape(14.dp),border=BorderStroke(1.dp,if(active) Silver else Hairline)) {
-                Text(AppLanguage.message(LocalAppContext.current,label),Modifier.heightIn(min=46.dp).padding(horizontal=15.dp,vertical=13.dp),
-                    color=if(active) Ink else Muted,style=MaterialTheme.typography.labelLarge)
+                Row(Modifier.heightIn(min=48.dp).padding(horizontal=14.dp,vertical=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+                    if(active) Icon(Icons.Outlined.Check,null,Modifier.size(16.dp),tint=Ink)
+                    Text(AppLanguage.message(LocalAppContext.current,label),color=if(active) Ink else Silver,style=MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
+    }
+}
+@Composable fun OptionPicker(title: String,items: List<Pair<String,String>>,selected: String,onSelect: (String)->Unit) {
+    val texts=LocalAppContext.current
+    var expanded by remember { mutableStateOf(false) }
+    val label=items.firstOrNull { it.first==selected }?.second ?: selected
+    ExposedDropdownMenuBox(expanded=expanded,onExpandedChange={ expanded=it }) {
+        OutlinedTextField(value=AppLanguage.message(texts,label),onValueChange={},readOnly=true,singleLine=true,
+            label={ Text(AppLanguage.message(texts,title)) },
+            trailingIcon={ ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier=Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+            shape=RoundedCornerShape(16.dp))
+        ExposedDropdownMenu(expanded=expanded,onDismissRequest={ expanded=false },containerColor=PanelRaised) {
+            items.forEach { (value,name) ->
+                DropdownMenuItem(text={ Text(AppLanguage.message(texts,name)) },
+                    modifier=Modifier.semantics { this.selected=value==selected },
+                    trailingIcon={ if(value==selected) Icon(Icons.Outlined.Check,null,tint=Silver) },
+                    onClick={ expanded=false;onSelect(value) })
             }
         }
     }

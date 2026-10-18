@@ -7,7 +7,7 @@
     <string name="home_description">Lade Videos, Audio und Playlists auf dein Gerät. Ohne Konto, ohne Werbung.</string>
     <string name="bulk_open">Mehrere Links</string>
     <string name="playlist_open">Aus Playlist auswählen</string>
-    <string name="bulk_title">Mehrere Links</string>
+    <string name="bulk_title">Mehrfachdownload</string>
     <string name="bulk_description">Füge einen Link pro Zeile ein, bis zu 50 Links. Duplikate werden automatisch entfernt.</string>
     <string name="bulk_links">Video- oder Audio-Links</string>
     <string name="bulk_submit">Zur Warteschlange hinzufügen</string>
@@ -45,4 +45,8 @@
     <string name="recovery_kept">Nicht gespeicherte Dateien wurden im privaten Wiederherstellungsordner auf deinem Gerät aufbewahrt.</string>
     <string name="square_cover_unsupported">Das Einbetten quadratischer Cover wird in diesem Format nicht zuverlässig unterstützt; die Mediendatei wurde beibehalten.</string>
     <string name="square_cover_tool_missing">Das Prüfwerkzeug für quadratische Cover wurde nicht gefunden; die ursprüngliche Mediendatei wurde beibehalten.</string>
+    <string name="bulk_link_number">Link %1$d</string>
+    <string name="bulk_remove_link">Link %1$d entfernen</string>
+    <string name="bulk_add_row">Zeile hinzufügen</string>
+    <string name="playlist_link">Playlist-Link</string>
 </resources>

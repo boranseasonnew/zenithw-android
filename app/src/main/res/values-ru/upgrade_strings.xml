@@ -7,7 +7,7 @@
     <string name="home_description">Загружай видео, аудио и плейлисты на своё устройство. Без аккаунта и рекламы.</string>
     <string name="bulk_open">Несколько ссылок</string>
     <string name="playlist_open">Выбрать из плейлиста</string>
-    <string name="bulk_title">Несколько ссылок</string>
+    <string name="bulk_title">Пакетная загрузка</string>
     <string name="bulk_description">Добавь по одной ссылке в строке, не более 50 ссылок. Повторы удаляются автоматически.</string>
     <string name="bulk_links">Ссылки на видео или аудио</string>
     <string name="bulk_submit">Добавить в очередь</string>
@@ -45,4 +45,8 @@
     <string name="recovery_kept">Файлы, которые не удалось сохранить, оставлены в закрытой папке восстановления на устройстве.</string>
     <string name="square_cover_unsupported">Этот формат не обеспечивает надёжное встраивание квадратной обложки; медиафайл сохранён.</string>
     <string name="square_cover_tool_missing">Инструмент проверки квадратной обложки не найден; исходный медиафайл сохранён.</string>
+    <string name="bulk_link_number">Ссылка %1$d</string>
+    <string name="bulk_remove_link">Удалить ссылку %1$d</string>
+    <string name="bulk_add_row">Добавить строку</string>
+    <string name="playlist_link">Ссылка на плейлист</string>
 </resources>

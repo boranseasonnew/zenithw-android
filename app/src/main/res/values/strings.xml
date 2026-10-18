@@ -147,7 +147,7 @@
     <string name="engine_error">Motor başlatılamadı</string>
     <string name="bundled">Birlikte gelen sürüm</string>
     <string name="session_count">%1$s oturum · cihazda şifreli saklanır</string>
-    <string name="cookie_count">%1$s cookie · şifreli</string>
+    <string name="cookie_count">%1$d cookie · şifreli</string>
     <string name="session_host">Oturum: %1$s</string>
     <string name="eta">Yaklaşık %1$s dk %2$s sn</string>
 </resources>
