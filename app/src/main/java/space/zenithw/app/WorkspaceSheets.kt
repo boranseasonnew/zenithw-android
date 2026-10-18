@@ -17,8 +17,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.KeyboardType
@@ -57,16 +55,14 @@ fun BulkDownloadScreen(screen: ScreenState,onLink: (String,String)->Unit,onAdd: 
     val keyboard=LocalSoftwareKeyboardController.current
     val listState=rememberLazyListState()
     var previousCount by remember { mutableIntStateOf(screen.bulkLinks.size) }
-    var pendingFocus by remember { mutableStateOf<String?>(null) }
     val active=screen.tab==4
     LaunchedEffect(active,screen.bulkLinks.size) {
         val added=screen.bulkLinks.size>previousCount
         previousCount=screen.bulkLinks.size
-        pendingFocus=null
         if(active && added) {
-            // Finish scrolling before focus opens the IME and changes the viewport.
+            // Adding a row reveals it. Only an explicit tap starts text input;
+            // delayed focus requests can reopen the IME after page navigation.
             listState.animateScrollToItem(screen.bulkLinks.size+1)
-            pendingFocus=screen.bulkLinks.last().id
         }
     }
     Column(Modifier.fillMaxSize()) {
@@ -77,13 +73,9 @@ fun BulkDownloadScreen(screen: ScreenState,onLink: (String,String)->Unit,onAdd: 
             }
             items(screen.bulkLinks,key={ it.id }) { row ->
                 val index=screen.bulkLinks.indexOf(row)+1
-                val focus=remember { FocusRequester() }
-                LaunchedEffect(active,pendingFocus) {
-                    if(active && pendingFocus==row.id) { focus.requestFocus();pendingFocus=null }
-                }
                 Row(verticalAlignment=Alignment.CenterVertically) {
                     OutlinedTextField(row.url,{ onLink(row.id,it) },label={ Text(texts.getString(R.string.bulk_link_number,index)) },
-                        placeholder={ Text("https://…") },singleLine=true,modifier=Modifier.weight(1f).focusRequester(focus),shape=RoundedCornerShape(16.dp),
+                        placeholder={ Text("https://…") },singleLine=true,modifier=Modifier.weight(1f),shape=RoundedCornerShape(16.dp),
                         keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Uri,imeAction=ImeAction.Done),
                         keyboardActions=KeyboardActions(onDone={ keyboard?.hide() }))
                     IconButton(onClick={ onRemove(row.id) },enabled=screen.bulkLinks.size>1 || row.url.isNotEmpty()) {
