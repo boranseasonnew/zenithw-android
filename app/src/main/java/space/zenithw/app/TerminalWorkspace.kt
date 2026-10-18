@@ -19,6 +19,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
@@ -28,18 +30,25 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun TerminalWorkspace(model: ZenithViewModel, screen: ScreenState, onQueuedDownload: () -> Unit) {
     val texts = LocalAppContext.current
+    val focus = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    fun selectTab(index: Int) {
+        focus.clearFocus(force = true)
+        keyboard?.hide()
+        tab = index
+    }
     Column(Modifier.fillMaxSize()) {
         SecondaryTabRow(selectedTabIndex = tab, containerColor = Ink, contentColor = Silver) {
             listOf(R.string.terminal_batch, R.string.terminal_commands, R.string.terminal_logs).forEachIndexed { index, title ->
-                Tab(selected = tab == index, onClick = { tab = index }, text = { Text(texts.getString(title)) })
+                Tab(selected = tab == index, onClick = { selectTab(index) }, text = { Text(texts.getString(title)) })
             }
         }
         Box(Modifier.weight(1f)) {
             when (tab) {
                 0 -> BulkDownloadScreen(screen, model::bulkLink, model::addBulkLink, model::removeBulkLink,
                     model::bulkMode, model::url, { model.loadPlaylist() }, { if (model.enqueueBulk()) onQueuedDownload() })
-                1 -> CommandComposer(model, screen, onStarted = { onQueuedDownload(); tab = 2 })
+                1 -> CommandComposer(model, screen, onStarted = { selectTab(2); onQueuedDownload() })
                 else -> CommandLogs(model)
             }
         }

@@ -58,7 +58,11 @@ private val CardShape=RoundedCornerShape(26.dp)
     val engine by model.engine.collectAsStateWithLifecycle()
     var cookies by rememberSaveable { mutableStateOf(false) }
     var newCookie by rememberSaveable { mutableStateOf(false) }
-    BackHandler(screen.tab!=0 && screen.preview==null) { model.tab(0) }
+    val focus=LocalFocusManager.current
+    val keyboard=LocalSoftwareKeyboardController.current
+    fun finishInput() { focus.clearFocus(force=true);keyboard?.hide() }
+    fun navigate(page: Int) { finishInput();model.tab(page) }
+    BackHandler(screen.tab!=0 && screen.preview==null) { navigate(0) }
     val snackbar=remember { SnackbarHostState() }
     val context=LocalContext.current
     val cookieBrowser=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -68,12 +72,14 @@ private val CardShape=RoundedCornerShape(26.dp)
     val importer=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let(model::importCookies)
     }
+    // Also cover navigation initiated by a share intent or a queued download.
+    LaunchedEffect(screen.tab) { finishInput() }
     LaunchedEffect(screen.message) {
         screen.message?.let { snackbar.showSnackbar(AppLanguage.message(texts,it)); model.dismissMessage() }
     }
     Scaffold(containerColor=Ink,snackbarHost={ SnackbarHost(snackbar) },topBar={
         WorkspaceHeader(screen.tab,jobs.count { it.state in setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING) },
-            { model.tab(0) },{ model.library(it) },{ model.tab(2) },{ model.tab(4) })
+            { navigate(0) },{ finishInput();model.library(it) },{ navigate(2) },{ navigate(4) })
     }) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).navigationBarsPadding().imePadding()) {
             AnimatedContent(screen.tab,transitionSpec={
@@ -84,7 +90,7 @@ private val CardShape=RoundedCornerShape(26.dp)
                     1 -> DownloadsScreen(jobs,model::cancel,model::retry,screen.showHistory) { job,share ->
                         runCatching { openFiles(context,job.files,share) }.onFailure { model.showMessage(texts.getString(R.string.no_opener)) }
                     }
-                    3 -> AboutScreen { model.tab(2) }
+                    3 -> AboutScreen { navigate(2) }
                     4 -> TerminalWorkspace(model,screen,onQueuedDownload)
                     else -> SettingsHub(model,screen,engine,{ cookies=true })
                 }

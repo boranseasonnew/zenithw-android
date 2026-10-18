@@ -26,6 +26,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -53,6 +55,9 @@ private val categories=listOf(
 @Composable fun SettingsHub(model: ZenithViewModel,screen: ScreenState,engine: EngineStatus,onCookies: ()->Unit) {
     val texts=LocalAppContext.current
     val context=LocalContext.current
+    val focusManager=LocalFocusManager.current
+    val keyboard=LocalSoftwareKeyboardController.current
+    fun dismissInput() { focusManager.clearFocus(force=true);keyboard?.hide() }
     val directoryPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let {
             runCatching {
@@ -62,17 +67,18 @@ private val categories=listOf(
         }
     }
     var active by rememberSaveable { mutableStateOf<String?>(null) }
+    fun navigate(category: String?) { dismissInput();active=category }
     val logs by model.logs.collectAsStateWithLifecycle()
     val o=screen.defaults
     fun update(next: DownloadOptions)=model.defaults(next)
-    if(active=="about") { AboutScreen { active=null };return }
-    BackHandler(active!=null) { active=null }
+    if(active=="about") { AboutScreen { navigate(null) };return }
+    BackHandler(active!=null) { navigate(null) }
     AnimatedContent(active,transitionSpec={ fadeIn(tween(160)) togetherWith fadeOut(tween(100)) },label="settings-page") { category ->
         LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(24.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
             item {
                 Row(Modifier.fillMaxWidth().padding(bottom=8.dp),verticalAlignment=Alignment.CenterVertically) {
                     if(category!=null) {
-                        IconButton(onClick={ active=null }) { Icon(Icons.Outlined.ArrowBack,AppLanguage.message(texts,"Ayarlara dön")) }
+                        IconButton(onClick={ navigate(null) }) { Icon(Icons.Outlined.ArrowBack,AppLanguage.message(texts,"Ayarlara dön")) }
                         Spacer(Modifier.width(6.dp))
                     }
                     Column(Modifier.weight(1f)) {
@@ -83,7 +89,7 @@ private val categories=listOf(
             }
             if(category==null) {
                 items(categories) { group ->
-                    Surface(onClick={ if(group.key=="cookies")onCookies() else active=group.key },
+                    Surface(onClick={ if(group.key=="cookies") { dismissInput();onCookies() } else navigate(group.key) },
                         shape=RoundedCornerShape(22.dp),color=Panel) {
                         Row(Modifier.fillMaxWidth().padding(19.dp),verticalAlignment=Alignment.CenterVertically) {
                             Surface(shape=RoundedCornerShape(14.dp),color=PanelRaised) {
@@ -138,7 +144,7 @@ private val categories=listOf(
                                 Pick("Sürüm kanalı",listOf("stable" to "Kararlı","nightly" to "Nightly"),screen.channel,model::channel)
                                 engine.warning?.let {
                                     Text(AppLanguage.message(texts,it),color=MaterialTheme.colorScheme.error)
-                                    TextButton(onClick={ active="terminal" }) { Text(AppLanguage.message(texts,"İşlem günlüğü")) }
+                                    TextButton(onClick={ navigate("terminal") }) { Text(AppLanguage.message(texts,"İşlem günlüğü")) }
                                 }
                                 Button(onClick=model::updateEngine,enabled=!engine.updating,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp)) {
                                     Text(AppLanguage.message(texts,if(engine.updating) "Kontrol ediliyor…" else "Şimdi güncelle"))
