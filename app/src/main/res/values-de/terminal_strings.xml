@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="terminal_workspace">Stapel-Downloads und Befehle</string>
+    <string name="terminal_batch">Stapel</string>
+    <string name="terminal_commands">Befehle</string>
+    <string name="terminal_logs">Protokolle</string>
+    <string name="terminal_template">Befehlsvorlage</string>
+    <string name="terminal_custom">Eigener Befehl</string>
+    <string name="terminal_arguments">yt-dlp-Optionen</string>
+    <string name="terminal_arguments_hint">Füge Links in den Zeilen unten hinzu. Die Optionen werden als Downloadaufgaben mit yt-dlp ausgeführt.</string>
+    <string name="terminal_arguments_error">Prüfe die Optionen und Anführungszeichen. Beachte die Liste der unterstützten Optionen.</string>
+    <string name="terminal_save_template">Vorlage speichern</string>
+    <string name="terminal_edit_template">Vorlage bearbeiten</string>
+    <string name="terminal_delete_template">Vorlage löschen</string>
+    <string name="terminal_template_name">Vorlagenname</string>
+    <string name="terminal_save">Speichern</string>
+    <string name="terminal_supported">Unterstützte Optionen</string>
+    <string name="terminal_supported_summary">Format, Audio, Untertitel, Netzwerk und Inhalt</string>
+    <string name="terminal_supported_flags">-f / --format\n-S / --format-sort\n-x / --extract-audio\n--audio-format / --audio-quality\n--merge-output-format / --remux-video\n--write-subs / --write-auto-subs\n--sub-langs / --sub-format / --embed-subs\n--embed-thumbnail / --embed-metadata\n--download-sections / --force-keyframes-at-cuts\n--sponsorblock-remove / --sponsorblock-mark\n--playlist-items / --playlist-reverse\n--limit-rate / --concurrent-fragments\n--retries / --fragment-retries / --socket-timeout\n--proxy / --user-agent / --referer\n--extractor-args / --match-filter</string>
+    <string name="terminal_managed_options">Stelle den Optionen nicht yt-dlp voran. Ausgabeordner, Konfigurationsdateien, Cookie-Dateien und externe Programme werden von der App verwaltet. Dieses Feld führt keine Shell-Befehle aus. Befehlsoptionen können die Downloadeinstellungen überschreiben.</string>
+    <string name="terminal_start">Aufgabe starten</string>
+    <string name="terminal_log_source">Protokollquelle</string>
+    <string name="terminal_session">App-Sitzung</string>
+    <string name="terminal_follow">Neue Zeilen verfolgen</string>
+    <string name="terminal_copy">Protokoll kopieren</string>
+    <string name="terminal_clear">Protokolle löschen</string>
+    <string name="terminal_empty_log">Noch keine Protokolle in dieser Sitzung.</string>
+    <string name="terminal_task_count">%1$d Befehlsaufgaben · Für Details eine Protokollquelle auswählen</string>
+</resources>

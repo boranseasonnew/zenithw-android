@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.provider.DocumentsContract
 import androidx.core.app.NotificationCompat
 import androidx.core.content.FileProvider
 import androidx.work.*
@@ -41,6 +42,7 @@ class DownloadWorker(context: Context,params: WorkerParameters): CoroutineWorker
         var publishedAll=false
         val saved=app.store.get(job.id)?.files.orEmpty().toMutableList()
         try {
+            app.store.log("TASK  Started",job.id)
             setForeground(foreground(job.title,0))
             val outcome=app.engine.download(job,directory,started={
                 app.store.change(job.id) { it.copy(state=JobState.RUNNING,phase="preparing",progress=0f,progressKnown=false,etaSeconds=-1,detail="Bağlantı ve medya hazırlanıyor") }
@@ -56,11 +58,12 @@ class DownloadWorker(context: Context,params: WorkerParameters): CoroutineWorker
                         etaSeconds=if(phase=="downloading") eta else -1,
                         bytesDownloaded=bytes.getOrNull(1)?.toLongOrNull() ?: 0,totalBytes=bytes.getOrNull(2)?.toLongOrNull() ?: 0,
                         detail=DownloadPolicy.progressDetail(percent,eta,line)) }
-                    setForegroundAsync(foreground(job.title,percent.toInt().coerceIn(0,99),percent<0 || phase!="downloading"))
+                    setForegroundAsync(foreground(app.store.get(job.id)?.title ?: job.title,percent.toInt().coerceIn(0,99),percent<0 || phase!="downloading"))
                 }
             })
             currentCoroutineContext().ensureActive()
             app.store.change(job.id) { it.copy(state=JobState.SAVING,phase="saving",progressKnown=false,etaSeconds=-1,detail="Cihaza kaydediliyor",notes=outcome.notes) }
+            app.store.log("TASK  Saving output files",job.id)
             val outputs=directory.listFiles()?.filter {
                 it.isFile && DownloadPolicy.isPublicOutput(it.name)
             }.orEmpty().sortedWith(compareBy<File> {
@@ -81,13 +84,18 @@ class DownloadWorker(context: Context,params: WorkerParameters): CoroutineWorker
             }
             publishedAll=true
             app.store.change(job.id) { it.copy(state=JobState.COMPLETED,phase="complete",progressKnown=true,etaSeconds=-1,progress=100f,detail=if(outcome.notes.isEmpty()) "Kaydedildi" else "Kaydedildi · açıklamayı kontrol et",files=saved.toList(),notes=outcome.notes) }
+            app.store.log("TASK  Completed · ${saved.size} file(s)",job.id)
             Result.success()
         } catch(cancelled: CancellationException) {
+            app.store.log("TASK  Cancelled",job.id)
             app.store.change(job.id) { it.copy(state=JobState.CANCELLED,phase="cancelled",progressKnown=false,etaSeconds=-1,files=saved.toList(),detail="İptal edildi",
                 notes=it.notes+if(directory.listFiles().orEmpty().any { file -> DownloadPolicy.isPublicOutput(file.name) }) listOf("Kaydedilemeyen dosyalar cihazdaki özel kurtarma klasöründe korundu.") else emptyList()) }
             throw cancelled
         } catch(e: Exception) {
             val cancelled=isStopped || app.store.get(job.id)?.state==JobState.CANCELLED
+            if(cancelled) app.store.log("TASK  Cancelled",job.id)
+            else (e.message ?: e.javaClass.simpleName).lineSequence().filter { it.isNotBlank() }.toList().takeLast(20)
+                .forEach { app.store.log("ERROR  $it",job.id) }
             app.store.change(job.id) { it.copy(state=if(cancelled) JobState.CANCELLED else JobState.FAILED,phase=if(cancelled) "cancelled" else "failed",etaSeconds=-1,
                 files=saved.toList(),notes=it.notes+if(directory.listFiles().orEmpty().any { file -> DownloadPolicy.isPublicOutput(file.name) }) listOf("Kaydedilemeyen dosyalar cihazdaki özel kurtarma klasöründe korundu.") else emptyList(),
                 detail=if(cancelled) "İptal edildi" else DownloadPolicy.failureDetail(e.message.orEmpty())) }
@@ -135,11 +143,44 @@ class DownloadWorker(context: Context,params: WorkerParameters): CoroutineWorker
     }
     private suspend fun publish(file: File): Uri {
         val mime=android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(file.extension.lowercase()) ?: "application/octet-stream"
+        val subfolder=if(app.store.separateMediaFolders) when {
+            mime.startsWith("video/") -> "Video"
+            mime.startsWith("audio/") -> "Audio"
+            else -> "Other"
+        } else ""
+        if(app.store.outputDirectory.isNotBlank()) {
+            val resolver=applicationContext.contentResolver
+            val tree=Uri.parse(app.store.outputDirectory)
+            var parent=DocumentsContract.buildDocumentUriUsingTree(tree,DocumentsContract.getTreeDocumentId(tree))
+            if(subfolder.isNotBlank()) {
+                val children=DocumentsContract.buildChildDocumentsUriUsingTree(tree,DocumentsContract.getDocumentId(parent))
+                val existing=resolver.query(children,arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID,DocumentsContract.Document.COLUMN_DISPLAY_NAME,DocumentsContract.Document.COLUMN_MIME_TYPE),null,null,null)?.use { cursor ->
+                    var document: Uri?=null
+                    while(cursor.moveToNext()) {
+                        if(cursor.getString(1)==subfolder && cursor.getString(2)==DocumentsContract.Document.MIME_TYPE_DIR) {
+                            document=DocumentsContract.buildDocumentUriUsingTree(tree,cursor.getString(0));break
+                        }
+                    }
+                    document
+                }
+                parent=existing ?: DocumentsContract.createDocument(resolver,parent,DocumentsContract.Document.MIME_TYPE_DIR,subfolder)
+                    ?: error("Cannot create output folder")
+            }
+            val uri=DocumentsContract.createDocument(resolver,parent,mime,file.name) ?: error("Cannot create output file")
+            try {
+                resolver.openOutputStream(uri,"w")?.use { copy(file,it) } ?: error("Cannot write output file")
+                currentCoroutineContext().ensureActive()
+                return uri
+            } catch(e: Exception) {
+                runCatching { DocumentsContract.deleteDocument(resolver,uri) }
+                throw e
+            }
+        }
         if(Build.VERSION.SDK_INT>=29) {
             val values=ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME,file.name)
                 put(MediaStore.MediaColumns.MIME_TYPE,mime)
-                put(MediaStore.MediaColumns.RELATIVE_PATH,"Download/ZenithW")
+                put(MediaStore.MediaColumns.RELATIVE_PATH,"Download/ZenithW"+if(subfolder.isNotBlank()) "/$subfolder" else "")
                 put(MediaStore.MediaColumns.IS_PENDING,1)
             }
             val resolver=applicationContext.contentResolver
@@ -151,7 +192,7 @@ class DownloadWorker(context: Context,params: WorkerParameters): CoroutineWorker
                 return uri
             } catch(e: Exception) { resolver.delete(uri,null,null); throw e }
         }
-        val directory=File(applicationContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),"ZenithW").apply { mkdirs() }
+        val directory=File(applicationContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),"ZenithW"+if(subfolder.isNotBlank()) "/$subfolder" else "").apply { mkdirs() }
         val target=File(directory,file.name)
         val safeTarget=if(target.exists()) File(directory,"${System.currentTimeMillis()}-${file.name}") else target
         try {

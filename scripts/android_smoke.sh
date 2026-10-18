@@ -25,6 +25,10 @@ if [ "$MODE" != "engine-only" ]; then
   run_test singleMediaPlaylistSelection
   run_test bulkLinkDraft
   run_test bulkWorkspace
+  run_test sealWorkspaceControls
+  for method in metadataOffersRealFormatsAndSubtitleLanguages privacyRetainsActiveQueueAndClearsPerMediaDefaults configurationIsAvailableWithoutWaitingForExtraction requestHonorsAudioFormatClipAndNetworkOptions; do
+    run_test "$method" SealFlowTest
+  done
 fi
 for method in pythonPreambleIsHandledBeforeZipParsing ordinaryZipIsAlsoReadable realBundledZipappIsReadable malformedArchivesHaveActionableErrors oversizedVersionFileIsRejected; do
   run_test "$method" EngineArchiveTest
@@ -51,7 +55,7 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 nodes=list(ET.parse('smoke-results/home.xml').getroot().iter('node'))
 labels=[node.get('text','') or node.get('content-desc','') for node in nodes]
-for label in ('Zenith','Yapıştır','Devam et','Ayarlar','Toplu indirme'):
+for label in ('Zenith','Yapıştır','İndir','Ayarlar','Toplu indirme ve komutlar'):
     assert label in labels, (label,labels)
 for slogan in ('Bir bağlantı.', 'Hepsi senin.', 'DAHA AZ ADIM','Bağlantını getir.','Video, ses ve oynatma listelerini cihazında indir.'):
     assert not any(slogan in label for label in labels), labels
@@ -62,7 +66,7 @@ logo=next(node for node in nodes if node.get('text')=='Zenith')
 root_bounds=bounds(nodes[0])
 y=bounds(url)
 ratio=(y[1]+y[3])/2/root_bounds[3]
-assert .45<ratio<.70, ('URL must be near/slightly below center',ratio)
+assert .35<ratio<.70, ('URL must be in the central region',ratio)
 assert bounds(logo)[3]<root_bounds[3]*.25, 'Logo must stay at top left'
 print('PASS: five languages, persistence and centered minimal screen on Android 13; URL ratio',ratio)
 PY

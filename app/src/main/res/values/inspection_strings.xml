@@ -1,0 +1,4 @@
+<resources>
+    <string name="options_invalid">Seçenekleri kontrol et. Kesit başlangıcı ve bitişi, dosya adı veya komut geçersiz.</string>
+    <string name="command_required">Bir yt-dlp komutu seç veya yaz.</string>
+</resources>

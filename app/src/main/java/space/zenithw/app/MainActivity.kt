@@ -12,6 +12,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 class MainActivity: ComponentActivity() {
     private val model: ZenithViewModel by viewModels()
@@ -22,7 +24,8 @@ class MainActivity: ComponentActivity() {
             navigationBarStyle=SystemBarStyle.dark(android.graphics.Color.TRANSPARENT))
         receive(intent)
         setContent {
-            ZenithTheme {
+            val screen by model.screen.collectAsStateWithLifecycle()
+            ZenithTheme(mode=screen.themeMode,dynamicColors=screen.dynamicColors) {
                 ZenithApp(model,onDownload={ options ->
                     requestDownloadNotifications()
                     model.enqueue(options)

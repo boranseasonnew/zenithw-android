@@ -1,0 +1,4 @@
+<resources>
+    <string name="options_invalid">Vérifiez les options. La plage de découpage, le nom de fichier ou la commande est invalide.</string>
+    <string name="command_required">Sélectionnez ou saisissez les options yt-dlp.</string>
+</resources>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="seal_video_link">Ссылка на видео</string>
+    <string name="seal_finding_media">Получение информации о видео</string>
+    <string name="seal_info_unavailable">Информация о видео недоступна</string>
+    <string name="seal_configure_download">Настроить загрузку</string>
+    <string name="seal_slow_retry">Повторить с большим временем ожидания</string>
+    <string name="seal_download_type">Тип загрузки</string>
+    <string name="seal_choose_format">Выбрать исходный формат</string>
+    <string name="seal_selected_format">Источник · %1$s</string>
+    <string name="seal_filename_clip">Имя файла и фрагмент</string>
+    <string name="seal_filename_clip_hint">Для этой загрузки</string>
+    <string name="seal_filename_override">Имя файла · необязательно</string>
+    <string name="seal_clip_start">Начало · 00:00</string>
+    <string name="seal_clip_end">Конец · 00:00</string>
+    <string name="seal_clip_hint">Укажите начало и конец фрагмента. Оставьте оба поля пустыми, чтобы скачать видео целиком.</string>
+    <string name="seal_available_subtitles">Доступные субтитры</string>
+    <string name="seal_restrict_names">Использовать совместимые имена файлов</string>
+    <string name="seal_max_filesize">Максимальный размер файла · МБ, 0 = без ограничений</string>
+    <string name="seal_format_sort">Сортировка форматов · например, res,fps</string>
+    <string name="seal_custom_arguments">Свои параметры yt-dlp</string>
+    <string name="seal_finding_media_slow">Получение информации о видео · продлённое ожидание</string>
+</resources>

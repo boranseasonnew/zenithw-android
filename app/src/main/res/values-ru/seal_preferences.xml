@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pref_appearance">Внешний вид</string>
+    <string name="pref_appearance_summary">Тема и цвета устройства</string>
+    <string name="pref_interaction">Интерфейс и конфиденциальность</string>
+    <string name="pref_interaction_summary">Настройки загрузки, предпросмотр и история</string>
+    <string name="pref_theme">Тема</string>
+    <string name="pref_system">Системная</string>
+    <string name="pref_light">Светлая</string>
+    <string name="pref_dark">Тёмная</string>
+    <string name="pref_dynamic">Динамические цвета</string>
+    <string name="pref_dynamic_summary">Использовать цвета обоев устройства.</string>
+    <string name="pref_configure">Показывать настройки перед загрузкой</string>
+    <string name="pref_configure_summary">Если отключено, загрузка добавляется в очередь с сохранёнными настройками.</string>
+    <string name="pref_remember">Запоминать настройки загрузки</string>
+    <string name="pref_preview">Показывать предпросмотр</string>
+    <string name="pref_history">Сохранять историю загрузок</string>
+    <string name="pref_history_summary">Если отключено, завершённые задачи исчезнут после перезапуска приложения. Скачанные файлы и активная очередь сохранятся.</string>
+    <string name="pref_update_interval">Интервал обновления движка</string>
+    <string name="pref_hours">Часов: %1$d</string>
+    <string name="pref_sort">Приоритет форматов</string>
+    <string name="pref_sort_auto">Автоматически</string>
+    <string name="pref_sort_resolution">Разрешение и частота кадров</string>
+    <string name="pref_sort_size">Размер файла</string>
+    <string name="pref_sort_compatibility">Совместимость с H.264</string>
+    <string name="pref_max_size">Ограничение размера файла</string>
+    <string name="pref_unlimited">Без ограничений</string>
+    <string name="pref_output_directory">Папка загрузок</string>
+    <string name="pref_choose_directory">Выбрать папку</string>
+    <string name="pref_reset_directory">Использовать папку по умолчанию</string>
+    <string name="pref_directory_error">Постоянный доступ к этой папке не предоставлен. Выберите другую папку.</string>
+    <string name="pref_separate_folders">Отдельные папки для видео и аудио</string>
+    <string name="pref_separate_folders_summary">Сохранять файлы во вложенные папки Video и Audio.</string>
+    <string name="pref_restrict_names">Использовать совместимые имена файлов</string>
+</resources>

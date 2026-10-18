@@ -20,6 +20,38 @@ class LocalStore(context: Context) {
     private val preferences=context.getSharedPreferences("zenithw_v2",Context.MODE_PRIVATE)
     private val mutableJobs=MutableStateFlow(loadJobs())
     val jobs=mutableJobs.asStateFlow()
+    var themeMode: String
+        get()=preferences.getString("themeMode","dark").orEmpty().takeIf { it in setOf("system","light","dark") } ?: "dark"
+        set(value) { preferences.edit().putString("themeMode",value.takeIf { it in setOf("system","light","dark") } ?: "dark").apply() }
+    var dynamicColors: Boolean
+        get()=preferences.getBoolean("dynamicColors",false)
+        set(value) { preferences.edit().putBoolean("dynamicColors",value).apply() }
+    var configureBeforeDownload: Boolean
+        get()=preferences.getBoolean("configureBeforeDownload",true)
+        set(value) { preferences.edit().putBoolean("configureBeforeDownload",value).apply() }
+    var rememberDownloadChoices: Boolean
+        get()=preferences.getBoolean("rememberDownloadChoices",true)
+        set(value) { preferences.edit().putBoolean("rememberDownloadChoices",value).apply() }
+    var showMediaPreview: Boolean
+        get()=preferences.getBoolean("showMediaPreview",true)
+        set(value) { preferences.edit().putBoolean("showMediaPreview",value).apply() }
+    var keepHistory: Boolean
+        get()=preferences.getBoolean("keepHistory",true)
+        set(value) {
+            synchronized(this) {
+                preferences.edit().putBoolean("keepHistory",value).commit()
+                persistJobs(mutableJobs.value,true)
+            }
+        }
+    var updateIntervalHours: Int
+        get()=preferences.getInt("updateIntervalHours",24).coerceIn(1,168)
+        set(value) { preferences.edit().putInt("updateIntervalHours",value.coerceIn(1,168)).apply() }
+    var outputDirectory: String
+        get()=preferences.getString("outputDirectory","").orEmpty()
+        set(value) { preferences.edit().putString("outputDirectory",value).apply() }
+    var separateMediaFolders: Boolean
+        get()=preferences.getBoolean("separateMediaFolders",false)
+        set(value) { preferences.edit().putBoolean("separateMediaFolders",value).apply() }
     var language: String
         get()=AppLanguage.valid(preferences.getString("language","tr") ?: "tr")
         set(value) { preferences.edit().putString("language",AppLanguage.valid(value)).apply() }
@@ -44,19 +76,33 @@ class LocalStore(context: Context) {
                 ?: DownloadOptions(embedThumbnail=true)
         }.getOrDefault(DownloadOptions(embedThumbnail=true))
         set(value) {
-            preferences.edit().putString("defaults",value.copy(cookieId=null,scheduledAt=0,selectedFormat="").json().toString()).apply()
+            preferences.edit().putString("defaults",value.copy(cookieId=null,scheduledAt=0,selectedFormat="",
+                filenameOverride="",clipStart="",clipEnd="",customArguments="").json().toString()).apply()
         }
     private val mutableLogs=MutableStateFlow<List<String>>(emptyList())
     val logs=mutableLogs.asStateFlow()
-    @Synchronized fun log(message: String) {
-        val safe=message.replace(Regex("https?://[^\\s]+"),"[link]").replace(Regex("[\\r\\n\\u0000]")," ").take(220)
+    private val mutableTaskLogs=MutableStateFlow<Map<String,List<String>>>(emptyMap())
+    val taskLogs=mutableTaskLogs.asStateFlow()
+    @Synchronized fun log(message: String,jobId: String?=null) {
+        val safe=message.replace(Regex("(?i)(?:https?|socks4a?|socks5h?)://[^\\s]+"),"[link]")
+            .replace(Regex("(?i)(authorization|cookie|set-cookie|password|token|api[_-]?key)(\\s*[:=]\\s*|\\s+)[^\\r\\n]+"),"$1=[hidden]")
+            .replace(Regex("[\\r\\n\\u0000]")," ").take(500)
         val time=java.text.SimpleDateFormat("HH:mm:ss",java.util.Locale.ROOT).format(java.util.Date())
-        mutableLogs.value=(mutableLogs.value+"$time  $safe").takeLast(250)
+        val line="$time  $safe"
+        mutableLogs.value=(mutableLogs.value+line).takeLast(250)
+        if(!jobId.isNullOrBlank()) {
+            val next=LinkedHashMap(mutableTaskLogs.value)
+            val previous=next.remove(jobId).orEmpty()
+            next[jobId]=(previous+line).takeLast(400)
+            while(next.size>40) next.remove(next.keys.first())
+            mutableTaskLogs.value=next
+        }
     }
-    fun clearLogs() { mutableLogs.value=emptyList() }
+    @Synchronized fun clearLogs() { mutableLogs.value=emptyList();mutableTaskLogs.value=emptyMap() }
     private fun loadJobs(): List<DownloadJob> = runCatching {
         val array=JSONArray(preferences.getString("jobs","[]"))
         (0 until array.length()).mapNotNull { runCatching { DownloadJob.from(array.getJSONObject(it)) }.getOrNull() }
+            .filter { preferences.getBoolean("keepHistory",true) || it.state in setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING) }
     }.getOrDefault(emptyList())
     private var lastProgressSave=0L
     @Synchronized fun put(job: DownloadJob) {
@@ -67,11 +113,15 @@ class LocalStore(context: Context) {
         // Publish UI samples frequently; persist progress at most once a second.
         // Queue changes, completed files and terminal states remain durable.
         if(durable || now-lastProgressSave>=1000) {
-            val edit=preferences.edit().putString("jobs",JSONArray(list.map { it.json() }).toString())
-            if(durable) edit.commit() else edit.apply()
+            persistJobs(list,durable)
             lastProgressSave=now
         }
         mutableJobs.value=list
+    }
+    private fun persistJobs(jobs: List<DownloadJob>,synchronous: Boolean) {
+        val durableJobs=if(keepHistory)jobs else jobs.filter { it.state in setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING) }
+        val edit=preferences.edit().putString("jobs",JSONArray(durableJobs.map { it.json() }).toString())
+        if(synchronous) edit.commit() else edit.apply()
     }
     @Synchronized fun change(id: String, edit: (DownloadJob)->DownloadJob) {
         mutableJobs.value.find { it.id==id }?.let { put(edit(it)) }

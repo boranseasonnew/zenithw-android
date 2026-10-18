@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="seal_video_link">Video bağlantısı</string>
+    <string name="seal_finding_media">Video bilgileri alınıyor</string>
+    <string name="seal_info_unavailable">Video bilgileri alınamadı</string>
+    <string name="seal_configure_download">İndirmeyi ayarla</string>
+    <string name="seal_slow_retry">Daha uzun süre dene</string>
+    <string name="seal_download_type">İndirme türü</string>
+    <string name="seal_choose_format">Kaynak biçimini seç</string>
+    <string name="seal_selected_format">Kaynak · %1$s</string>
+    <string name="seal_filename_clip">Dosya adı ve kesit</string>
+    <string name="seal_filename_clip_hint">Bu indirmeye özel</string>
+    <string name="seal_filename_override">Dosya adı · isteğe bağlı</string>
+    <string name="seal_clip_start">Başlangıç · 00:00</string>
+    <string name="seal_clip_end">Bitiş · 00:00</string>
+    <string name="seal_clip_hint">Kesit için başlangıç ve bitişi yaz. Boş bırakırsan videonun tamamı indirilir.</string>
+    <string name="seal_available_subtitles">Videodaki altyazılar</string>
+    <string name="seal_restrict_names">Uyumlu dosya adları kullan</string>
+    <string name="seal_max_filesize">Azami dosya boyutu · MB, 0 = sınırsız</string>
+    <string name="seal_format_sort">Biçim sıralaması · ör. res,fps</string>
+    <string name="seal_custom_arguments">Özel yt-dlp seçenekleri</string>
+    <string name="seal_finding_media_slow">Video bilgileri alınıyor · uzun deneme</string>
+</resources>

@@ -9,7 +9,13 @@ enum class MediaMode(val label: String) { VIDEO("Video"), AUDIO("Ses"), SUBTITLE
 enum class JobState { QUEUED, RUNNING, SAVING, COMPLETED, FAILED, CANCELLED }
 data class MediaPreview(val url: String, val title: String, val uploader: String = "",
     val thumbnail: String? = null, val duration: Int = 0, val heights: List<Int> = emptyList(),
-    val isPlaylist: Boolean = false)
+    val isPlaylist: Boolean = false, val metadataReady: Boolean = true,
+    val formats: List<MediaFormat> = emptyList(), val subtitleLanguages: List<String> = emptyList())
+
+data class MediaFormat(val id: String, val extension: String, val height: Int=0, val width: Int=0,
+    val fps: Double=0.0, val videoCodec: String="", val audioCodec: String="",
+    val bitrate: Double=0.0, val sizeBytes: Long=0, val hasVideo: Boolean=false,
+    val hasAudio: Boolean=false, val label: String="")
 
 data class PlaylistEntry(val index: Int, val title: String, val url: String)
 data class CookieProfile(val id: String, val host: String, val count: Int, val updatedAt: Long)
@@ -58,7 +64,14 @@ data class DownloadOptions(
     val keepOriginal: Boolean = false,
     val sleepSeconds: Int = 0,
     val timeout: Int = 20,
-    val selectedFormat: String = ""
+    val selectedFormat: String = "",
+    val restrictFilenames: Boolean = false,
+    val formatSort: String = "",
+    val maxFilesizeMb: Int = 0,
+    val clipStart: String = "",
+    val clipEnd: String = "",
+    val customArguments: String = "",
+    val filenameOverride: String = ""
 ) {
     fun json() = JSONObject().apply {
         put("mode",mode.name); put("height",height); put("container",container)
@@ -85,6 +98,9 @@ data class DownloadOptions(
         put("sleepSeconds",sleepSeconds);
         put("timeout",timeout);
         put("filenameTemplate",filenameTemplate); put("selectedFormat",selectedFormat)
+        put("restrictFilenames",restrictFilenames); put("formatSort",formatSort)
+        put("maxFilesizeMb",maxFilesizeMb); put("clipStart",clipStart); put("clipEnd",clipEnd)
+        put("customArguments",customArguments); put("filenameOverride",filenameOverride)
     }
     companion object {
         fun from(o: JSONObject) = DownloadOptions(
@@ -118,7 +134,11 @@ data class DownloadOptions(
             keepOriginal=o.optBoolean("keepOriginal",false),
             sleepSeconds=o.optInt("sleepSeconds",0).coerceIn(0,60),
             timeout=o.optInt("timeout",20).coerceIn(5,120),
-            selectedFormat=o.optString("selectedFormat")
+            selectedFormat=o.optString("selectedFormat"),
+            restrictFilenames=o.optBoolean("restrictFilenames"),formatSort=o.optString("formatSort"),
+            maxFilesizeMb=o.optInt("maxFilesizeMb").coerceIn(0,102400),
+            clipStart=o.optString("clipStart"),clipEnd=o.optString("clipEnd"),
+            customArguments=o.optString("customArguments"),filenameOverride=o.optString("filenameOverride")
         )
     }
 }

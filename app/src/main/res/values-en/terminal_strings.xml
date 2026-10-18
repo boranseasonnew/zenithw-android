@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="terminal_workspace">Batch downloads and commands</string>
+    <string name="terminal_batch">Batch</string>
+    <string name="terminal_commands">Commands</string>
+    <string name="terminal_logs">Logs</string>
+    <string name="terminal_template">Command template</string>
+    <string name="terminal_custom">Custom command</string>
+    <string name="terminal_arguments">yt-dlp options</string>
+    <string name="terminal_arguments_hint">Add links in the rows below. Options run as download tasks using the yt-dlp engine.</string>
+    <string name="terminal_arguments_error">Check the options and quotation marks. Refer to the supported options list.</string>
+    <string name="terminal_save_template">Save template</string>
+    <string name="terminal_edit_template">Edit template</string>
+    <string name="terminal_delete_template">Delete template</string>
+    <string name="terminal_template_name">Template name</string>
+    <string name="terminal_save">Save</string>
+    <string name="terminal_supported">Supported options</string>
+    <string name="terminal_supported_summary">Format, audio, subtitles, network and content</string>
+    <string name="terminal_supported_flags">-f / --format\n-S / --format-sort\n-x / --extract-audio\n--audio-format / --audio-quality\n--merge-output-format / --remux-video\n--write-subs / --write-auto-subs\n--sub-langs / --sub-format / --embed-subs\n--embed-thumbnail / --embed-metadata\n--download-sections / --force-keyframes-at-cuts\n--sponsorblock-remove / --sponsorblock-mark\n--playlist-items / --playlist-reverse\n--limit-rate / --concurrent-fragments\n--retries / --fragment-retries / --socket-timeout\n--proxy / --user-agent / --referer\n--extractor-args / --match-filter</string>
+    <string name="terminal_managed_options">Do not prefix options with yt-dlp. Output directories, config files, cookie files and external programs are managed by the app. This field does not run shell commands. Command options can override download settings.</string>
+    <string name="terminal_start">Start task</string>
+    <string name="terminal_log_source">Log source</string>
+    <string name="terminal_session">App session</string>
+    <string name="terminal_follow">Follow new lines</string>
+    <string name="terminal_copy">Copy log</string>
+    <string name="terminal_clear">Clear logs</string>
+    <string name="terminal_empty_log">No logs in this session yet.</string>
+    <string name="terminal_task_count">%1$d command tasks · Select a log source for details</string>
+</resources>

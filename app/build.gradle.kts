@@ -12,8 +12,8 @@ android {
         applicationId = "space.zenithw.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 2002001
-        versionName = "2.2.1"
+        versionCode = 2003000
+        versionName = "2.3.0"
         buildConfigField("boolean", "F_DROID", fdroidBuild.toString())
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -31,7 +31,7 @@ android {
         debug {
             applicationIdSuffix = ".preview"
             versionNameSuffix = "-preview"
-            resValue("string", "app_name", "ZenithW 2.2.1 Preview")
+            resValue("string", "app_name", "ZenithW 2.3.0 Preview")
         }
         release {
             applicationIdSuffix = if (fdroidBuild) ".fdroid" else ".stable"

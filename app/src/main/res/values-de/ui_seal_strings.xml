@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="seal_video_link">Videolink</string>
+    <string name="seal_finding_media">Videoinformationen werden abgerufen</string>
+    <string name="seal_info_unavailable">Videoinformationen nicht verfügbar</string>
+    <string name="seal_configure_download">Download einrichten</string>
+    <string name="seal_slow_retry">Mit mehr Zeit erneut versuchen</string>
+    <string name="seal_download_type">Downloadtyp</string>
+    <string name="seal_choose_format">Quellformat auswählen</string>
+    <string name="seal_selected_format">Quelle · %1$s</string>
+    <string name="seal_filename_clip">Dateiname und Ausschnitt</string>
+    <string name="seal_filename_clip_hint">Für diesen Download</string>
+    <string name="seal_filename_override">Dateiname · optional</string>
+    <string name="seal_clip_start">Start · 00:00</string>
+    <string name="seal_clip_end">Ende · 00:00</string>
+    <string name="seal_clip_hint">Gib Anfang und Ende des Ausschnitts ein. Lass beide Felder leer, um das gesamte Video herunterzuladen.</string>
+    <string name="seal_available_subtitles">Verfügbare Untertitel</string>
+    <string name="seal_restrict_names">Kompatible Dateinamen verwenden</string>
+    <string name="seal_max_filesize">Maximale Dateigröße · MB, 0 = unbegrenzt</string>
+    <string name="seal_format_sort">Formatsortierung · z. B. res,fps</string>
+    <string name="seal_custom_arguments">Eigene yt-dlp-Optionen</string>
+    <string name="seal_finding_media_slow">Videoinformationen werden abgerufen · verlängerter Versuch</string>
+</resources>

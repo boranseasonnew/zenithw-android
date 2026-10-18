@@ -85,10 +85,7 @@ private val CardShape=RoundedCornerShape(26.dp)
                         runCatching { openFiles(context,job.files,share) }.onFailure { model.showMessage(texts.getString(R.string.no_opener)) }
                     }
                     3 -> AboutScreen { model.tab(2) }
-                    4 -> BulkDownloadScreen(screen,model::bulkLink,model::addBulkLink,model::removeBulkLink,model::bulkMode,
-                        model::url,{ model.loadPlaylist() }) {
-                        if(model.enqueueBulk()) onQueuedDownload()
-                    }
+                    4 -> TerminalWorkspace(model,screen,onQueuedDownload)
                     else -> SettingsHub(model,screen,engine,{ cookies=true })
                 }
             }
@@ -96,7 +93,9 @@ private val CardShape=RoundedCornerShape(26.dp)
     }
     if(screen.playlistEntries.isNotEmpty()) PlaylistSelectionSheet(screen.playlistEntries,model::dismissPlaylist,submitting=screen.submitting) { indices -> onQueuedDownload();model.enqueuePlaylist(indices) }
     screen.preview?.let { DownloadSheet(it,screen.profiles.firstOrNull { p -> p.id==screen.cookieId }?.host,
-        model.app.store.defaultOptions,model::defaults,model::dismissPreview,onDownload,model::loadPlaylist,submitting=screen.submitting) }
+        model.app.store.defaultOptions,model::downloadChoices,model::dismissPreview,onDownload,model::loadPlaylist,submitting=screen.submitting,
+        analyzing=screen.analyzing,analysisError=screen.analysisError,onRefreshInfo=model::refreshInfo,onCancelAnalysis=model::cancelAnalysis,
+        inspectSlow=screen.inspectSlow) }
     if(cookies) ProfileSheet(screen.profiles,screen.cookieId,{ cookies=false },
         { model.cookie(it); cookies=false },model::removeProfile,
         { cookies=false; newCookie=true },
@@ -109,40 +108,42 @@ private val CardShape=RoundedCornerShape(26.dp)
 
 @Composable private fun HomeScreen(screen: ScreenState,
     onUrl: (String)->Unit,onAnalyze: ()->Unit,onCookies: ()->Unit) {
-    val texts=LocalAppContext.current;val clipboard=LocalClipboardManager.current;val keyboard=LocalSoftwareKeyboardController.current
+    val texts=LocalAppContext.current
+    val clipboard=LocalClipboardManager.current
+    val keyboard=LocalSoftwareKeyboardController.current
     fun analyze() { keyboard?.hide();onAnalyze() }
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-    Column(Modifier.fillMaxWidth().heightIn(min=maxHeight).verticalScroll(rememberScrollState()).padding(horizontal=24.dp,vertical=20.dp),
-        verticalArrangement=Arrangement.spacedBy(16.dp,Alignment.CenterVertically)) {
-        Surface(color=Panel,shape=CardShape,border=BorderStroke(1.dp,Hairline)) {
-            Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
-                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.Link,null,Modifier.size(19.dp),tint=Muted)
-                    Spacer(Modifier.weight(1f))
-                    TextButton(onClick={ clipboard.getText()?.text?.takeIf(String::isNotBlank)?.let(onUrl) }) {
-                        Icon(Icons.Outlined.ContentPaste,null,Modifier.size(16.dp));Spacer(Modifier.width(7.dp));Text(texts.getString(R.string.paste))
-                    }
-                }
-                OutlinedTextField(screen.url,onUrl,placeholder={ Text("https://…",color=Muted) },
-                    modifier=Modifier.fillMaxWidth(),singleLine=true,shape=RoundedCornerShape(16.dp),
-                    keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Uri,imeAction=ImeAction.Go),
-                    keyboardActions=KeyboardActions(onGo={ if(screen.url.isNotBlank() && !screen.analyzing && !screen.playlistLoading) analyze() }),
-                    trailingIcon={ if(screen.url.isNotEmpty()) IconButton(onClick={ onUrl("") }) { Icon(Icons.Outlined.Close,texts.getString(R.string.clear_link)) } })
-                Button(onClick=::analyze,enabled=screen.url.isNotBlank() && !screen.analyzing && !screen.playlistLoading,
-                    modifier=Modifier.fillMaxWidth().heightIn(min=56.dp),shape=RoundedCornerShape(17.dp)) {
-                    if(screen.analyzing) { CircularProgressIndicator(Modifier.size(19.dp),strokeWidth=2.dp,color=Ink);Spacer(Modifier.width(10.dp)) }
-                    Text(AppLanguage.message(texts,if(screen.analyzing) "Bağlantı hazırlanıyor" else "Devam et"));Spacer(Modifier.width(10.dp));Icon(Icons.Outlined.ArrowForward,null,Modifier.size(19.dp))
-                }
+    Column(Modifier.fillMaxSize().padding(horizontal=24.dp,vertical=24.dp)) {
+        Spacer(Modifier.weight(1f))
+        OutlinedTextField(screen.url,onUrl,placeholder={ Text("https://…",color=Muted) },
+            label={ Text(texts.getString(R.string.seal_video_link)) },
+            modifier=Modifier.fillMaxWidth(),singleLine=true,shape=RoundedCornerShape(20.dp),
+            leadingIcon={ Icon(Icons.Outlined.Link,null,tint=Muted) },
+            keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Uri,imeAction=ImeAction.Go),
+            keyboardActions=KeyboardActions(onGo={ if(screen.url.isNotBlank() && !screen.playlistLoading) analyze() }),
+            trailingIcon={ if(screen.url.isNotEmpty()) IconButton(onClick={ onUrl("") }) { Icon(Icons.Outlined.Close,texts.getString(R.string.clear_link)) } })
+        Spacer(Modifier.height(12.dp))
+        Surface(onClick=onCookies,color=Panel,shape=RoundedCornerShape(16.dp)) {
+            Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=14.dp),verticalAlignment=Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Lock,null,Modifier.size(18.dp),tint=Muted)
+                Spacer(Modifier.width(12.dp))
+                Text(screen.profiles.firstOrNull { it.id==screen.cookieId }?.host ?: texts.getString(R.string.connect_session),
+                    Modifier.weight(1f),maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.bodyMedium)
+                Icon(Icons.Outlined.ChevronRight,null,Modifier.size(20.dp),tint=Muted)
             }
         }
-        Surface(onClick=onCookies,color=Panel,shape=RoundedCornerShape(18.dp)) {
-            Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Lock,null,Modifier.size(18.dp),tint=Muted);Spacer(Modifier.width(12.dp))
-                Text(screen.profiles.firstOrNull { it.id==screen.cookieId }?.host ?: texts.getString(R.string.connect_session),Modifier.weight(1f),maxLines=1,overflow=TextOverflow.Ellipsis)
-                Icon(Icons.Outlined.ChevronRight,null,tint=Muted)
+        Spacer(Modifier.weight(1f))
+        Row(Modifier.fillMaxWidth().padding(top=32.dp),horizontalArrangement=Arrangement.spacedBy(12.dp),verticalAlignment=Alignment.CenterVertically) {
+            OutlinedButton(onClick={ clipboard.getText()?.text?.takeIf(String::isNotBlank)?.let(onUrl) },
+                modifier=Modifier.heightIn(min=56.dp),shape=RoundedCornerShape(18.dp)) {
+                Icon(Icons.Outlined.ContentPaste,null,Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp));Text(texts.getString(R.string.paste))
+            }
+            Button(onClick=::analyze,enabled=screen.url.isNotBlank() && !screen.playlistLoading,
+                modifier=Modifier.weight(1f).heightIn(min=56.dp),shape=RoundedCornerShape(18.dp)) {
+                Icon(Icons.Outlined.FileDownload,null,Modifier.size(21.dp))
+                Spacer(Modifier.width(9.dp));Text(texts.getString(R.string.download))
             }
         }
-    }
     }
 }
 

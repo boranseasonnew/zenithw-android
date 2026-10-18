@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pref_appearance">Darstellung</string>
+    <string name="pref_appearance_summary">Design und Gerätefarben</string>
+    <string name="pref_interaction">Oberfläche und Datenschutz</string>
+    <string name="pref_interaction_summary">Downloadablauf, Vorschau und Verlauf</string>
+    <string name="pref_theme">Design</string>
+    <string name="pref_system">System</string>
+    <string name="pref_light">Hell</string>
+    <string name="pref_dark">Dunkel</string>
+    <string name="pref_dynamic">Dynamische Farben</string>
+    <string name="pref_dynamic_summary">Farben des Gerätehintergrunds verwenden.</string>
+    <string name="pref_configure">Einstellungen vor dem Download anzeigen</string>
+    <string name="pref_configure_summary">Wenn deaktiviert, mit den gespeicherten Einstellungen direkt zur Warteschlange hinzufügen.</string>
+    <string name="pref_remember">Downloadeinstellungen merken</string>
+    <string name="pref_preview">Medienvorschau anzeigen</string>
+    <string name="pref_history">Downloadverlauf speichern</string>
+    <string name="pref_history_summary">Wenn deaktiviert, verschwinden abgeschlossene Aufgaben nach einem App-Neustart. Dateien bleiben gespeichert und die aktive Warteschlange bleibt erhalten.</string>
+    <string name="pref_update_interval">Aktualisierungsintervall der Download-Engine</string>
+    <string name="pref_hours">%1$d Stunden</string>
+    <string name="pref_sort">Formatpriorität</string>
+    <string name="pref_sort_auto">Automatisch</string>
+    <string name="pref_sort_resolution">Auflösung und Bildrate</string>
+    <string name="pref_sort_size">Dateigröße</string>
+    <string name="pref_sort_compatibility">H.264-Kompatibilität</string>
+    <string name="pref_max_size">Maximale Dateigröße</string>
+    <string name="pref_unlimited">Unbegrenzt</string>
+    <string name="pref_output_directory">Downloadordner</string>
+    <string name="pref_choose_directory">Ordner auswählen</string>
+    <string name="pref_reset_directory">Standardordner verwenden</string>
+    <string name="pref_directory_error">Der dauerhafte Zugriff auf diesen Ordner wurde nicht gewährt. Wähle einen anderen Ordner.</string>
+    <string name="pref_separate_folders">Getrennte Video- und Audioordner</string>
+    <string name="pref_separate_folders_summary">Dateien in den Unterordnern Video und Audio speichern.</string>
+    <string name="pref_restrict_names">Kompatible Dateinamen verwenden</string>
+</resources>

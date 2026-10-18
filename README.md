@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.2.0-222222" alt="Version 2.2.0">
+  <img src="https://img.shields.io/badge/version-2.3.0-222222" alt="Version 2.3.0">
   <img src="https://img.shields.io/badge/Android-7.0%2B-444444" alt="Android 7.0 and later">
   <img src="https://img.shields.io/badge/license-AGPL--3.0--only-555555" alt="AGPL-3.0-only license">
 </p>
@@ -28,20 +28,20 @@ ZenithW Android is a native Kotlin and Jetpack Compose application for saving su
 
 Download a signed APK from the [latest GitHub release](https://github.com/boranseasonnew/zenithw-android/releases/latest). **Android 7.0 (API 24) or later is required.** Choose the package that matches your device:
 
-| Architecture | Intended devices | APK for 2.2.0 |
+| Architecture | Intended devices | APK for 2.3.0 |
 | --- | --- | --- |
-| `arm64-v8a` | Most modern Android phones and tablets | `Zenith-2.2.0-stable-arm64-v8a.apk` |
-| `armeabi-v7a` | Devices running 32-bit ARM Android | `Zenith-2.2.0-stable-armeabi-v7a.apk` |
-| `x86_64` | Compatible Intel/AMD Android devices and emulators | `Zenith-2.2.0-stable-x86_64.apk` |
+| `arm64-v8a` | Most modern Android phones and tablets | `Zenith-2.3.0-stable-arm64-v8a.apk` |
+| `armeabi-v7a` | Devices running 32-bit ARM Android | `Zenith-2.3.0-stable-armeabi-v7a.apk` |
+| `x86_64` | Compatible Intel/AMD Android devices and emulators | `Zenith-2.3.0-stable-x86_64.apk` |
 
 Open the downloaded APK and, if Android requests it, allow installation from the browser or file manager you used. The release includes `SHA256SUMS.txt` for checking file integrity and a [public signing-certificate fingerprint](release-certificate.sha256) is available in this repository.
 
-The 2.2.0 stable APKs retain the package ID and signing certificate used by 2.1.3 stable, allowing an update over that installation. Preview, F-Droid and legacy installations use different package identities; their settings and encrypted sessions do not transfer automatically.
+The 2.3.0 stable APKs retain the package ID and signing certificate used by previous stable releases, allowing an update over an existing stable installation. Preview, F-Droid and legacy installations use different package identities; their settings and encrypted sessions do not transfer automatically.
 
 ## First download
 
 1. Paste a supported media URL, or share a link to ZenithW through Android's Share menu.
-2. Inspect the media and choose video, audio or subtitles. Review the available quality, format and processing options.
+2. Open the download settings immediately and choose video, audio or subtitles. Media information loads in the same panel; choose an available source format or use automatic selection.
 3. Add the job to the queue. You can prepare another link while the current download runs.
 4. Follow transfer, post-processing and saving progress, then open or share the saved files from the download history.
 
@@ -51,26 +51,34 @@ Available formats, subtitles and metadata depend on the source. A quality prefer
 
 | Area | Capabilities |
 | --- | --- |
-| Video and audio | Quality and container selection, codec preferences, audio extraction and bitrate settings. |
+| Video and audio | Quality, container and source-format selection with codec, frame-rate and size details; audio extraction, bitrate, filename overrides and validated start/end clips. |
 | Subtitles and metadata | Manual or automatic subtitles where available; metadata, chapters, artwork and separate thumbnail files. |
-| Batch downloads | Add up to **50 URLs** at once, one per line, with duplicate filtering and video/audio options. |
+| Batch downloads | Open the terminal icon to the left of Settings. Add up to **50 URLs** using **+ Add row**, remove individual rows and filter duplicate jobs. |
+| Commands and logs | A separate Batch / Commands / Logs workspace; named yt-dlp option templates, supported-option validation, per-task output, copy, cancellation and restart. These are yt-dlp tasks, not shell commands. |
 | Playlists | List up to **200 entries** and select individual items before adding them to the queue. |
 | Queue and history | Up to **200 active or pending jobs**, cancellation per job, scheduled starts, Wi-Fi-only settings, notifications and access to saved files. Eligible jobs run in queue order, one at a time. |
-| Advanced settings | SponsorBlock, optional Aria2c transfers, speed limits, retries, proxy/network options, filename templates, download archive and reusable defaults. |
+| Advanced settings | SponsorBlock, Aria2c, speed limits, retries, proxy/IP options, format ordering, maximum file size, compatible filenames, download archive and configurable engine-update intervals. |
+| Files and privacy | Choose an output folder with Android's folder picker, optional Video/Audio subfolders and history preferences that preserve the active queue. |
 | Sessions | Cookie profiles from the built-in HTTPS browser or an imported Netscape cookie file, encrypted at rest. |
-| Interface | Native Compose interface, a top-right menu for settings/history, and Turkish, English, German, French and Russian translations. |
+| Interface | Minimal home, expandable download options, system/light/dark themes, optional dynamic colors, configurable preview and remembered choices; Turkish, English, German, French and Russian. |
 
 Pending work is rescheduled when the app opens. Scheduled and background execution remain subject to Android's network, battery and background-work restrictions.
 
-### Improvements in 2.2.0
+### Improvements in 2.3.0
 
-- **Independent link preparation:** inspect another URL during a download; a short-lived metadata cache reduces repeated inspection.
-- **Clearer progress:** percentages use transferred bytes when totals are known. Preparation, transfer, post-processing and saving are separate stages; completion is reported after files are saved. Remaining time estimates describe transfer, not the entire processing pipeline.
-- **Batch and playlist selection:** add multiple links or selected playlist entries without cancelling an existing job.
-- **Square embedded artwork:** supported MP3, M4A, MP4, FLAC, MKV and MOV files can receive center-cropped **3000 × 3000** covers without re-encoding their audio/video streams. The output is checked; if artwork processing fails, the original media is retained with a warning.
-- **Updated workspace:** revised home and selection panels, queue counter, About section and a manual application-update check.
+- **Immediate configuration:** the download panel opens before metadata extraction finishes. Automatic downloads can start without a separate inspection request.
+- **Bounded discovery:** saved proxy, IP-family and user-agent preferences now also apply to inspection. Short discovery limits and an explicit extended retry handle stalled requests; a 90-second metadata cache avoids eligible repeated requests. This is not a measured extraction-speed claim.
+- **Source-format selection:** inspect real source formats, subtitle languages, filename and clip settings while preserving choices as metadata arrives.
+- **Batch, commands and logs:** add links with **+ Add row**, save reusable yt-dlp templates and inspect individual task output.
+- **Practical settings:** appearance, download confirmation, remembered choices, preview, history, output folders and engine-update intervals are persisted preferences.
 
-See the [2.2.0 release notes](releases/2.2.0.md) for details and the scope of release verification.
+See the [2.3.0 release notes](releases/2.3.0.md) for details and the scope of release verification.
+
+### Seal inspiration and attribution
+
+The interface and workflow review used the official [Seal](https://github.com/JunkFood02/Seal) **v1.13.1** source at commit [`a2d7e5d5819d0aa8b4f5dbb906731da283a28ed1`](https://github.com/JunkFood02/Seal/tree/a2d7e5d5819d0aa8b4f5dbb906731da283a28ed1). Seal is distributed under the [GNU GPL v3](https://github.com/JunkFood02/Seal/blob/a2d7e5d5819d0aa8b4f5dbb906731da283a28ed1/LICENSE).
+
+Ideas such as immediate download configuration, compact selections and yt-dlp task/log workflows were implemented independently in ZenithW. No Seal source code, logo, icons or screenshots are bundled. ZenithW is not a Seal fork and is not endorsed by Seal's maintainers. The [source comparison and validation boundaries](docs/seal-comparison.md) document the reference and differences; ZenithW's [AGPL-3.0-only license](LICENSE) remains unchanged.
 
 ## Application and engine updates
 
@@ -91,7 +99,7 @@ The repository provides F-Droid metadata and a dedicated build variant. This doe
 
 ## Privacy and sessions
 
-Media is downloaded and processed on the device without uploading it to the ZenithW web backend. Settings and history are stored locally. Source sites, GitHub update endpoints and any optional services you enable still receive the requests needed for those features; local processing does not make those requests anonymous.
+Media is downloaded and processed on the device without uploading it to the ZenithW web backend. Settings and enabled history are stored locally. If history is disabled, finished jobs are not retained on disk, while the active queue remains persistent; downloaded files are not deleted. Source sites, GitHub update endpoints and any optional services you enable still receive the requests needed for those features; local processing does not make those requests anonymous.
 
 Cookie profiles are encrypted at rest with AES-GCM using an Android Keystore key. For a job that needs a session, cookies are decrypted into a temporary app-private file and removed during job cleanup. Cookies can grant access to an account: use them only when needed and never attach them, private URLs or tokens to public issue reports.
 
@@ -100,7 +108,7 @@ Cookie profiles are encrypted at rest with AES-GCM using an Android Keystore key
 - Source support follows yt-dlp and the source platform. Private or deleted media, login requirements, regional or age restrictions, rate limits and upstream changes can prevent downloads. A cookie profile does not guarantee access.
 - Quality, codecs, subtitles and processing options depend on the media and container. Reliable square artwork embedding is not supported for Opus, Ogg, WebM or WAV. Enlarging a small cover does not add image detail.
 - Full native **16 KB memory-page compatibility is not established**. The bundled native runtime still has known alignment limitations; affected FFmpeg operations need validation on real 16 KB-page devices.
-- The 2.2.0 release notes record build, critical lint, package, version, ABI and signature checks. They do not claim runtime verification of real downloads, native FFmpeg operations or every device configuration.
+- Consult the 2.3.0 release notes and GitHub Actions results for the checks executed for that release. Compilation, lint and emulator tests do not establish successful extraction on every source site, physical-device compatibility or a measured performance improvement.
 
 Use ZenithW only for content you own or have permission to download and use. Respect copyright and platform terms. ZenithW is not affiliated with the supported platforms.
 
@@ -142,8 +150,8 @@ The application source is in [`app/src/main/java/space/zenithw/app/`](app/src/ma
 
 | Components | Responsibility |
 | --- | --- |
-| `ZenithUi`, `WorkspaceSheets`, `DownloadSheet`, `SettingsHub` | Compose screens and download controls. |
-| `ZenithViewModel`, `Models` | Screen state, media inspection and queue input. |
+| `ZenithUi`, `WorkspaceSheets`, `DownloadSheet`, `SettingsHub`, `TerminalWorkspace` | Compose screens, download controls and command/log workspace. |
+| `ZenithViewModel`, `Models`, `InspectionPolicy` | Screen state, media inspection, input validation and queue input. |
 | `DownloadEngine`, `DownloadWorker`, `DownloadProgress`, `SquareCover` | yt-dlp integration, background work, progress and artwork processing. |
 | `LocalStore`, `CookieBrowserActivity`, `CookieSheets` | Local preferences/history and session management. |
 | `BundledEngine`, `EngineUpdateSource`, `EngineArchive`, `AppReleaseChecker` | Bundled engine, verified engine updates and application release checks. |
@@ -157,5 +165,7 @@ Report bugs or suggest improvements through [GitHub Issues](https://github.com/b
 For implementation history and maintenance context, see [download fixes](DOWNLOAD_FIXES.md), [F-Droid packaging](docs/FDROID.md) and [update certificate notes](docs/update-ca.md). After access to the original source repository was lost, the existing APK served as a behavioral reference and the project was rebuilt into this maintained native codebase.
 
 ## License and acknowledgements
+
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the Seal comparison acknowledgement and the policy for any future source reuse.
 
 ZenithW Android is licensed under [AGPL-3.0-only](LICENSE). Third-party components retain their own licenses. Thanks to the maintainers of yt-dlp, FFmpeg, Aria2c, youtubedl-android and the other open-source projects used by ZenithW.

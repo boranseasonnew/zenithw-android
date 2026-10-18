@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="seal_video_link">Lien vidéo</string>
+    <string name="seal_finding_media">Récupération des informations vidéo</string>
+    <string name="seal_info_unavailable">Informations vidéo indisponibles</string>
+    <string name="seal_configure_download">Configurer le téléchargement</string>
+    <string name="seal_slow_retry">Réessayer avec plus de temps</string>
+    <string name="seal_download_type">Type de téléchargement</string>
+    <string name="seal_choose_format">Choisir le format source</string>
+    <string name="seal_selected_format">Source · %1$s</string>
+    <string name="seal_filename_clip">Nom de fichier et extrait</string>
+    <string name="seal_filename_clip_hint">Pour ce téléchargement</string>
+    <string name="seal_filename_override">Nom de fichier · facultatif</string>
+    <string name="seal_clip_start">Début · 00:00</string>
+    <string name="seal_clip_end">Fin · 00:00</string>
+    <string name="seal_clip_hint">Saisissez le début et la fin de l\'extrait. Laissez les deux champs vides pour télécharger la vidéo entière.</string>
+    <string name="seal_available_subtitles">Sous-titres disponibles</string>
+    <string name="seal_restrict_names">Utiliser des noms de fichiers compatibles</string>
+    <string name="seal_max_filesize">Taille maximale · Mo, 0 = illimitée</string>
+    <string name="seal_format_sort">Tri des formats · ex. res,fps</string>
+    <string name="seal_custom_arguments">Options yt-dlp personnalisées</string>
+    <string name="seal_finding_media_slow">Récupération des informations vidéo · délai prolongé</string>
+</resources>

@@ -1,0 +1,34 @@
+<resources>
+    <string name="pref_appearance">Apparence</string>
+    <string name="pref_appearance_summary">Thème et couleurs de l\'appareil</string>
+    <string name="pref_interaction">Interface et confidentialité</string>
+    <string name="pref_interaction_summary">Téléchargements, aperçu et historique</string>
+    <string name="pref_theme">Thème</string>
+    <string name="pref_system">Système</string>
+    <string name="pref_light">Clair</string>
+    <string name="pref_dark">Sombre</string>
+    <string name="pref_dynamic">Couleurs dynamiques</string>
+    <string name="pref_dynamic_summary">Utiliser les couleurs du fond d\'écran.</string>
+    <string name="pref_configure">Afficher les réglages avant le téléchargement</string>
+    <string name="pref_configure_summary">Sinon, ajouter directement à la file avec les choix enregistrés.</string>
+    <string name="pref_remember">Mémoriser les choix de téléchargement</string>
+    <string name="pref_preview">Afficher l\'aperçu du média</string>
+    <string name="pref_history">Conserver l\'historique des téléchargements</string>
+    <string name="pref_history_summary">Sinon, les tâches terminées disparaissent au redémarrage de l\'application. Les fichiers sont conservés, ainsi que la file active.</string>
+    <string name="pref_update_interval">Intervalle de mise à jour du moteur</string>
+    <string name="pref_hours">%1$d heures</string>
+    <string name="pref_sort">Priorité des formats</string>
+    <string name="pref_sort_auto">Automatique</string>
+    <string name="pref_sort_resolution">Résolution et fréquence d\'images</string>
+    <string name="pref_sort_size">Taille du fichier</string>
+    <string name="pref_sort_compatibility">Compatibilité H.264</string>
+    <string name="pref_max_size">Taille maximale du fichier</string>
+    <string name="pref_unlimited">Illimitée</string>
+    <string name="pref_output_directory">Dossier de téléchargement</string>
+    <string name="pref_choose_directory">Choisir un dossier</string>
+    <string name="pref_reset_directory">Utiliser le dossier par défaut</string>
+    <string name="pref_directory_error">L\'accès permanent à ce dossier a été refusé. Choisissez un autre dossier.</string>
+    <string name="pref_separate_folders">Séparer les dossiers vidéo et audio</string>
+    <string name="pref_separate_folders_summary">Enregistrer dans les sous-dossiers Video et Audio.</string>
+    <string name="pref_restrict_names">Utiliser des noms de fichiers compatibles</string>
+</resources>

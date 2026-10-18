@@ -53,11 +53,12 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
             wait.await()
         }
     }
-    private fun cacheKey(url: String,cookieId: String?)=normalizeUrl(url)+"|"+cookieId.orEmpty()
-    private fun cached(url: String,cookieId: String?): CachedPreview?=synchronized(previews) {
-        previews[cacheKey(url,cookieId)]?.takeIf { android.os.SystemClock.elapsedRealtime()-it.created<90000 }
+    private fun cacheKey(url: String,cookieId: String?,options: DownloadOptions)=listOf(normalizeUrl(url),cookieId.orEmpty(),
+        options.proxy,options.networkMode,options.userAgent,options.autoSubtitles,options.subtitleLanguages).joinToString("\u0000")
+    private fun cached(url: String,cookieId: String?,options: DownloadOptions): CachedPreview?=synchronized(previews) {
+        previews[cacheKey(url,cookieId,options)]?.takeIf { android.os.SystemClock.elapsedRealtime()-it.created<90000 }
     }
-    private fun forget(url: String,cookieId: String?) { synchronized(previews) { previews.remove(cacheKey(url,cookieId)) } }
+    private fun forget(url: String,cookieId: String?,options: DownloadOptions) { synchronized(previews) { previews.remove(cacheKey(url,cookieId,options)) } }
     private fun init() {
         if(initialized) return
         YoutubeDL.getInstance().init(context)
@@ -97,7 +98,8 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         updateGate.withLock {
             try {
                 gate.withLock { init() }
-                val shouldUpdate = !BuildConfig.F_DROID && (store.autoUpdate || force)
+                val shouldUpdate = !BuildConfig.F_DROID && InspectionPolicy.shouldCheckUpdate(force,store.autoUpdate,
+                    System.currentTimeMillis(),store.lastEngineCheck,store.updateIntervalHours)
                 mutableStatus.value=EngineStatus(true,shouldUpdate,
                     if(shouldUpdate) "Güncellemeler kontrol ediliyor" else "İndirmeye hazır",store.lastEngineVersion)
                 if(shouldUpdate) { store.log("ENGINE  ${store.channel} kontrol ediliyor");updateVerifiedBinary() }
@@ -160,9 +162,18 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         addOption("--cache-dir",File(context.cacheDir,"yt-dlp-cache").apply { mkdirs() }.absolutePath)
         if(!BuildConfig.F_DROID) addOption("--remote-components","ejs:github")
     }
-    suspend fun inspect(url: String, cookieId: String?): MediaPreview=withContext(Dispatchers.IO) {
-        cached(url,cookieId)?.let { return@withContext it.preview }
+    private fun applyNetwork(request: YoutubeDLRequest,o: DownloadOptions) {
+        when(o.networkMode) { "ipv4" -> request.addOption("--force-ipv4"); "ipv6" -> request.addOption("--force-ipv6") }
+        if(o.proxy.isNotBlank()) {
+            require(o.proxy.matches(Regex("^(https?|socks5h?)://[^\\s]+$")));request.addOption("--proxy",o.proxy)
+        }
+        if(o.userAgent.isNotBlank()) { require(!o.userAgent.any { it.isISOControl() });request.addOption("--user-agent",o.userAgent) }
+    }
+    suspend fun inspect(url: String, cookieId: String?,options: DownloadOptions=store.defaultOptions,slow: Boolean=false): MediaPreview=withContext(Dispatchers.IO) {
+        val start=android.os.SystemClock.elapsedRealtime()
+        cached(url,cookieId,options)?.let { store.log("INSPECT cache hit");return@withContext it.preview }
         withEngine {
+            val initializedAt=android.os.SystemClock.elapsedRealtime()
             val processId="inspect-${java.util.UUID.randomUUID()}"
             val directory=File(context.cacheDir,processId).apply { mkdirs() }
             try {
@@ -173,29 +184,31 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                     addOption("--playlist-end","1")
                     if(listLink) addOption("--flat-playlist")
                     else addOption("--no-playlist")
+                    addOption("--socket-timeout",InspectionPolicy.socketTimeout(slow).toString())
+                    addOption("--extractor-retries",InspectionPolicy.extractorRetries(slow).toString())
+                    addOption("--retries","1")
+                    if(!options.autoSubtitles) addOption("--extractor-args","youtube:skip=translated_subs")
+                    applyNetwork(this,options)
                     vault.temporaryFile(cookieId,directory)?.let { addOption("--cookies",it.absolutePath) }
                 }
-                val response=try { withTimeout(90000) { runInterruptible { YoutubeDL.getInstance().execute(request,processId=processId) } } }
-                    catch(timeout: TimeoutCancellationException) { throw java.io.IOException("Metadata request timed out after 90 seconds",timeout) }
+                val response=try { withTimeout(InspectionPolicy.totalTimeoutMillis(slow)) { runInterruptible { YoutubeDL.getInstance().execute(request,processId=processId) } } }
+                    catch(timeout: TimeoutCancellationException) { throw java.io.IOException("Metadata request timed out",timeout) }
+                val extractedAt=android.os.SystemClock.elapsedRealtime()
                 coroutineContext.ensureActive()
                 require(response.out.length<=16*1024*1024) { "Metadata exceeds the safe size limit" }
                 val json=JSONObject(response.out)
-                val formats=json.optJSONArray("formats")
-                val heights=if(formats==null) emptyList() else (0 until formats.length())
-                    .map { formats.getJSONObject(it).optInt("height") }.filter { it>0 }.distinct().sortedDescending()
-                val preview=MediaPreview(normalizeUrl(url),json.optString("title","Medya"),
-                    json.optString("uploader"),json.optString("thumbnail").takeIf { it.startsWith("https://") },
-                    json.optInt("duration"),heights,listLink || json.has("entries") || uri.getQueryParameter("list")!=null)
+                val preview=mediaPreview(json,normalizeUrl(url),listLink || json.has("entries") || uri.getQueryParameter("list")!=null)
+                store.log("INSPECT init=${initializedAt-start}ms extract=${extractedAt-initializedAt}ms parse=${android.os.SystemClock.elapsedRealtime()-extractedAt}ms slow=$slow")
                 synchronized(previews) {
                     while(previews.size>=8) previews.remove(previews.keys.first())
-                    previews[cacheKey(url,cookieId)]=CachedPreview(android.os.SystemClock.elapsedRealtime(),preview,
+                    previews[cacheKey(url,cookieId,options)]=CachedPreview(android.os.SystemClock.elapsedRealtime(),preview,
                         response.out.takeIf { !json.has("entries") && it.length<=4*1024*1024 })
                 }
                 preview
             } finally { YoutubeDL.getInstance().destroyProcessById(processId); directory.deleteRecursively() }
         }
     }
-    suspend fun playlist(url: String,cookieId: String?): List<PlaylistEntry> = withContext(Dispatchers.IO) {
+    suspend fun playlist(url: String,cookieId: String?,options: DownloadOptions=store.defaultOptions): List<PlaylistEntry> = withContext(Dispatchers.IO) {
         withEngine {
             val processId="playlist-${java.util.UUID.randomUUID()}"
             val directory=File(context.cacheDir,processId).apply { mkdirs() }
@@ -203,6 +216,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                 val request=baseRequest(url).apply {
                     addOption("--yes-playlist");addOption("--flat-playlist");addOption("--playlist-end","200")
                     addOption("--dump-single-json");addOption("--skip-download")
+                    applyNetwork(this,options)
                     vault.temporaryFile(cookieId,directory)?.let { addOption("--cookies",it.absolutePath) }
                 }
                 val response=try { withTimeout(90000) { runInterruptible { YoutubeDL.getInstance().execute(request,processId=processId) } } }
@@ -220,7 +234,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         val notes=mutableListOf<String>()
         val plan=DownloadPolicy.thumbnailPlan(job.options.mode.name,job.options.container,
             job.options.audioFormat,job.options.embedThumbnail,job.options.downloadThumbnail,job.options.thumbnailFormat)
-        plan.note?.let { notes.add(it) }
+        if(job.options.customArguments.isBlank()) plan.note?.let { notes.add(it) }
         val cookie=vault.temporaryFile(job.options.cookieId,directory)
         try {
             var useAria=job.options.useAria2 && job.options.mode!=MediaMode.SUBTITLES
@@ -235,7 +249,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                     notes.add("Aria2c hazırlanamadı; normal indirme motoru kullanıldı.")
                 }
             }
-            var metadata=if(!job.options.playlist) cached(job.url,job.options.cookieId)?.json else null
+            var metadata=if(!job.options.playlist && job.options.customArguments.isBlank()) cached(job.url,job.options.cookieId,job.options)?.json else null
             suspend fun execute(aria: Boolean): com.yausername.youtubedl_android.YoutubeDLResponse {
                 val tracker=DownloadProgress()
                 progress(0f,-1,"ZenithWPreparing")
@@ -243,6 +257,13 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                 return try { runInterruptible(Dispatchers.IO) {
                     YoutubeDL.getInstance().execute(request(job,directory,cookie,aria,snapshot),
                         processId=job.id,redirectErrorStream=false,callback={ _,_,line ->
+                            if(line.startsWith("ZenithWTitle:")) runCatching {
+                                val title=org.json.JSONTokener(line.removePrefix("ZenithWTitle:")).nextValue() as? String
+                                title?.takeIf(String::isNotBlank)?.let { value ->
+                                    store.change(job.id) { it.copy(title=value.filterNot(Char::isISOControl).take(500)) }
+                                }
+                            }
+                            store.log(line,job.id)
                             tracker.accept(line)?.let { progress(it.percent,it.eta,it.line) }
                         })
                 } } finally { snapshot?.delete() }
@@ -256,7 +277,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                     coroutineContext.ensureActive()
                     YoutubeDL.getInstance().destroyProcessById(job.id)
                     if(!refreshed && Regex("(?i)(?:HTTP Error|HTTP status|status=)\\s*(403|410)\\b").containsMatchIn(e.message.orEmpty())) {
-                        metadata=null;forget(job.url,job.options.cookieId);refreshed=true
+                        metadata=null;forget(job.url,job.options.cookieId,job.options);refreshed=true
                         progress(0f,-1,"ZenithWRefreshing");continue
                     }
                     if(useAria && DownloadPolicy.isAriaDownloadFailure(e.message.orEmpty())) {
@@ -266,9 +287,10 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                     throw e
                 }
             }
+            response.err.lineSequence().filter(String::isNotBlank).take(100).forEach { store.log(it,job.id) }
             // EmbedThumbnail can finish without embedding when the source has no usable image.
             DownloadPolicy.thumbnailWarning(response.out+"\n"+response.err)?.let { notes.add(it) }
-            if(job.options.embedThumbnail && job.options.mode!=MediaMode.SUBTITLES) {
+            if(job.options.customArguments.isBlank() && job.options.embedThumbnail && job.options.mode!=MediaMode.SUBTITLES) {
                 progress(-1f,-1,"ZenithWSquareCover")
                 notes.addAll(SquareCover(context).applyTo(directory,job.id))
             }
@@ -282,13 +304,20 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         require(!o.filenameTemplate.contains('/') && !o.filenameTemplate.contains('\\') && !o.filenameTemplate.contains(".."))
         val r=baseRequest(if(snapshot==null) job.url else null)
         snapshot?.let { r.addOption("--load-info-json",it.absolutePath) }
-        r.addOption("-o",File(directory,o.filenameTemplate.ifBlank { "%(title).150B [%(id)s].%(ext)s" }).absolutePath)
+        val name=if(o.filenameOverride.isNotBlank()) InspectionPolicy.literalFilename(o.filenameOverride)
+            else o.filenameTemplate.ifBlank { "%(title).150B [%(id)s].%(ext)s" }
+        r.addOption("-o",File(directory,name).absolutePath)
+        if(o.restrictFilenames) r.addOption("--restrict-filenames")
+        if(o.formatSort.isNotBlank()) { require(o.formatSort.matches(Regex("[a-zA-Z0-9_:+.,~/-]+")));r.addOption("--format-sort",o.formatSort) }
+        if(o.maxFilesizeMb>0) r.addOption("--max-filesize","${o.maxFilesizeMb}M")
+        InspectionPolicy.section(o.clipStart,o.clipEnd)?.let { r.addOption("--download-sections",it) }
         r.addOption("--newline"); r.addOption("--no-mtime")
         r.addOption("--progress");r.addOption("--progress-delta","0.2");r.addOption("--no-simulate")
         r.addOption("--output-na-placeholder","null")
         r.addOption("--progress-template",DownloadProgress.TEMPLATE)
         r.addOption("--progress-template",DownloadProgress.POST)
         r.addOption("--print",DownloadProgress.PLAN)
+        r.addOption("--print","before_dl:ZenithWTitle:%(title)j")
         // --print otherwise implies quiet mode, whose progress screen is stderr.
         // The 0.18.1 wrapper forwards every stdout line to our callback; keep
         // stderr separate so its original HTTP errors remain available for retry.
@@ -311,11 +340,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         if(o.keepOriginal) r.addOption("--keep-video")
         if(o.sleepSeconds>0) r.addOption("--sleep-interval",o.sleepSeconds.toString())
         cookie?.let { r.addOption("--cookies",it.absolutePath) }
-        when(o.networkMode) { "ipv4" -> r.addOption("--force-ipv4"); "ipv6" -> r.addOption("--force-ipv6") }
-        if(o.proxy.isNotBlank()) {
-            require(o.proxy.matches(Regex("^(https?|socks5h?)://[^\\s]+$"))); r.addOption("--proxy",o.proxy)
-        }
-        if(o.userAgent.isNotBlank()) { require(!o.userAgent.any { it.isISOControl() }); r.addOption("--user-agent",o.userAgent) }
+        applyNetwork(r,o)
         if(useAria) {
             // The protocol-qualified absolute path also avoids the library's three
             // repeated aria2c args: yt-dlp replaces earlier values for the same downloader.
@@ -328,9 +353,12 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         if(o.sponsorBlock && o.mode!=MediaMode.AUDIO) {
             require(o.sponsorCategories.matches(Regex("[a-z_,]+"))); r.addOption(if(o.sponsorAction=="mark") "--sponsorblock-mark" else "--sponsorblock-remove",o.sponsorCategories)
         }
+        // A command task supplies its own media pipeline. In particular, -x must
+        // not inherit the normal video's --remux-video or default format selector.
+        if(o.customArguments.isBlank()) {
         when(o.mode) {
             MediaMode.AUDIO -> {
-                r.addOption("-f","bestaudio/best"); r.addOption("-x")
+                r.addOption("-f",o.selectedFormat.ifBlank { "bestaudio/best" }); r.addOption("-x")
                 require(o.audioFormat in listOf("m4a","mp3","opus","wav","flac"))
                 r.addOption("--audio-format",o.audioFormat)
                 r.addOption("--audio-quality",if(o.audioBitrate>0) "${o.audioBitrate}K" else "0")
@@ -363,6 +391,8 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         if(thumbnail.embed) r.addOption("--embed-thumbnail")
         if(thumbnail.write) r.addOption("--write-thumbnail")
         thumbnail.convert?.let { r.addOption("--convert-thumbnails",it) }
+        }
+        if(o.customArguments.isNotBlank()) r.addCommands(parseCustomArguments(o.customArguments))
         return r
     }
 }

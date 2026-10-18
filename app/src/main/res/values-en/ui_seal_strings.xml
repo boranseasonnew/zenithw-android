@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="seal_video_link">Video link</string>
+    <string name="seal_finding_media">Fetching video information</string>
+    <string name="seal_info_unavailable">Video information unavailable</string>
+    <string name="seal_configure_download">Configure download</string>
+    <string name="seal_slow_retry">Retry with more time</string>
+    <string name="seal_download_type">Download type</string>
+    <string name="seal_choose_format">Choose source format</string>
+    <string name="seal_selected_format">Source · %1$s</string>
+    <string name="seal_filename_clip">Filename and clip</string>
+    <string name="seal_filename_clip_hint">For this download</string>
+    <string name="seal_filename_override">Filename · optional</string>
+    <string name="seal_clip_start">Start · 00:00</string>
+    <string name="seal_clip_end">End · 00:00</string>
+    <string name="seal_clip_hint">Enter the start and end for a clip. Leave both empty to download the full video.</string>
+    <string name="seal_available_subtitles">Available subtitles</string>
+    <string name="seal_restrict_names">Use compatible filenames</string>
+    <string name="seal_max_filesize">Maximum file size · MB, 0 = unlimited</string>
+    <string name="seal_format_sort">Format sorting · e.g. res,fps</string>
+    <string name="seal_custom_arguments">Custom yt-dlp options</string>
+    <string name="seal_finding_media_slow">Fetching video information · extended retry</string>
+</resources>

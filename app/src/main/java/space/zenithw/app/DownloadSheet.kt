@@ -4,6 +4,10 @@ package space.zenithw.app
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,8 +30,10 @@ import java.util.Calendar
 
 @Composable fun DownloadSheet(preview: MediaPreview,cookieHost: String?,defaults: DownloadOptions,
     onDefaults: (DownloadOptions)->Unit,onDismiss: ()->Unit,onDownload: (DownloadOptions)->Unit,
-    onPlaylistSelect: (DownloadOptions)->Unit,submitting: Boolean=false) {
+    onPlaylistSelect: (DownloadOptions)->Unit,submitting: Boolean=false,
+    analyzing: Boolean=false,analysisError: String?=null,onRefreshInfo: (Boolean)->Unit={},onCancelAnalysis: ()->Unit={},inspectSlow: Boolean=false) {
     var raw by rememberSaveable(preview.url) { mutableStateOf(defaults.json().toString()) }
+    var showFormats by rememberSaveable(preview.url) { mutableStateOf(false) }
     val o=remember(raw) { DownloadOptions.from(JSONObject(raw)) }
     fun update(value: DownloadOptions) { raw=value.json().toString(); onDefaults(value) }
     val texts=LocalAppContext.current
@@ -38,32 +44,62 @@ import java.util.Calendar
         sheetGesturesEnabled=false,dragHandle=null,
         containerColor=Panel,contentColor=Silver,shape=RoundedCornerShape(topStart=30.dp,topEnd=30.dp)) {
         Column(Modifier.fillMaxWidth().heightIn(max=maxHeight).fillMaxHeight()) {
-            Row(Modifier.padding(start=24.dp,end=16.dp,top=16.dp,bottom=12.dp),verticalAlignment=Alignment.CenterVertically) {
-                AsyncImage(preview.thumbnail,null,Modifier.size(68.dp).clip(RoundedCornerShape(16.dp)))
+            Row(Modifier.padding(start=24.dp,end=12.dp,top=18.dp,bottom=14.dp),verticalAlignment=Alignment.CenterVertically) {
+                Box(Modifier.size(62.dp).clip(RoundedCornerShape(16.dp)).background(PanelRaised),contentAlignment=Alignment.Center) {
+                    if(preview.metadataReady && preview.thumbnail!=null)
+                        AsyncImage(preview.thumbnail,null,Modifier.fillMaxSize())
+                    else if(analyzing) CircularProgressIndicator(Modifier.size(23.dp),strokeWidth=2.dp)
+                    else Icon(if(analysisError!=null) Icons.Outlined.ErrorOutline else Icons.Outlined.Link,null,tint=Muted)
+                }
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(preview.title,style=MaterialTheme.typography.titleMedium,maxLines=2,overflow=TextOverflow.Ellipsis)
-                    Text(preview.uploader.ifBlank { texts.getString(R.string.media_ready) },color=Muted,
-                        style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=5.dp))
+                    Text(if(preview.metadataReady) preview.title else texts.getString(if(analyzing && inspectSlow) R.string.seal_finding_media_slow else if(analyzing) R.string.seal_finding_media else if(analysisError!=null) R.string.seal_info_unavailable else R.string.seal_configure_download),
+                        style=MaterialTheme.typography.titleMedium,maxLines=2,overflow=TextOverflow.Ellipsis)
+                    Text(if(preview.metadataReady) preview.uploader.ifBlank { preview.url } else preview.url,
+                        color=Muted,style=MaterialTheme.typography.bodySmall,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.padding(top=4.dp))
                 }
                 IconButton(onClick=onDismiss) { Icon(Icons.Outlined.Close,texts.getString(R.string.close_window)) }
             }
+            if(analyzing || analysisError!=null || !preview.metadataReady) {
+                Row(Modifier.fillMaxWidth().padding(start=18.dp,end=18.dp,bottom=8.dp),horizontalArrangement=Arrangement.End,verticalAlignment=Alignment.CenterVertically) {
+                    if(analyzing) TextButton(onClick=onCancelAnalysis) { Text(texts.getString(R.string.cancel_download)) }
+                    else {
+                        TextButton(onClick={ onRefreshInfo(false) }) { Text(texts.getString(R.string.retry)) }
+                        TextButton(onClick={ onRefreshInfo(true) }) { Text(texts.getString(R.string.seal_slow_retry)) }
+                    }
+                }
+                if(analysisError!=null) Text(analysisError,color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall,
+                    modifier=Modifier.padding(start=24.dp,end=24.dp,bottom=12.dp))
+            }
             HorizontalDivider(color=Hairline)
             LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(horizontal=24.dp,vertical=16.dp),
-                verticalArrangement=Arrangement.spacedBy(20.dp)) {
+                verticalArrangement=Arrangement.spacedBy(16.dp)) {
                 if(preview.isPlaylist) item {
                     OutlinedButton(onClick={ onPlaylistSelect(o) },modifier=Modifier.fillMaxWidth()) {
                         Icon(Icons.Outlined.PlaylistPlay,null);Spacer(Modifier.width(10.dp));Text(texts.getString(R.string.playlist_open))
                     }
                 }
                 item {
-                    Choices(MediaMode.entries.map { it.name to AppLanguage.message(texts,it.label) },o.mode.name) { update(o.copy(mode=MediaMode.valueOf(it))) }
+                    Column(verticalArrangement=Arrangement.spacedBy(14.dp)) {
+                        Text(texts.getString(R.string.seal_download_type),style=MaterialTheme.typography.labelLarge,color=Muted)
+                        Choices(MediaMode.entries.map { it.name to AppLanguage.message(texts,it.label) },o.mode.name) {
+                            update(o.copy(mode=MediaMode.valueOf(it),selectedFormat=""));showFormats=false
+                        }
+                        if(o.mode!=MediaMode.SUBTITLES) FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                            FilterChip(selected=o.embedThumbnail,onClick={ update(o.copy(embedThumbnail=!o.embedThumbnail)) },
+                                label={ Text(texts.getString(R.string.thumbnail)) },leadingIcon={ Icon(Icons.Outlined.Image,null,Modifier.size(17.dp)) })
+                            if(o.mode==MediaMode.VIDEO) FilterChip(selected=o.subtitles,onClick={ update(o.copy(subtitles=!o.subtitles)) },
+                                label={ Text(texts.getString(R.string.subtitles)) },leadingIcon={ Icon(Icons.Outlined.Subtitles,null,Modifier.size(17.dp)) })
+                            FilterChip(selected=o.embedMetadata,onClick={ update(o.copy(embedMetadata=!o.embedMetadata)) },
+                                label={ Text(texts.getString(R.string.embed_metadata)) },leadingIcon={ Icon(Icons.Outlined.Info,null,Modifier.size(17.dp)) })
+                        }
+                    }
                 }
                 if(o.mode==MediaMode.VIDEO) item {
                     Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
                         val heights=(preview.heights+listOf(o.height)).filter { it>0 }.distinct().sortedDescending()
                         OptionPicker(texts.getString(R.string.quality),listOf("0" to texts.getString(R.string.best))+heights.map { it.toString() to "${it}p" },o.height.toString()) {
-                            update(o.copy(height=it.toInt()))
+                            update(o.copy(height=it.toInt(),selectedFormat=""))
                         }
                         Spacer(Modifier.height(4.dp))
                         OptionPicker(texts.getString(R.string.file_format),listOf("mp4" to "MP4","mkv" to "MKV","webm" to "WebM"),o.container) { update(o.copy(container=it)) }
@@ -79,9 +115,22 @@ import java.util.Calendar
                     }
                 }
                 if(o.mode!=MediaMode.SUBTITLES) item {
-                    Column {
-                        OptionSwitch(texts.getString(R.string.thumbnail),texts.getString(R.string.square_cover_hint),o.embedThumbnail) { update(o.copy(embedThumbnail=it)) }
-                        plan.note?.let { Text(AppLanguage.message(texts,it),color=Muted,style=MaterialTheme.typography.bodyMedium) }
+                    val eligible=preview.formats.filter { if(o.mode==MediaMode.VIDEO) it.hasVideo else it.hasAudio && !it.hasVideo }
+                    OutlinedButton(onClick={ showFormats=true },enabled=eligible.isNotEmpty(),modifier=Modifier.fillMaxWidth().heightIn(min=52.dp),shape=RoundedCornerShape(16.dp)) {
+                        Icon(Icons.Outlined.Tune,null,Modifier.size(19.dp));Spacer(Modifier.width(10.dp))
+                        Text(if(o.selectedFormat.isBlank()) texts.getString(R.string.seal_choose_format) else texts.getString(R.string.seal_selected_format,o.selectedFormat),maxLines=1,overflow=TextOverflow.Ellipsis)
+                        Spacer(Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null,Modifier.size(19.dp))
+                    }
+                    plan.note?.let { Text(AppLanguage.message(texts,it),color=Muted,style=MaterialTheme.typography.bodySmall,modifier=Modifier.padding(top=6.dp)) }
+                }
+                item {
+                    ExpandableSection(texts.getString(R.string.seal_filename_clip),texts.getString(R.string.seal_filename_clip_hint)) {
+                        CompactField(texts.getString(R.string.seal_filename_override),o.filenameOverride,{ update(o.copy(filenameOverride=it)) })
+                        Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                            Box(Modifier.weight(1f)) { CompactField(texts.getString(R.string.seal_clip_start),o.clipStart,{ update(o.copy(clipStart=it)) }) }
+                            Box(Modifier.weight(1f)) { CompactField(texts.getString(R.string.seal_clip_end),o.clipEnd,{ update(o.copy(clipEnd=it)) }) }
+                        }
+                        Text(texts.getString(R.string.seal_clip_hint),color=Muted,style=MaterialTheme.typography.bodySmall)
                     }
                 }
                 item {
@@ -106,6 +155,12 @@ import java.util.Calendar
                     ExpandableSection(texts.getString(R.string.subtitles),if(o.mode==MediaMode.SUBTITLES) texts.getString(R.string.subtitle_settings) else texts.getString(R.string.optional_add)) {
                         if(o.mode!=MediaMode.SUBTITLES) OptionSwitch(texts.getString(R.string.download_subtitles),value=o.subtitles) { update(o.copy(subtitles=it)) }
                         OptionSwitch(texts.getString(R.string.auto_subtitles),value=o.autoSubtitles) { update(o.copy(autoSubtitles=it)) }
+                        if(preview.subtitleLanguages.isNotEmpty()) {
+                            OptionPicker(texts.getString(R.string.seal_available_subtitles),
+                                listOf(o.subtitleLanguages to o.subtitleLanguages)+preview.subtitleLanguages.filter { it!=o.subtitleLanguages }.map { it to it },o.subtitleLanguages) {
+                                update(o.copy(subtitleLanguages=it))
+                            }
+                        }
                         CompactField(texts.getString(R.string.subtitle_languages),o.subtitleLanguages,{ update(o.copy(subtitleLanguages=it)) })
                         Choices(listOf("srt" to "SRT","vtt" to "VTT","ass" to "ASS","lrc" to "LRC"),o.subtitleFormat) { update(o.copy(subtitleFormat=it)) }
                         if(o.mode==MediaMode.VIDEO) OptionSwitch(texts.getString(R.string.embed_subtitles),value=o.embedSubtitles) { update(o.copy(embedSubtitles=it)) }
@@ -135,6 +190,10 @@ import java.util.Calendar
                         OptionSwitch(texts.getString(R.string.playlist),value=o.playlist) { update(o.copy(playlist=it)) }
                         if(o.playlist) CompactField(texts.getString(R.string.playlist_items),o.playlistItems,{ update(o.copy(playlistItems=it)) })
                         CompactField(texts.getString(R.string.filename),o.filenameTemplate,{ update(o.copy(filenameTemplate=it)) })
+                        OptionSwitch(texts.getString(R.string.seal_restrict_names),value=o.restrictFilenames) { update(o.copy(restrictFilenames=it)) }
+                        NumberField(texts.getString(R.string.seal_max_filesize),o.maxFilesizeMb,0,100000) { update(o.copy(maxFilesizeMb=it)) }
+                        CompactField(texts.getString(R.string.seal_format_sort),o.formatSort,{ update(o.copy(formatSort=it)) })
+                        CompactField(texts.getString(R.string.seal_custom_arguments),o.customArguments,{ update(o.copy(customArguments=it)) })
                         if(o.mode==MediaMode.VIDEO) {
                             NumberField(texts.getString(R.string.max_quality),o.height,0,16384) { update(o.copy(height=it)) }
                             CompactField(texts.getString(R.string.format_id),o.selectedFormat,{ update(o.copy(selectedFormat=it)) })
@@ -168,6 +227,35 @@ import java.util.Calendar
                 Text(if(o.scheduledAt>System.currentTimeMillis()) texts.getString(R.string.schedule) else texts.getString(R.string.start_download))
             }
         }
+    }
+    if(showFormats) MediaFormatDialog(preview,o.mode,o.selectedFormat,{ showFormats=false }) { selected ->
+        update(o.copy(selectedFormat=selected));showFormats=false
+    }
+}
+
+@Composable private fun MediaFormatDialog(preview: MediaPreview,mode: MediaMode,selected: String,onDismiss: ()->Unit,onSelect: (String)->Unit) {
+    val texts=LocalAppContext.current
+    val formats=preview.formats.filter { if(mode==MediaMode.VIDEO) it.hasVideo else it.hasAudio && !it.hasVideo }
+    AlertDialog(onDismissRequest=onDismiss,containerColor=Panel,title={ Text(texts.getString(R.string.seal_choose_format)) },
+        text={
+            LazyColumn(Modifier.fillMaxWidth().heightIn(max=420.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                item { FormatChoice(texts.getString(R.string.automatic),selected.isBlank(),{ onSelect("") }) }
+                items(formats.size,key={ formats[it].id }) { index ->
+                    val format=formats[index]
+                    val value=if(mode==MediaMode.VIDEO && !format.hasAudio) format.id+"+bestaudio/best" else format.id
+                    FormatChoice(format.label,selected==value,{ onSelect(value) })
+                }
+            }
+        },confirmButton={ TextButton(onClick=onDismiss) { Text(texts.getString(R.string.close_window)) } })
+}
+
+@Composable private fun FormatChoice(label: String,selected: Boolean,onClick: ()->Unit) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+        .background(if(selected) PanelRaised else Panel).selectable(selected=selected,role=Role.RadioButton,onClick=onClick)
+        .padding(horizontal=10.dp,vertical=10.dp),verticalAlignment=Alignment.CenterVertically) {
+        RadioButton(selected=selected,onClick=null)
+        Spacer(Modifier.width(10.dp))
+        Text(label,style=MaterialTheme.typography.bodyMedium)
     }
 }
 

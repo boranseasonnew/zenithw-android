@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="options_invalid">Prüfe die Optionen. Zeitbereich, Dateiname oder Befehl ist ungültig.</string>
+    <string name="command_required">Wähle yt-dlp-Optionen aus oder gib sie ein.</string>
+</resources>

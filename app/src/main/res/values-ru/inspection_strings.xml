@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="options_invalid">Проверьте настройки. Неверный диапазон фрагмента, имя файла или команда.</string>
+    <string name="command_required">Выберите или введите параметры yt-dlp.</string>
+</resources>

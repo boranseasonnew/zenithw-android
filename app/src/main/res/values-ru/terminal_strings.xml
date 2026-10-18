@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="terminal_workspace">Пакетные загрузки и команды</string>
+    <string name="terminal_batch">Пакетная загрузка</string>
+    <string name="terminal_commands">Команды</string>
+    <string name="terminal_logs">Журнал</string>
+    <string name="terminal_template">Шаблон команды</string>
+    <string name="terminal_custom">Своя команда</string>
+    <string name="terminal_arguments">Параметры yt-dlp</string>
+    <string name="terminal_arguments_hint">Добавьте ссылки в строки ниже. Параметры выполняются движком yt-dlp как задачи загрузки.</string>
+    <string name="terminal_arguments_error">Проверьте параметры и кавычки. Сверьтесь со списком поддерживаемых параметров.</string>
+    <string name="terminal_save_template">Сохранить шаблон</string>
+    <string name="terminal_edit_template">Изменить шаблон</string>
+    <string name="terminal_delete_template">Удалить шаблон</string>
+    <string name="terminal_template_name">Название шаблона</string>
+    <string name="terminal_save">Сохранить</string>
+    <string name="terminal_supported">Поддерживаемые параметры</string>
+    <string name="terminal_supported_summary">Формат, аудио, субтитры, сеть и содержимое</string>
+    <string name="terminal_supported_flags">-f / --format\n-S / --format-sort\n-x / --extract-audio\n--audio-format / --audio-quality\n--merge-output-format / --remux-video\n--write-subs / --write-auto-subs\n--sub-langs / --sub-format / --embed-subs\n--embed-thumbnail / --embed-metadata\n--download-sections / --force-keyframes-at-cuts\n--sponsorblock-remove / --sponsorblock-mark\n--playlist-items / --playlist-reverse\n--limit-rate / --concurrent-fragments\n--retries / --fragment-retries / --socket-timeout\n--proxy / --user-agent / --referer\n--extractor-args / --match-filter</string>
+    <string name="terminal_managed_options">Не добавляйте yt-dlp перед параметрами. Папками вывода, файлами конфигурации, файлами cookie и внешними программами управляет приложение. Это поле не запускает команды оболочки. Параметры команды могут переопределять настройки загрузки.</string>
+    <string name="terminal_start">Запустить задачу</string>
+    <string name="terminal_log_source">Источник журнала</string>
+    <string name="terminal_session">Сеанс приложения</string>
+    <string name="terminal_follow">Следить за новыми строками</string>
+    <string name="terminal_copy">Копировать журнал</string>
+    <string name="terminal_clear">Очистить журналы</string>
+    <string name="terminal_empty_log">В этом сеансе пока нет записей.</string>
+    <string name="terminal_task_count">Задач команд: %1$d · Выберите источник журнала для подробностей</string>
+</resources>

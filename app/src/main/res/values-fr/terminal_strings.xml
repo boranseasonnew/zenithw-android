@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="terminal_workspace">Téléchargements groupés et commandes</string>
+    <string name="terminal_batch">Groupés</string>
+    <string name="terminal_commands">Commandes</string>
+    <string name="terminal_logs">Journaux</string>
+    <string name="terminal_template">Modèle de commande</string>
+    <string name="terminal_custom">Commande personnalisée</string>
+    <string name="terminal_arguments">Options yt-dlp</string>
+    <string name="terminal_arguments_hint">Ajoutez les liens dans les lignes ci-dessous. Les options sont exécutées comme tâches de téléchargement avec le moteur yt-dlp.</string>
+    <string name="terminal_arguments_error">Vérifiez les options et les guillemets. Consultez la liste des options prises en charge.</string>
+    <string name="terminal_save_template">Enregistrer le modèle</string>
+    <string name="terminal_edit_template">Modifier le modèle</string>
+    <string name="terminal_delete_template">Supprimer le modèle</string>
+    <string name="terminal_template_name">Nom du modèle</string>
+    <string name="terminal_save">Enregistrer</string>
+    <string name="terminal_supported">Options prises en charge</string>
+    <string name="terminal_supported_summary">Format, audio, sous-titres, réseau et contenu</string>
+    <string name="terminal_supported_flags">-f / --format\n-S / --format-sort\n-x / --extract-audio\n--audio-format / --audio-quality\n--merge-output-format / --remux-video\n--write-subs / --write-auto-subs\n--sub-langs / --sub-format / --embed-subs\n--embed-thumbnail / --embed-metadata\n--download-sections / --force-keyframes-at-cuts\n--sponsorblock-remove / --sponsorblock-mark\n--playlist-items / --playlist-reverse\n--limit-rate / --concurrent-fragments\n--retries / --fragment-retries / --socket-timeout\n--proxy / --user-agent / --referer\n--extractor-args / --match-filter</string>
+    <string name="terminal_managed_options">Ne préfixez pas les options par yt-dlp. L\'application gère les dossiers de destination, les fichiers de configuration, les cookies et les programmes externes. Ce champ n\'exécute pas de commandes shell. Ces options peuvent remplacer les réglages de téléchargement.</string>
+    <string name="terminal_start">Lancer la tâche</string>
+    <string name="terminal_log_source">Source du journal</string>
+    <string name="terminal_session">Session de l\'application</string>
+    <string name="terminal_follow">Suivre les nouvelles lignes</string>
+    <string name="terminal_copy">Copier le journal</string>
+    <string name="terminal_clear">Effacer les journaux</string>
+    <string name="terminal_empty_log">Aucun journal pour cette session.</string>
+    <string name="terminal_task_count">%1$d tâches de commande · Sélectionnez une source pour les détails</string>
+</resources>

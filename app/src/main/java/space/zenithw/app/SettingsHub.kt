@@ -1,6 +1,11 @@
 @file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 package space.zenithw.app
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -20,14 +25,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
-private data class SettingsCategory(val key: String,val title: String,val detail: String,val icon: ImageVector)
+private data class SettingsCategory(val key: String,val title: String,val detail: String,val icon: ImageVector,val titleResource: Int?=null,val detailResource: Int?=null)
 private val categories=listOf(
     SettingsCategory("about","Hakkında ve sürüm","ZenithW · ${BuildConfig.VERSION_NAME}",Icons.Outlined.Info),
     SettingsCategory("language","Dil","Uygulama dili",Icons.Outlined.Language),
+    SettingsCategory("appearance","","",Icons.Outlined.Palette,R.string.pref_appearance,R.string.pref_appearance_summary),
+    SettingsCategory("interaction","","",Icons.Outlined.TouchApp,R.string.pref_interaction,R.string.pref_interaction_summary),
     SettingsCategory("engine","İndirme motoru","Otomatik güncelleme ve sürüm kanalı",Icons.Outlined.Memory),
     SettingsCategory("cookies","Tarayıcı oturumları","Cihazda saklanan çerezler",Icons.Outlined.Lock),
     SettingsCategory("video","Video ve ses","Kalite, dosya biçimi, codec",Icons.Outlined.Tune),
@@ -44,6 +52,15 @@ private val categories=listOf(
 
 @Composable fun SettingsHub(model: ZenithViewModel,screen: ScreenState,engine: EngineStatus,onCookies: ()->Unit) {
     val texts=LocalAppContext.current
+    val context=LocalContext.current
+    val directoryPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        uri?.let {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(it,Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                model.outputDirectory(it.toString())
+            }.onFailure { model.showMessage(texts.getString(R.string.pref_directory_error)) }
+        }
+    }
     var active by rememberSaveable { mutableStateOf<String?>(null) }
     val logs by model.logs.collectAsStateWithLifecycle()
     val o=screen.defaults
@@ -59,7 +76,7 @@ private val categories=listOf(
                         Spacer(Modifier.width(6.dp))
                     }
                     Column(Modifier.weight(1f)) {
-                        Text(AppLanguage.message(texts,if(category==null) "Ayarlar" else categories.first { it.key==category }.title),style=MaterialTheme.typography.headlineMedium)
+                        Text(if(category==null) AppLanguage.message(texts,"Ayarlar") else categories.first { it.key==category }.let { it.titleResource?.let(texts::getString) ?: AppLanguage.message(texts,it.title) },style=MaterialTheme.typography.headlineMedium)
                         Text(if(category==null) "Zenith · ${BuildConfig.VERSION_NAME}" else AppLanguage.message(texts,"Otomatik kaydedilir"),color=Muted,style=MaterialTheme.typography.bodyMedium)
                     }
                 }
@@ -74,8 +91,8 @@ private val categories=listOf(
                             }
                             Spacer(Modifier.width(15.dp))
                             Column(Modifier.weight(1f)) {
-                                Text(if(group.key=="about") texts.getString(R.string.workspace_about) else AppLanguage.message(texts,group.title),style=MaterialTheme.typography.titleMedium)
-                                Text(AppLanguage.message(texts,group.detail),color=Muted,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=4.dp))
+                                Text(if(group.key=="about") texts.getString(R.string.workspace_about) else group.titleResource?.let(texts::getString) ?: AppLanguage.message(texts,group.title),style=MaterialTheme.typography.titleMedium)
+                                Text(group.detailResource?.let(texts::getString) ?: AppLanguage.message(texts,group.detail),color=Muted,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=4.dp))
                             }
                             Icon(Icons.Outlined.ChevronRight,null,tint=Muted)
                         }
@@ -100,6 +117,16 @@ private val categories=listOf(
                 Surface(shape=RoundedCornerShape(24.dp),color=Panel) {
                     Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
                         when(category) {
+                            "appearance" -> {
+                                OptionPicker(texts.getString(R.string.pref_theme),listOf("system" to texts.getString(R.string.pref_system),"light" to texts.getString(R.string.pref_light),"dark" to texts.getString(R.string.pref_dark)),screen.themeMode,model::theme)
+                                if(Build.VERSION.SDK_INT>=31) OptionSwitch(texts.getString(R.string.pref_dynamic),texts.getString(R.string.pref_dynamic_summary),screen.dynamicColors) { model.preference("dynamicColors",it) }
+                            }
+                            "interaction" -> {
+                                OptionSwitch(texts.getString(R.string.pref_configure),texts.getString(R.string.pref_configure_summary),screen.configureBeforeDownload) { model.preference("configureBeforeDownload",it) }
+                                OptionSwitch(texts.getString(R.string.pref_remember),value=screen.rememberDownloadChoices) { model.preference("rememberDownloadChoices",it) }
+                                OptionSwitch(texts.getString(R.string.pref_preview),value=screen.showMediaPreview) { model.preference("showMediaPreview",it) }
+                                OptionSwitch(texts.getString(R.string.pref_history),texts.getString(R.string.pref_history_summary),screen.keepHistory) { model.preference("keepHistory",it) }
+                            }
                             "language" -> OptionPicker("Dil",AppLanguage.choices,screen.language,model::language)
                             "engine" -> {
                                 Text(engine.version.ifBlank { "yt-dlp hazırlanıyor" },style=MaterialTheme.typography.titleMedium)
@@ -107,6 +134,7 @@ private val categories=listOf(
                                     Text(texts.getString(R.string.fdroid_engine_updates),color=Muted)
                                 } else {
                                 OptionSwitch("Açılışta otomatik güncelle","İndirmeyi bekletmeden arka planda kontrol eder.",screen.autoUpdate,model::automatic)
+                                OptionPicker(texts.getString(R.string.pref_update_interval),listOf(1,6,12,24,72,168).map { it.toString() to texts.getString(R.string.pref_hours,it) },screen.updateIntervalHours.toString()) { model.updateInterval(it.toInt()) }
                                 Pick("Sürüm kanalı",listOf("stable" to "Kararlı","nightly" to "Nightly"),screen.channel,model::channel)
                                 engine.warning?.let {
                                     Text(AppLanguage.message(texts,it),color=MaterialTheme.colorScheme.error)
@@ -124,6 +152,8 @@ private val categories=listOf(
                                 Pick("Video codec",listOf("auto" to "Otomatik","h264" to "H.264","av1" to "AV1","vp9" to "VP9"),o.codec) { update(o.copy(codec=it)) }
                                 Pick("Ses dosyası",listOf("m4a" to "M4A","mp3" to "MP3","opus" to "Opus","flac" to "FLAC","wav" to "WAV"),o.audioFormat) { update(o.copy(audioFormat=it)) }
                                 Pick("Ses kalitesi",listOf(0,128,192,256,320).map { it.toString() to if(it==0) "En iyi" else "$it kbps" },o.audioBitrate.toString()) { update(o.copy(audioBitrate=it.toInt())) }
+                                OptionPicker(texts.getString(R.string.pref_sort),listOf("" to texts.getString(R.string.pref_sort_auto),"res,fps" to texts.getString(R.string.pref_sort_resolution),"size" to texts.getString(R.string.pref_sort_size),"codec:h264,res" to texts.getString(R.string.pref_sort_compatibility)),o.formatSort) { update(o.copy(formatSort=it)) }
+                                OptionPicker(texts.getString(R.string.pref_max_size),listOf(0,50,100,250,500,1000,2000).map { it.toString() to if(it==0) texts.getString(R.string.pref_unlimited) else "$it MB" },o.maxFilesizeMb.toString()) { update(o.copy(maxFilesizeMb=it.toInt())) }
                             }
                             "content" -> {
                                 OptionSwitch("Medya bilgilerini göm",value=o.embedMetadata) { update(o.copy(embedMetadata=it)) }
@@ -179,8 +209,13 @@ private val categories=listOf(
                                 Pick("Bir video indirilemezse",listOf("continue" to "Sonrakine geç","stop" to "Durdur"),o.playlistErrors) { update(o.copy(playlistErrors=it)) }
                             }
                             "files" -> {
-                                Text(AppLanguage.message(texts,"Download / Zenith"),style=MaterialTheme.typography.titleMedium)
+                                Text(texts.getString(R.string.pref_output_directory),style=MaterialTheme.typography.titleMedium)
+                                Text(if(screen.outputDirectory.isBlank()) "Download / ZenithW" else Uri.parse(screen.outputDirectory).lastPathSegment.orEmpty(),color=Muted,style=MaterialTheme.typography.bodyMedium)
+                                OutlinedButton(onClick={ directoryPicker.launch(screen.outputDirectory.takeIf(String::isNotBlank)?.let(Uri::parse)) },modifier=Modifier.fillMaxWidth()) { Icon(Icons.Outlined.FolderOpen,null);Spacer(Modifier.width(8.dp));Text(texts.getString(R.string.pref_choose_directory)) }
+                                if(screen.outputDirectory.isNotBlank()) TextButton(onClick={ model.outputDirectory("") }) { Text(texts.getString(R.string.pref_reset_directory)) }
+                                OptionSwitch(texts.getString(R.string.pref_separate_folders),texts.getString(R.string.pref_separate_folders_summary),screen.separateMediaFolders) { model.preference("separateMediaFolders",it) }
                                 Pick("Dosya adı",listOf("%(title).150B [%(id)s].%(ext)s" to "Başlık + ID","%(uploader).50B - %(title).150B.%(ext)s" to "Kanal + başlık","%(upload_date)s - %(title).150B.%(ext)s" to "Tarih + başlık"),o.filenameTemplate) { update(o.copy(filenameTemplate=it)) }
+                                OptionSwitch(texts.getString(R.string.pref_restrict_names),value=o.restrictFilenames) { update(o.copy(restrictFilenames=it)) }
                                 OptionSwitch("Tekrar indirilenleri atla","Tamamlanan indirmeleri yerel arşivden kontrol eder.",o.downloadArchive) { update(o.copy(downloadArchive=it)) }
                                 OptionSwitch("Açıklamayı kaydet",value=o.writeDescription) { update(o.copy(writeDescription=it)) }
                                 OptionSwitch("Bilgi dosyasını kaydet","Kaynak bağlantısını içerebilir.",o.writeInfoJson) { update(o.copy(writeInfoJson=it)) }

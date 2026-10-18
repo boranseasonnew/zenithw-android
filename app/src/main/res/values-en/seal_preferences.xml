@@ -1,0 +1,34 @@
+<resources>
+    <string name="pref_appearance">Appearance</string>
+    <string name="pref_appearance_summary">Theme and device colors</string>
+    <string name="pref_interaction">Interface and privacy</string>
+    <string name="pref_interaction_summary">Download flow, preview and history</string>
+    <string name="pref_theme">Theme</string>
+    <string name="pref_system">System</string>
+    <string name="pref_light">Light</string>
+    <string name="pref_dark">Dark</string>
+    <string name="pref_dynamic">Dynamic colors</string>
+    <string name="pref_dynamic_summary">Use colors from the device wallpaper.</string>
+    <string name="pref_configure">Show settings before downloading</string>
+    <string name="pref_configure_summary">When disabled, add directly to the queue using saved choices.</string>
+    <string name="pref_remember">Remember download choices</string>
+    <string name="pref_preview">Show media preview</string>
+    <string name="pref_history">Keep download history</string>
+    <string name="pref_history_summary">When disabled, finished tasks disappear after restarting the app. Files remain saved and the active queue is preserved.</string>
+    <string name="pref_update_interval">Engine update interval</string>
+    <string name="pref_hours">%1$d hours</string>
+    <string name="pref_sort">Format priority</string>
+    <string name="pref_sort_auto">Automatic</string>
+    <string name="pref_sort_resolution">Resolution and frame rate</string>
+    <string name="pref_sort_size">File size</string>
+    <string name="pref_sort_compatibility">H.264 compatibility</string>
+    <string name="pref_max_size">File size limit</string>
+    <string name="pref_unlimited">Unlimited</string>
+    <string name="pref_output_directory">Download folder</string>
+    <string name="pref_choose_directory">Choose folder</string>
+    <string name="pref_reset_directory">Use default folder</string>
+    <string name="pref_directory_error">Persistent access to this folder was not granted. Choose another folder.</string>
+    <string name="pref_separate_folders">Separate video and audio folders</string>
+    <string name="pref_separate_folders_summary">Save files in Video and Audio subfolders.</string>
+    <string name="pref_restrict_names">Use compatible file names</string>
+</resources>

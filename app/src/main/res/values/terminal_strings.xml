@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="terminal_workspace">Toplu indirme ve komutlar</string>
+    <string name="terminal_batch">Toplu</string>
+    <string name="terminal_commands">Komutlar</string>
+    <string name="terminal_logs">Günlük</string>
+    <string name="terminal_template">Komut şablonu</string>
+    <string name="terminal_custom">Özel komut</string>
+    <string name="terminal_arguments">yt-dlp seçenekleri</string>
+    <string name="terminal_arguments_hint">Bağlantıları aşağıdaki satırlara ekle. Seçenekler yt-dlp motoruyla indirme görevi olarak çalışır.</string>
+    <string name="terminal_arguments_error">Seçenekleri ve tırnak işaretlerini kontrol et. Desteklenen seçenekler listesine bak.</string>
+    <string name="terminal_save_template">Şablon kaydet</string>
+    <string name="terminal_edit_template">Şablonu düzenle</string>
+    <string name="terminal_delete_template">Şablonu sil</string>
+    <string name="terminal_template_name">Şablon adı</string>
+    <string name="terminal_save">Kaydet</string>
+    <string name="terminal_supported">Desteklenen seçenekler</string>
+    <string name="terminal_supported_summary">Biçim, ses, altyazı, ağ ve içerik seçenekleri</string>
+    <string name="terminal_supported_flags">-f / --format\n-S / --format-sort\n-x / --extract-audio\n--audio-format / --audio-quality\n--merge-output-format / --remux-video\n--write-subs / --write-auto-subs\n--sub-langs / --sub-format / --embed-subs\n--embed-thumbnail / --embed-metadata\n--download-sections / --force-keyframes-at-cuts\n--sponsorblock-remove / --sponsorblock-mark\n--playlist-items / --playlist-reverse\n--limit-rate / --concurrent-fragments\n--retries / --fragment-retries / --socket-timeout\n--proxy / --user-agent / --referer\n--extractor-args / --match-filter</string>
+    <string name="terminal_managed_options">Başına yt-dlp yazma. Çıktı klasörü, yapılandırma dosyaları, cookie dosyaları ve dış program çalıştırma seçenekleri uygulama tarafından yönetilir. Bu alan kabuk komutu çalıştırmaz. Komut seçenekleri indirme ayarlarını geçersiz kılabilir.</string>
+    <string name="terminal_start">Görevi başlat</string>
+    <string name="terminal_log_source">Günlük kaynağı</string>
+    <string name="terminal_session">Uygulama oturumu</string>
+    <string name="terminal_follow">Yeni satırları takip et</string>
+    <string name="terminal_copy">Günlüğü kopyala</string>
+    <string name="terminal_clear">Günlükleri temizle</string>
+    <string name="terminal_empty_log">Bu oturumda henüz günlük yok.</string>
+    <string name="terminal_task_count">%1$d komut görevi · Ayrıntılar için günlük kaynağını seç</string>
+</resources>

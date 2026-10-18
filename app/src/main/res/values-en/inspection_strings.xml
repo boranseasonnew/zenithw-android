@@ -1,0 +1,4 @@
+<resources>
+    <string name="options_invalid">Check the options. The clip range, filename or command is invalid.</string>
+    <string name="command_required">Select or enter yt-dlp arguments.</string>
+</resources>

@@ -240,16 +240,51 @@ class ReleaseSmokeTest {
     @Test fun bulkWorkspace() {
         app.store.language="tr"
         app.startActivity(android.content.Intent(app,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
-        clickLabel("Toplu indirme")
+        clickLabel("Toplu indirme ve komutlar")
         waitForLabel("Bağlantı 1")
         clickLabel("Satır ekle")
         waitForLabel("Bağlantı 2")
         clickLabel("Ayarlar")
         waitForLabel("Uygulama dili")
-        clickLabel("Toplu indirme")
+        clickLabel("Toplu indirme ve komutlar")
         waitForLabel("Bağlantı 2")
         clickLabel("Bağlantı 2 satırını sil")
         waitForLabel("Bağlantı 1")
         captureUi("bulk-workspace")
+    }
+
+    @Test fun sealWorkspaceControls() {
+        val previousPreview=app.store.showMediaPreview
+        val previousConfigure=app.store.configureBeforeDownload
+        val previousTheme=app.store.themeMode
+        val previousOptions=app.store.defaultOptions
+        try {
+            app.store.language="tr"
+            app.store.showMediaPreview=false;app.store.configureBeforeDownload=true;app.store.themeMode="dark"
+            app.startActivity(android.content.Intent(app,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
+            waitForLabel("İndir")
+            val field=nodes().first { it.className?.toString()=="android.widget.EditText" }
+            assertTrue(field.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT,
+                android.os.Bundle().apply { putCharSequence(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,"https://example.org/video") }))
+            clickLabel("İndir")
+            waitForLabel("İndirmeyi ayarla")
+            waitForLabel("İndirmeyi başlat")
+            captureUi("configure-before-metadata")
+            clickLabel("Ses");waitForLabel("Ses biçimi")
+            captureUi("audio-configuration")
+            clickLabel("Pencereyi kapat")
+            clickLabel("Toplu indirme ve komutlar")
+            clickLabel("Komutlar");waitForLabel("yt-dlp seçenekleri")
+            captureUi("command-templates")
+            clickLabel("Günlük");waitForLabel("Günlük kaynağı")
+            captureUi("task-logs")
+            app.store.themeMode="light"
+            app.startActivity(android.content.Intent(app,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
+            waitForLabel("İndir")
+            captureUi("light-home")
+        } finally {
+            app.store.showMediaPreview=previousPreview;app.store.configureBeforeDownload=previousConfigure
+            app.store.themeMode=previousTheme;app.store.defaultOptions=previousOptions
+        }
     }
 }

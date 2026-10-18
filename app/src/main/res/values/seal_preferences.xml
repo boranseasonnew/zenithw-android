@@ -1,0 +1,34 @@
+<resources>
+    <string name="pref_appearance">Görünüm</string>
+    <string name="pref_appearance_summary">Tema ve cihaz renkleri</string>
+    <string name="pref_interaction">Arayüz ve gizlilik</string>
+    <string name="pref_interaction_summary">İndirme akışı, önizleme ve geçmiş</string>
+    <string name="pref_theme">Tema</string>
+    <string name="pref_system">Sistem</string>
+    <string name="pref_light">Açık</string>
+    <string name="pref_dark">Koyu</string>
+    <string name="pref_dynamic">Dinamik renkler</string>
+    <string name="pref_dynamic_summary">Cihazın duvar kâğıdı renklerini kullanır.</string>
+    <string name="pref_configure">İndirmeden önce ayarları göster</string>
+    <string name="pref_configure_summary">Kapalıysa kayıtlı seçimlerle doğrudan kuyruğa ekler.</string>
+    <string name="pref_remember">İndirme seçimlerini hatırla</string>
+    <string name="pref_preview">Medya önizlemesini göster</string>
+    <string name="pref_history">İndirme geçmişini sakla</string>
+    <string name="pref_history_summary">Kapalıysa biten işler uygulama yeniden açıldığında görünmez. Dosyalar silinmez; aktif kuyruk korunur.</string>
+    <string name="pref_update_interval">Motor güncelleme aralığı</string>
+    <string name="pref_hours">%1$d saat</string>
+    <string name="pref_sort">Format önceliği</string>
+    <string name="pref_sort_auto">Otomatik</string>
+    <string name="pref_sort_resolution">Çözünürlük ve kare hızı</string>
+    <string name="pref_sort_size">Dosya boyutu</string>
+    <string name="pref_sort_compatibility">H.264 uyumluluğu</string>
+    <string name="pref_max_size">Dosya boyutu sınırı</string>
+    <string name="pref_unlimited">Sınırsız</string>
+    <string name="pref_output_directory">İndirme klasörü</string>
+    <string name="pref_choose_directory">Klasör seç</string>
+    <string name="pref_reset_directory">Varsayılan klasöre dön</string>
+    <string name="pref_directory_error">Bu klasöre kalıcı erişim verilemedi. Başka bir klasör seç.</string>
+    <string name="pref_separate_folders">Video ve ses klasörlerini ayır</string>
+    <string name="pref_separate_folders_summary">Dosyaları Video ve Audio alt klasörlerine kaydeder.</string>
+    <string name="pref_restrict_names">Uyumlu dosya adları kullan</string>
+</resources>

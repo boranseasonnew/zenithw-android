@@ -43,7 +43,7 @@ fun WorkspaceHeader(page: Int,active: Int,onHome: ()->Unit,onLibrary: (Boolean)-
                 }
             }
             IconButton(onClick=onBulk) {
-                Icon(Icons.Outlined.Terminal,texts.getString(R.string.bulk_title),tint=if(page==4) Silver else Muted)
+                Icon(Icons.Outlined.Terminal,texts.getString(R.string.terminal_workspace),tint=if(page==4) Silver else Muted)
             }
             IconButton(onClick=onSettings) { Icon(Icons.Outlined.Settings,texts.getString(R.string.settings),tint=if(page==2) Silver else Muted) }
         }
