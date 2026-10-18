@@ -25,9 +25,11 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.*
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -60,6 +62,7 @@ private val CardShape=RoundedCornerShape(26.dp)
     var newCookie by rememberSaveable { mutableStateOf(false) }
     val focus=LocalFocusManager.current
     val keyboard=LocalSoftwareKeyboardController.current
+    val pageStates=rememberSaveableStateHolder()
     fun finishInput() { focus.clearFocus(force=true);keyboard?.hide() }
     fun navigate(page: Int) { finishInput();model.tab(page) }
     BackHandler(screen.tab!=0 && screen.preview==null) { navigate(0) }
@@ -85,14 +88,24 @@ private val CardShape=RoundedCornerShape(26.dp)
             AnimatedContent(screen.tab,transitionSpec={
                 (fadeIn(tween(170))+slideInHorizontally(tween(190)) { 24 }) togetherWith fadeOut(tween(100))
             },label="workspace-page") { page ->
-                when(page) {
-                    0 -> HomeScreen(screen,model::url,model::analyze,{ cookies=true })
-                    1 -> DownloadsScreen(jobs,model::cancel,model::retry,screen.showHistory) { job,share ->
-                        runCatching { openFiles(context,job.files,share) }.onFailure { model.showMessage(texts.getString(R.string.no_opener)) }
+                pageStates.SaveableStateProvider(page) {
+                    var placed by remember { mutableStateOf(false) }
+                    Box(Modifier.fillMaxSize().onGloballyPositioned {
+                        if(!placed && page==screen.tab) {
+                            placed=true
+                            finishInput()
+                        }
+                    }) {
+                        when(page) {
+                            0 -> HomeScreen(screen,model::url,model::analyze,{ cookies=true })
+                            1 -> DownloadsScreen(jobs,model::cancel,model::retry,screen.showHistory) { job,share ->
+                                runCatching { openFiles(context,job.files,share) }.onFailure { model.showMessage(texts.getString(R.string.no_opener)) }
+                            }
+                            3 -> AboutScreen { navigate(2) }
+                            4 -> TerminalWorkspace(model,screen,onQueuedDownload)
+                            else -> SettingsHub(model,screen,engine,{ cookies=true })
+                        }
                     }
-                    3 -> AboutScreen { navigate(2) }
-                    4 -> TerminalWorkspace(model,screen,onQueuedDownload)
-                    else -> SettingsHub(model,screen,engine,{ cookies=true })
                 }
             }
         }

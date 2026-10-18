@@ -58,12 +58,16 @@ fun BulkDownloadScreen(screen: ScreenState,onLink: (String,String)->Unit,onAdd: 
     val listState=rememberLazyListState()
     var previousCount by remember { mutableIntStateOf(screen.bulkLinks.size) }
     var pendingFocus by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(screen.bulkLinks.size) {
-        if(screen.bulkLinks.size>previousCount) {
-            pendingFocus=screen.bulkLinks.last().id
-            listState.animateScrollToItem(screen.bulkLinks.size+1)
-        }
+    val active=screen.tab==4
+    LaunchedEffect(active,screen.bulkLinks.size) {
+        val added=screen.bulkLinks.size>previousCount
         previousCount=screen.bulkLinks.size
+        pendingFocus=null
+        if(active && added) {
+            // Finish scrolling before focus opens the IME and changes the viewport.
+            listState.animateScrollToItem(screen.bulkLinks.size+1)
+            pendingFocus=screen.bulkLinks.last().id
+        }
     }
     Column(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.weight(1f),state=listState,contentPadding=PaddingValues(24.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
@@ -74,7 +78,9 @@ fun BulkDownloadScreen(screen: ScreenState,onLink: (String,String)->Unit,onAdd: 
             items(screen.bulkLinks,key={ it.id }) { row ->
                 val index=screen.bulkLinks.indexOf(row)+1
                 val focus=remember { FocusRequester() }
-                LaunchedEffect(pendingFocus) { if(pendingFocus==row.id) { focus.requestFocus();pendingFocus=null } }
+                LaunchedEffect(active,pendingFocus) {
+                    if(active && pendingFocus==row.id) { focus.requestFocus();pendingFocus=null }
+                }
                 Row(verticalAlignment=Alignment.CenterVertically) {
                     OutlinedTextField(row.url,{ onLink(row.id,it) },label={ Text(texts.getString(R.string.bulk_link_number,index)) },
                         placeholder={ Text("https://…") },singleLine=true,modifier=Modifier.weight(1f).focusRequester(focus),shape=RoundedCornerShape(16.dp),

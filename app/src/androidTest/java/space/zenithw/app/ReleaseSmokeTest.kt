@@ -80,6 +80,7 @@ class ReleaseSmokeTest {
             }
             android.os.SystemClock.sleep(100)
         }
+        captureUi("not-clickable")
         error("UI label not clickable: $label; visible: ${nodes().mapNotNull { it.text?.toString() }}")
     }
     @Test fun languages() {

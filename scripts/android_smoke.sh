@@ -11,10 +11,21 @@ test -n "$TEST_APK"
 adb install -r "$TEST_APK"
 PACKAGE="space.zenithw.app.stable"
 TEST_PACKAGE="$PACKAGE.test"
+FAILED_TESTS=()
 run_test() {
-  adb shell am instrument -w -r -e class "space.zenithw.app.${2:-ReleaseSmokeTest}#$1" \
-    "$TEST_PACKAGE/androidx.test.runner.AndroidJUnitRunner" | tee "smoke-results/$1.txt"
-  grep -q 'OK (1 test)' "smoke-results/$1.txt"
+  if adb shell am instrument -w -r -e class "space.zenithw.app.${2:-ReleaseSmokeTest}#$1" \
+    "$TEST_PACKAGE/androidx.test.runner.AndroidJUnitRunner" | tee "smoke-results/$1.txt" \
+    && grep -q 'OK (1 test)' "smoke-results/$1.txt"; then
+    return 0
+  fi
+  FAILED_TESTS+=("${2:-ReleaseSmokeTest}#$1")
+  echo "FAILED: ${FAILED_TESTS[-1]} (continuing to collect independent test results)"
+}
+require_all_tests_passed() {
+  if [ "${#FAILED_TESTS[@]}" -gt 0 ]; then
+    printf 'FAILED TEST: %s\n' "${FAILED_TESTS[@]}"
+    return 1
+  fi
 }
 run_test saveSettings
 adb shell am force-stop "$PACKAGE"
@@ -41,6 +52,7 @@ run_test saveNightlyEngineForRestart
 adb shell am force-stop "$PACKAGE"
 run_test restoreNightlyEngineAfterRestart
 if [ "$MODE" = "engine-only" ]; then
+  require_all_tests_passed
   echo 'PASS: engine archive, live updates, settings and nightly restart persistence'
   exit 0
 fi
@@ -70,3 +82,4 @@ assert .35<ratio<.70, ('URL must be in the central region',ratio)
 assert bounds(logo)[3]<root_bounds[3]*.25, 'Logo must stay at top left'
 print('PASS: five languages, persistence and centered minimal screen on Android 13; URL ratio',ratio)
 PY
+require_all_tests_passed
