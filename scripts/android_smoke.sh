@@ -5,10 +5,14 @@ find smoke-results -type f -delete
 MODE="${1:-full}"
 trap 'adb logcat -d > smoke-results/logcat.txt; adb pull /sdcard/Android/data/space.zenithw.app.stable/files/smoke-ui smoke-results/ || true' EXIT
 ./gradlew --no-daemon :app:assembleReleaseAndroidTest
-adb install -r app/build/outputs/apk/release/app-x86_64-release.apk
+# The current host adb can stall streaming an APK to the API 24 package manager.
+# Use push-based installation and bound adb commands so failures retain diagnostics.
+timeout 60 adb wait-for-device
+timeout 60 adb shell pm path android | grep -q '^package:'
+timeout 180 adb install --no-streaming -r app/build/outputs/apk/release/app-x86_64-release.apk
 TEST_APK="$(find app/build/outputs/apk/androidTest/release -name '*.apk' -print -quit)"
 test -n "$TEST_APK"
-adb install -r "$TEST_APK"
+timeout 180 adb install --no-streaming -r "$TEST_APK"
 PACKAGE="space.zenithw.app.stable"
 TEST_PACKAGE="$PACKAGE.test"
 FAILED_TESTS=()
