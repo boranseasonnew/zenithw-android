@@ -262,6 +262,9 @@ class ReleaseSmokeTest {
         try {
             app.store.language="tr"
             app.store.showMediaPreview=false;app.store.configureBeforeDownload=true;app.store.themeMode="dark"
+            // Save/restore coverage intentionally leaves AUDIO selected. Start
+            // this independent UI test in VIDEO so it exercises a real mode change.
+            app.store.defaultOptions=previousOptions.copy(mode=MediaMode.VIDEO)
             app.startActivity(android.content.Intent(app,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
             waitForLabel("İndir")
             val field=nodes().first { it.className?.toString()=="android.widget.EditText" }
