@@ -7,11 +7,16 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Version tag to build and publish after tests, for example v2.3.0"
+        description: "Version tag to build and publish, for example v2.3.0"
         required: true
         type: string
       publish_release:
         description: "Publish verified APKs; disable to only build and upload test artifacts"
+        required: true
+        type: boolean
+        default: true
+      run_tests:
+        description: "Run lint, policy checks and emulator tests before publication"
         required: true
         type: boolean
         default: true
@@ -93,18 +98,25 @@ jobs:
         run: |
           test -f "releases/${TAG_NAME#v}.md"
           chmod +x ./gradlew
-          ./gradlew --no-daemon assembleRelease lintDebug
+          ./gradlew --no-daemon assembleRelease
+
+      - name: Run Android lint
+        if: github.event_name != 'workflow_dispatch' || inputs.run_tests
+        run: ./gradlew --no-daemon lintDebug
 
       - name: Check download and command policies
+        if: github.event_name != 'workflow_dispatch' || inputs.run_tests
         run: python3 tests/run_jvm_checks.py "$HOME/.gradle"
 
       - name: Enable Android emulator acceleration
+        if: github.event_name != 'workflow_dispatch' || inputs.run_tests
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
       - name: Test updates and saved settings on Android 13
+        if: github.event_name != 'workflow_dispatch' || inputs.run_tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
@@ -115,7 +127,7 @@ jobs:
           script: bash scripts/android_smoke.sh
 
       - name: Upload Android test results and screen
-        if: always()
+        if: always() && (github.event_name != 'workflow_dispatch' || inputs.run_tests)
         uses: actions/upload-artifact@v4
         with:
           name: android-13-smoke-results
@@ -124,6 +136,7 @@ jobs:
           retention-days: 7
 
       - name: Test zipapp compatibility and engine persistence on Android 7
+        if: github.event_name != 'workflow_dispatch' || inputs.run_tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 24
@@ -134,13 +147,17 @@ jobs:
           script: bash scripts/android_smoke.sh engine-only
 
       - name: Upload Android 7 compatibility test results
-        if: always()
+        if: always() && (github.event_name != 'workflow_dispatch' || inputs.run_tests)
         uses: actions/upload-artifact@v4
         with:
           name: android-7-compatibility-results
           path: smoke-results/
           if-no-files-found: ignore
           retention-days: 7
+
+      - name: Record manually skipped tests
+        if: github.event_name == 'workflow_dispatch' && !inputs.run_tests
+        run: echo 'Tests and lint were skipped by explicit manual request. APK package, version, ABI and signing-certificate checks remain required.' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify and prepare signed release files
         env:
