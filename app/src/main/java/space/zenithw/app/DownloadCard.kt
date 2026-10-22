@@ -58,7 +58,7 @@ internal fun mediaSize(bytes: Long): String {
     Surface(shape=RoundedCornerShape(24.dp),color=Panel,border=BorderStroke(1.dp,Hairline),modifier=Modifier.fillMaxWidth()) {
         Column {
             Box {
-                JobCover(job,Modifier.fillMaxWidth().aspectRatio(16f/9f))
+                JobCover(job,Modifier.fillMaxWidth().height(132.dp))
                 if(job.durationSeconds>0) Surface(color=Ink.copy(alpha=.86f),shape=RoundedCornerShape(8.dp),
                     modifier=Modifier.align(Alignment.BottomEnd).padding(12.dp)) {
                     Text(mediaDuration(job.durationSeconds.toLong()),Modifier.padding(horizontal=8.dp,vertical=4.dp),

@@ -83,6 +83,18 @@ class ReleaseSmokeTest {
         captureUi("not-clickable")
         error("UI label not clickable: $label; visible: ${nodes().mapNotNull { it.text?.toString() }}")
     }
+    private fun settledBounds(label: String): android.graphics.Rect {
+        var previous=android.graphics.Rect().also { waitForLabel(label).getBoundsInScreen(it) }
+        var stable=0
+        repeat(40) {
+            android.os.SystemClock.sleep(80)
+            val current=android.graphics.Rect().also { waitForLabel(label).getBoundsInScreen(it) }
+            stable=if(current==previous) stable+1 else 0
+            if(stable>=3) return current
+            previous=current
+        }
+        error("Layout did not settle for $label")
+    }
     @Test fun languages() {
         assertEquals("Einstellungen",AppLanguage.context(app).getString(R.string.settings))
         app.startActivity(android.content.Intent(app,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -244,11 +256,11 @@ class ReleaseSmokeTest {
             app.startActivity(android.content.Intent(app,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
             clickLabel("Ayarlar")
             scrollToLabel("Aralık, sıra ve hata davranışı")
-            val before=android.graphics.Rect().also { waitForLabel("Aralık, sıra ve hata davranışı").getBoundsInScreen(it) }
+            val before=settledBounds("Aralık, sıra ve hata davranışı")
             clickLabel("Oynatma listeleri")
             waitForLabel("Liste indirmeye izin ver")
             clickLabel("Ayarlara dön")
-            val after=android.graphics.Rect().also { waitForLabel("Aralık, sıra ve hata davranışı").getBoundsInScreen(it) }
+            val after=settledBounds("Aralık, sıra ve hata davranışı")
             assertTrue("Settings scroll moved: $before -> $after",kotlin.math.abs(before.top-after.top)<32)
             captureUi("settings-scroll-restored")
         } finally { app.store.language=language }

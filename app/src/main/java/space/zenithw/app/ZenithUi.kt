@@ -77,6 +77,7 @@ private val CardShape=RoundedCornerShape(26.dp)
     }
     // Also cover navigation initiated by a share intent or a queued download.
     LaunchedEffect(screen.tab) { finishInput() }
+    LaunchedEffect(screen.preview?.url) { if(screen.preview==null) finishInput() }
     LaunchedEffect(screen.message) {
         screen.message?.let { snackbar.showSnackbar(AppLanguage.message(texts,it)); model.dismissMessage() }
     }
@@ -148,18 +149,10 @@ private val CardShape=RoundedCornerShape(26.dp)
             leadingIcon={ Icon(Icons.Outlined.Link,null,tint=Muted) },
             keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Uri,imeAction=ImeAction.Go),
             keyboardActions=KeyboardActions(onGo={ if(screen.url.isNotBlank() && !screen.playlistLoading) analyze() }),
-            trailingIcon={ if(screen.url.isNotEmpty()) IconButton(onClick={ onUrl("") }) { Icon(Icons.Outlined.Close,texts.getString(R.string.clear_link)) } })
-        }
-        item(key="session") {
-        Surface(onClick=onCookies,color=Panel,shape=RoundedCornerShape(16.dp)) {
-            Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=14.dp),verticalAlignment=Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Lock,null,Modifier.size(18.dp),tint=Muted)
-                Spacer(Modifier.width(12.dp))
-                Text(screen.profiles.firstOrNull { it.id==screen.cookieId }?.host ?: texts.getString(R.string.connect_session),
-                    Modifier.weight(1f),maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.bodyMedium)
-                Icon(Icons.Outlined.ChevronRight,null,Modifier.size(20.dp),tint=Muted)
-            }
-        }
+            trailingIcon={ Row {
+                IconButton(onClick=onCookies) { Icon(Icons.Outlined.Lock,texts.getString(R.string.connect_session),tint=if(screen.cookieId!=null) Silver else Muted) }
+                if(screen.url.isNotEmpty()) IconButton(onClick={ onUrl("") }) { Icon(Icons.Outlined.Close,texts.getString(R.string.clear_link)) }
+            } })
         }
         }
         Row(Modifier.fillMaxWidth().padding(top=32.dp),horizontalArrangement=Arrangement.spacedBy(12.dp),verticalAlignment=Alignment.CenterVertically) {
