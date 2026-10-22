@@ -12,8 +12,8 @@ android {
         applicationId = "space.zenithw.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 2003000
-        versionName = "2.3.0"
+        versionCode = 2003001
+        versionName = "2.3.1"
         buildConfigField("boolean", "F_DROID", fdroidBuild.toString())
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
