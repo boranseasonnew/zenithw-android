@@ -97,7 +97,9 @@ private val CardShape=RoundedCornerShape(26.dp)
                         }
                     }) {
                         when(page) {
-                            0 -> HomeScreen(screen,model::url,model::analyze,{ cookies=true })
+                            0 -> HomeScreen(screen,jobs,model::url,model::analyze,{ cookies=true },model::cancel,model::retry) { job ->
+                                runCatching { openFiles(context,job.files,false) }.onFailure { model.showMessage(texts.getString(R.string.no_opener)) }
+                            }
                             1 -> DownloadsScreen(jobs,model::cancel,model::retry,screen.showHistory) { job,share ->
                                 runCatching { openFiles(context,job.files,share) }.onFailure { model.showMessage(texts.getString(R.string.no_opener)) }
                             }
@@ -125,14 +127,21 @@ private val CardShape=RoundedCornerShape(26.dp)
     }
 }
 
-@Composable private fun HomeScreen(screen: ScreenState,
-    onUrl: (String)->Unit,onAnalyze: ()->Unit,onCookies: ()->Unit) {
+@Composable private fun HomeScreen(screen: ScreenState,jobs: List<DownloadJob>,
+    onUrl: (String)->Unit,onAnalyze: ()->Unit,onCookies: ()->Unit,onCancel: (String)->Unit,
+    onRetry: (DownloadJob)->Unit,onOpen: (DownloadJob)->Unit) {
     val texts=LocalAppContext.current
     val clipboard=LocalClipboardManager.current
     val keyboard=LocalSoftwareKeyboardController.current
     fun analyze() { keyboard?.hide();onAnalyze() }
+    val focused=jobs.firstOrNull { it.id==screen.homeJobId }
+    val current=focused?.takeIf { it.state in setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING) }
+        ?: jobs.firstOrNull { it.state in setOf(JobState.RUNNING,JobState.SAVING) }
+        ?: jobs.lastOrNull { it.state==JobState.QUEUED } ?: focused
     Column(Modifier.fillMaxSize().padding(horizontal=24.dp,vertical=24.dp)) {
-        Spacer(Modifier.weight(1f))
+        LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(18.dp,Alignment.CenterVertically)) {
+        current?.let { job -> item(key=job.id) { HomeDownloadCard(job,{ onCancel(job.id) },{ onRetry(job) },{ onOpen(job) }) } }
+        item(key="link") {
         OutlinedTextField(screen.url,onUrl,placeholder={ Text("https://…",color=Muted) },
             label={ Text(texts.getString(R.string.seal_video_link)) },
             modifier=Modifier.fillMaxWidth(),singleLine=true,shape=RoundedCornerShape(20.dp),
@@ -140,7 +149,8 @@ private val CardShape=RoundedCornerShape(26.dp)
             keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Uri,imeAction=ImeAction.Go),
             keyboardActions=KeyboardActions(onGo={ if(screen.url.isNotBlank() && !screen.playlistLoading) analyze() }),
             trailingIcon={ if(screen.url.isNotEmpty()) IconButton(onClick={ onUrl("") }) { Icon(Icons.Outlined.Close,texts.getString(R.string.clear_link)) } })
-        Spacer(Modifier.height(12.dp))
+        }
+        item(key="session") {
         Surface(onClick=onCookies,color=Panel,shape=RoundedCornerShape(16.dp)) {
             Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=14.dp),verticalAlignment=Alignment.CenterVertically) {
                 Icon(Icons.Outlined.Lock,null,Modifier.size(18.dp),tint=Muted)
@@ -150,7 +160,8 @@ private val CardShape=RoundedCornerShape(26.dp)
                 Icon(Icons.Outlined.ChevronRight,null,Modifier.size(20.dp),tint=Muted)
             }
         }
-        Spacer(Modifier.weight(1f))
+        }
+        }
         Row(Modifier.fillMaxWidth().padding(top=32.dp),horizontalArrangement=Arrangement.spacedBy(12.dp),verticalAlignment=Alignment.CenterVertically) {
             OutlinedButton(onClick={ clipboard.getText()?.text?.takeIf(String::isNotBlank)?.let(onUrl) },
                 modifier=Modifier.heightIn(min=56.dp),shape=RoundedCornerShape(18.dp)) {
@@ -189,13 +200,15 @@ private val CardShape=RoundedCornerShape(26.dp)
             Surface(color=Panel,shape=CardShape,modifier=Modifier.fillMaxWidth(),border=BorderStroke(1.dp,Hairline.copy(alpha=.7f))) {
                 Column(Modifier.padding(18.dp)) {
                     Row(verticalAlignment=Alignment.CenterVertically) {
-                        AsyncImage(job.thumbnail,null,modifier=Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(PanelRaised))
+                        JobCover(job,Modifier.size(width=112.dp,height=70.dp).clip(RoundedCornerShape(14.dp)))
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(job.title,maxLines=2,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.titleMedium)
                             val format=if(job.options.mode==MediaMode.AUDIO) job.options.audioFormat else job.options.container
                             Text(AppLanguage.message(texts,job.options.mode.label)+" · "+format.uppercase(),color=Muted,
                                 style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=4.dp))
+                            Text(listOfNotNull(job.durationSeconds.takeIf { it>0 }?.let { mediaDuration(it.toLong()) },
+                                job.totalBytes.takeIf { it>0 }?.let(::mediaSize)).joinToString(" · "),color=Muted,style=MaterialTheme.typography.labelSmall)
                         }
                     }
                     Spacer(Modifier.height(15.dp))

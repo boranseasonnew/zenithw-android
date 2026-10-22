@@ -149,7 +149,7 @@ data class DownloadJob(
     val detail: String = "Sırada", val createdAt: Long = System.currentTimeMillis(),
     val files: List<String> = emptyList(), val notes: List<String> = emptyList(),
     val phase: String = "queued", val progressKnown: Boolean = false, val etaSeconds: Long = -1,
-    val bytesDownloaded: Long = 0, val totalBytes: Long = 0
+    val bytesDownloaded: Long = 0, val totalBytes: Long = 0, val durationSeconds: Int = 0
 ) {
     fun json() = JSONObject().apply {
         put("id",id); put("url",url); put("title",title); put("thumbnail",thumbnail)
@@ -157,6 +157,7 @@ data class DownloadJob(
         put("detail",detail); put("createdAt",createdAt); put("files",JSONArray(files)); put("notes",JSONArray(notes))
         put("phase",phase); put("progressKnown",progressKnown); put("etaSeconds",etaSeconds)
         put("bytesDownloaded",bytesDownloaded); put("totalBytes",totalBytes)
+        put("durationSeconds",durationSeconds)
     }
     companion object {
         fun from(o: JSONObject) = DownloadJob(
@@ -169,7 +170,8 @@ data class DownloadJob(
             files=o.optJSONArray("files")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
             notes=o.optJSONArray("notes")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
             phase=o.optString("phase","queued"), progressKnown=o.optBoolean("progressKnown",o.optDouble("progress",0.0)>0),
-            etaSeconds=o.optLong("etaSeconds",-1),bytesDownloaded=o.optLong("bytesDownloaded",0),totalBytes=o.optLong("totalBytes",0)
+            etaSeconds=o.optLong("etaSeconds",-1),bytesDownloaded=o.optLong("bytesDownloaded",0),totalBytes=o.optLong("totalBytes",0),
+            durationSeconds=o.optInt("durationSeconds",0).coerceAtLeast(0)
         )
     }
 }

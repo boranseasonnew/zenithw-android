@@ -108,7 +108,8 @@ class LocalStore(context: Context) {
     @Synchronized fun put(job: DownloadJob) {
         val list=(mutableJobs.value.filterNot { it.id==job.id } + job).sortedByDescending { it.createdAt }
         val before=mutableJobs.value.firstOrNull { it.id==job.id }
-        val durable=before==null || before.state!=job.state || before.files!=job.files || before.notes!=job.notes || before.title!=job.title
+        val durable=before==null || before.state!=job.state || before.files!=job.files || before.notes!=job.notes || before.title!=job.title ||
+            before.thumbnail!=job.thumbnail || before.durationSeconds!=job.durationSeconds
         val now=android.os.SystemClock.elapsedRealtime()
         // Publish UI samples frequently; persist progress at most once a second.
         // Queue changes, completed files and terminal states remain durable.
@@ -147,7 +148,7 @@ class CookieVault(private val context: Context) {
             CookieProfile(data.getString("id"),data.getString("host"),data.getInt("count"),data.getLong("updated"))
         }.getOrNull()
     }.sortedByDescending { it.updatedAt }
-    @Synchronized fun capture(host: String, header: String): CookieProfile {
+    @Synchronized fun capture(host: String, header: String,userAgent: String=""): CookieProfile {
         require(host.isNotBlank() && !host.any { it.isISOControl() })
         val cookies=header.split(';').mapNotNull { value ->
             val pair=value.trim().split('=',limit=2)
@@ -161,7 +162,7 @@ class CookieVault(private val context: Context) {
         val cookieText="# Netscape HTTP Cookie File\n"+cookies.joinToString("\n") {
             "$domain\tFALSE\t/\tTRUE\t0\t${it.first}\t${it.second}"
         }+"\n"
-        return save(id,domain,cookies.size,cookieText)
+        return save(id,domain,cookies.size,cookieText,userAgent)
     }
     @Synchronized fun importNetscape(text: String): CookieProfile {
         require(text.startsWith("# Netscape HTTP Cookie File") || text.startsWith("# HTTP Cookie File"))
@@ -181,13 +182,14 @@ class CookieVault(private val context: Context) {
         val host=if(hosts.size==1) hosts.first() else "${hosts.first()} +${hosts.size-1} site"
         return save(UUID.randomUUID().toString(),host,rows.size,"# Netscape HTTP Cookie File\n"+lines.joinToString("\n")+"\n")
     }
-    private fun save(id: String,host: String,count: Int,text: String): CookieProfile {
+    private fun save(id: String,host: String,count: Int,text: String,userAgent: String=""): CookieProfile {
+        require(userAgent.length<=1024 && userAgent.none(Char::isISOControl))
         val cipher=Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE,key()) }
         val encrypted=cipher.doFinal(text.toByteArray(Charsets.UTF_8))
         val updated=System.currentTimeMillis()
         val data=JSONObject().put("id",id).put("host",host).put("count",count)
             .put("updated",updated).put("iv",Base64.encodeToString(cipher.iv,Base64.NO_WRAP))
-            .put("payload",Base64.encodeToString(encrypted,Base64.NO_WRAP))
+            .put("payload",Base64.encodeToString(encrypted,Base64.NO_WRAP)).put("userAgent",userAgent)
         require(preferences.edit().putString(id,data.toString()).commit())
         return CookieProfile(id,host,count,updated)
     }
@@ -201,5 +203,11 @@ class CookieVault(private val context: Context) {
         val bytes=cipher.doFinal(Base64.decode(data.getString("payload"),Base64.NO_WRAP))
         return File(directory,"session.txt").apply { writeBytes(bytes) }
     }
+    fun userAgent(id: String?): String = id?.let { preferences.getString(it,null) }?.let {
+        runCatching { JSONObject(it).optString("userAgent").takeIf { ua -> ua.length<=1024 && ua.none(Char::isISOControl) } }.getOrNull()
+    }.orEmpty()
+    fun revision(id: String?): Long = id?.let { preferences.getString(it,null) }?.let {
+        runCatching { JSONObject(it).optLong("updated") }.getOrNull()
+    } ?: 0L
     fun remove(id: String) { preferences.edit().remove(id).apply() }
 }

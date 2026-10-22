@@ -33,7 +33,7 @@ fun WorkspaceHeader(page: Int,active: Int,onHome: ()->Unit,onLibrary: (Boolean)-
             if(page!=0) IconButton(onClick=onHome) { Icon(Icons.Outlined.ArrowBack,texts.getString(R.string.workspace_home)) }
             Column(Modifier.weight(1f).padding(start=if(page==0) 8.dp else 0.dp)) {
                 Text("Zenith",style=MaterialTheme.typography.titleLarge)
-                Text(BuildConfig.VERSION_NAME,color=Muted,style=MaterialTheme.typography.labelSmall)
+                if(page!=0) Text(BuildConfig.VERSION_NAME,color=Muted,style=MaterialTheme.typography.labelSmall)
             }
             IconButton(onClick={ onLibrary(false) }) {
                 BadgedBox(badge={ if(active>0) Badge(containerColor=Silver,contentColor=Ink) { Text(active.toString()) } }) {

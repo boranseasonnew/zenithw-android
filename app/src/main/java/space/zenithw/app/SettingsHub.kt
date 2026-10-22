@@ -12,9 +12,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
@@ -22,6 +24,7 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -67,6 +70,7 @@ private val categories=listOf(
         }
     }
     var active by rememberSaveable { mutableStateOf<String?>(null) }
+    val pageStates=rememberSaveableStateHolder()
     fun navigate(category: String?) { dismissInput();active=category }
     val logs by model.logs.collectAsStateWithLifecycle()
     val o=screen.defaults
@@ -74,24 +78,26 @@ private val categories=listOf(
     if(active=="about") { AboutScreen { navigate(null) };return }
     BackHandler(active!=null) { navigate(null) }
     AnimatedContent(active,transitionSpec={ fadeIn(tween(160)) togetherWith fadeOut(tween(100)) },label="settings-page") { category ->
-        LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(24.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
+        pageStates.SaveableStateProvider(category ?: "settings-root") {
+        val scroll=rememberLazyListState()
+        LazyColumn(Modifier.fillMaxSize(),state=scroll,contentPadding=PaddingValues(24.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             item {
-                Row(Modifier.fillMaxWidth().padding(bottom=8.dp),verticalAlignment=Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().padding(top=if(category==null) 24.dp else 4.dp,bottom=20.dp),verticalAlignment=Alignment.CenterVertically) {
                     if(category!=null) {
                         IconButton(onClick={ navigate(null) }) { Icon(Icons.Outlined.ArrowBack,AppLanguage.message(texts,"Ayarlara dön")) }
                         Spacer(Modifier.width(6.dp))
                     }
                     Column(Modifier.weight(1f)) {
-                        Text(if(category==null) AppLanguage.message(texts,"Ayarlar") else categories.first { it.key==category }.let { it.titleResource?.let(texts::getString) ?: AppLanguage.message(texts,it.title) },style=MaterialTheme.typography.headlineMedium)
+                        Text(if(category==null) AppLanguage.message(texts,"Ayarlar") else categories.first { it.key==category }.let { it.titleResource?.let(texts::getString) ?: AppLanguage.message(texts,it.title) },style=MaterialTheme.typography.headlineLarge)
                         Text(if(category==null) "Zenith · ${BuildConfig.VERSION_NAME}" else AppLanguage.message(texts,"Otomatik kaydedilir"),color=Muted,style=MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
             if(category==null) {
-                items(categories) { group ->
+                items(categories,key={ it.key }) { group ->
                     Surface(onClick={ if(group.key=="cookies") { dismissInput();onCookies() } else navigate(group.key) },
-                        shape=RoundedCornerShape(22.dp),color=Panel) {
-                        Row(Modifier.fillMaxWidth().padding(19.dp),verticalAlignment=Alignment.CenterVertically) {
+                        shape=RoundedCornerShape(22.dp),color=Panel,border=BorderStroke(1.dp,Hairline.copy(alpha=.65f))) {
+                        Row(Modifier.fillMaxWidth().heightIn(min=96.dp).padding(20.dp),verticalAlignment=Alignment.CenterVertically) {
                             Surface(shape=RoundedCornerShape(14.dp),color=PanelRaised) {
                                 Icon(group.icon,null,tint=Silver,modifier=Modifier.padding(12.dp).size(22.dp))
                             }
@@ -104,7 +110,6 @@ private val categories=listOf(
                         }
                     }
                 }
-                item { Text(AppLanguage.message(texts,"Seçimlerin sonraki indirmelerde hazır gelir. İndirme penceresinde yalnızca o dosya için değiştirebilirsin."),color=Muted,style=MaterialTheme.typography.bodyMedium) }
             } else if(category=="terminal") {
                 item {
                     Row(verticalAlignment=Alignment.CenterVertically) {
@@ -238,6 +243,8 @@ private val categories=listOf(
             }
         }
     }
+}
+
 }
 
 @Composable private fun Pick(title: String,items: List<Pair<String,String>>,selected: String,onSelect: (String)->Unit) {

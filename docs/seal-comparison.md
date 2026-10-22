@@ -85,3 +85,12 @@ time-to-configuration from time-to-metadata. No numeric extraction speedup is cl
 The 2.3.0 release is built and published through GitHub Actions after its verification
 steps, rather than uploading locally built APKs. See [release notes](../releases/2.3.0.md)
 and [attribution/reuse policy](../THIRD_PARTY_NOTICES.md).
+
+## October download-flow follow-up
+
+The user's Seal screen references informed the home progress card, compact
+configuration summary and settings spacing. These are independent Compose
+implementations; no Seal screenshots, artwork or source files were bundled.
+The optional session/User-Agent handling was also compared with the referenced
+Seal source. See the [implementation and verification record](download-flow-20261023.md)
+for the playlist, artwork, navigation and source-access changes and their limits.

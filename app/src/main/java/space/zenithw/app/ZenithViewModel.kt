@@ -25,7 +25,8 @@ data class ScreenState(val tab: Int=0,val url: String="",val analyzing: Boolean=
     val analysisError: String?=null,val inspectSlow: Boolean=false,
     val themeMode: String="system",val dynamicColors: Boolean=false,val configureBeforeDownload: Boolean=true,
     val rememberDownloadChoices: Boolean=true,val showMediaPreview: Boolean=true,val keepHistory: Boolean=true,
-    val updateIntervalHours: Int=24,val outputDirectory: String="",val separateMediaFolders: Boolean=false)
+    val updateIntervalHours: Int=24,val outputDirectory: String="",val separateMediaFolders: Boolean=false,
+    val homeJobId: String?=null)
 class ZenithViewModel(application: Application): AndroidViewModel(application) {
     val app=application as ZenithApplication
     private val mutableScreen=MutableStateFlow(ScreenState(profiles=app.vault.profiles(),
@@ -123,7 +124,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
                     edit { it.copy(preview=preview) }
             } catch(cancelled: CancellationException) { throw cancelled }
             catch(e: Exception) { if(request==generation) {
-                app.store.log("INSPECT failed: ${EngineUpdateSource.diagnostic(e)}")
+                extractionFailureLines(e.message ?: e.javaClass.simpleName).forEach { app.store.log("INSPECT failed: $it") }
                 edit { it.copy(analysisError=text(R.string.media_error)) }
             } }
             finally { if(request==generation) edit { it.copy(analyzing=false) } }
@@ -134,10 +135,10 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         if(state.submitting) return
         if(!validOptions(options,preview.duration)) return
         if(state.rememberDownloadChoices) defaults(options)
-        if(options.playlist) { loadPlaylist(options);return }
+        if(options.playlist && preview.isPlaylist) { loadPlaylist(options);return }
         cancelInspection();edit { it.copy(analyzing=false) }
         enqueueBatch(listOf(DownloadJob(url=preview.url,title=if(preview.metadataReady) preview.title else Uri.parse(preview.url).host.orEmpty(),thumbnail=preview.thumbnail,
-            options=options.copy(cookieId=state.cookieId))))
+            durationSeconds=preview.duration,options=options.copy(cookieId=state.cookieId,playlist=false,playlistItems=""))))
     }
     fun bulkMode(mode: MediaMode)=edit { it.copy(bulkMode=mode) }
     fun addBulkLink()=edit { if(it.bulkLinks.size>=50) it else it.copy(bulkLinks=it.bulkLinks+BulkLinkInput()) }
@@ -191,7 +192,10 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
                     else edit { it.copy(playlistEntries=entries) }
                 }
             } catch(cancelled: CancellationException) { throw cancelled }
-            catch(e: Exception) { if(request==generation) showMessage(text(R.string.playlist_error)) }
+            catch(e: Exception) { if(request==generation) {
+                extractionFailureLines(e.message ?: e.javaClass.simpleName).forEach { app.store.log("PLAYLIST failed: $it") }
+                showMessage(text(R.string.playlist_error))
+            } }
             finally { if(request==generation) edit { it.copy(playlistLoading=false) } }
         }
     }
@@ -215,14 +219,15 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
             job.options.customArguments,job.options.clipStart,job.options.clipEnd,job.options.filenameOverride).joinToString("|")
         viewModelScope.launch {
             try {
-                val count=withContext(Dispatchers.IO) { enqueueGate.withLock {
+                val added=withContext(Dispatchers.IO) { enqueueGate.withLock {
                     val current=app.store.jobs.value.filter { it.state in active }
                     val seen=current.map(::key).toMutableSet()
                     val selected=candidates.filter { seen.add(key(it)) }
                     require(current.size+selected.size<=200) { "capacity" }
                     selected.forEachIndexed { index,job -> DownloadWorker.enqueue(app,job.copy(createdAt=System.currentTimeMillis()+index)) }
-                    selected.size
+                    selected
                 } }
+                val count=added.size
                 if(count==0) {
                     val sameInteraction=expectedGeneration==generation && mutableScreen.value.url==expectedUrl && mutableScreen.value.tab==expectedTab
                     if(sameInteraction) edit { it.copy(preview=null,tab=if(stayTerminal) 4 else 1,showHistory=false,playlistEntries=emptyList(),message=text(R.string.bulk_duplicates)) }
@@ -230,7 +235,8 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
                 }
                 else {
                     val sameInteraction=expectedGeneration==generation && mutableScreen.value.url==expectedUrl && mutableScreen.value.tab==expectedTab
-                    if(sameInteraction) edit { it.copy(preview=null,url="",tab=if(stayTerminal) 4 else 1,showHistory=false,playlistEntries=emptyList(),
+                    if(sameInteraction) edit { it.copy(preview=null,url="",tab=if(stayTerminal) 4 else if(expectedTab==0) 0 else 1,
+                        homeJobId=if(expectedTab==0) added.first().id else it.homeJobId,showHistory=false,playlistEntries=emptyList(),
                         bulkLinks=if(clearBulk && it.bulkLinks==submittedLinks) listOf(BulkLinkInput()) else it.bulkLinks,message=text(R.string.bulk_added,count)) }
                     else showMessage(text(R.string.bulk_added,count))
                 }
@@ -272,7 +278,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
 }
 
 
-private fun java.io.InputStream.readNBytesCompat(limit: Int): ByteArray {
+internal fun java.io.InputStream.readNBytesCompat(limit: Int): ByteArray {
     val output=java.io.ByteArrayOutputStream()
     val buffer=ByteArray(8192)
     while(output.size()<limit) {

@@ -3,6 +3,32 @@ package space.zenithw.app
 import org.json.JSONObject
 import java.util.Locale
 
+internal fun mediaThumbnail(json: JSONObject): String? {
+    fun safe(value: String): String? = value.takeIf { it.startsWith("https://") && it.none(Char::isISOControl) }
+    safe(json.optString("thumbnail"))?.let { return it }
+    val thumbnails=json.optJSONArray("thumbnails") ?: return null
+    return (thumbnails.length()-1 downTo 0).firstNotNullOfOrNull { safe(thumbnails.optJSONObject(it)?.optString("url").orEmpty()) }
+}
+
+internal fun downloadMetadata(job: DownloadJob,json: JSONObject): DownloadJob = job.copy(
+    title=json.optString("title").takeUnless { it.isBlank() || it=="null" }?.filterNot(Char::isISOControl)?.take(500) ?: job.title,
+    thumbnail=mediaThumbnail(json) ?: job.thumbnail,
+    durationSeconds=json.optDouble("duration",0.0).takeIf { it.isFinite() && it>0 }?.toInt() ?: job.durationSeconds)
+
+internal fun estimatedDownloadBytes(preview: MediaPreview,options: DownloadOptions): Long {
+    val formats=preview.formats
+    if(options.selectedFormat.isNotBlank()) {
+        val selected=options.selectedFormat.split('+').map { id -> formats.firstOrNull { it.id==id } ?: return 0 }
+        return if(selected.all { it.sizeBytes>0 }) selected.sumOf { it.sizeBytes } else 0
+    }
+    val audio=formats.filter { !it.hasVideo && it.hasAudio }.maxByOrNull { it.bitrate }
+    if(options.mode==MediaMode.AUDIO) return audio?.sizeBytes ?: 0
+    if(options.mode!=MediaMode.VIDEO) return 0
+    val video=formats.firstOrNull { it.hasVideo && (options.height<=0 || it.height<=options.height) } ?: return 0
+    return if(video.sizeBytes<=0) 0 else if(video.hasAudio) video.sizeBytes
+        else audio?.sizeBytes?.takeIf { it>0 }?.plus(video.sizeBytes) ?: 0
+}
+
 fun mediaPreview(json: JSONObject,url: String,isPlaylist: Boolean=false): MediaPreview {
     val values=json.optJSONArray("formats")
     val formats=if(values==null) emptyList() else (0 until values.length()).mapNotNull { index ->
@@ -26,6 +52,6 @@ fun mediaPreview(json: JSONObject,url: String,isPlaylist: Boolean=false): MediaP
         json.optJSONObject(key)?.keys()?.asSequence()?.filter { it!="live_chat" }?.toList().orEmpty()
     }).distinct().sorted()
     return MediaPreview(url,json.optString("title").ifBlank { url },json.optString("uploader"),
-        json.optString("thumbnail").takeIf { it.startsWith("https://") },json.optDouble("duration",0.0).toInt().coerceAtLeast(0),
+        mediaThumbnail(json),json.optDouble("duration",0.0).toInt().coerceAtLeast(0),
         formats.map { it.height }.filter { it>0 }.distinct(),isPlaylist,true,formats,languages)
 }

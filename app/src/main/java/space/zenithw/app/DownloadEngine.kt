@@ -54,7 +54,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         }
     }
     private fun cacheKey(url: String,cookieId: String?,options: DownloadOptions)=listOf(normalizeUrl(url),cookieId.orEmpty(),
-        options.proxy,options.networkMode,options.userAgent,options.autoSubtitles,options.subtitleLanguages).joinToString("\u0000")
+        options.proxy,options.networkMode,options.userAgent,vault.userAgent(cookieId),vault.revision(cookieId),options.autoSubtitles,options.subtitleLanguages).joinToString("\u0000")
     private fun cached(url: String,cookieId: String?,options: DownloadOptions): CachedPreview?=synchronized(previews) {
         previews[cacheKey(url,cookieId,options)]?.takeIf { android.os.SystemClock.elapsedRealtime()-it.created<90000 }
     }
@@ -162,12 +162,13 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         addOption("--cache-dir",File(context.cacheDir,"yt-dlp-cache").apply { mkdirs() }.absolutePath)
         if(!BuildConfig.F_DROID) addOption("--remote-components","ejs:github")
     }
-    private fun applyNetwork(request: YoutubeDLRequest,o: DownloadOptions) {
+    private fun applyNetwork(request: YoutubeDLRequest,o: DownloadOptions,cookieId: String?=o.cookieId) {
         when(o.networkMode) { "ipv4" -> request.addOption("--force-ipv4"); "ipv6" -> request.addOption("--force-ipv6") }
         if(o.proxy.isNotBlank()) {
             require(o.proxy.matches(Regex("^(https?|socks5h?)://[^\\s]+$")));request.addOption("--proxy",o.proxy)
         }
-        if(o.userAgent.isNotBlank()) { require(!o.userAgent.any { it.isISOControl() });request.addOption("--user-agent",o.userAgent) }
+        val userAgent=o.userAgent.ifBlank { vault.userAgent(cookieId) }
+        if(userAgent.isNotBlank()) { require(!userAgent.any { it.isISOControl() });request.addOption("--user-agent",userAgent) }
     }
     suspend fun inspect(url: String, cookieId: String?,options: DownloadOptions=store.defaultOptions,slow: Boolean=false): MediaPreview=withContext(Dispatchers.IO) {
         val start=android.os.SystemClock.elapsedRealtime()
@@ -188,7 +189,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                     addOption("--extractor-retries",InspectionPolicy.extractorRetries(slow).toString())
                     addOption("--retries","1")
                     if(!options.autoSubtitles) addOption("--extractor-args","youtube:skip=translated_subs")
-                    applyNetwork(this,options)
+                    applyNetwork(this,options,cookieId)
                     vault.temporaryFile(cookieId,directory)?.let { addOption("--cookies",it.absolutePath) }
                 }
                 val response=try { withTimeout(InspectionPolicy.totalTimeoutMillis(slow)) { runInterruptible { YoutubeDL.getInstance().execute(request,processId=processId) } } }
@@ -216,7 +217,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                 val request=baseRequest(url).apply {
                     addOption("--yes-playlist");addOption("--flat-playlist");addOption("--playlist-end","200")
                     addOption("--dump-single-json");addOption("--skip-download")
-                    applyNetwork(this,options)
+                    applyNetwork(this,options,cookieId)
                     vault.temporaryFile(cookieId,directory)?.let { addOption("--cookies",it.absolutePath) }
                 }
                 val response=try { withTimeout(90000) { runInterruptible { YoutubeDL.getInstance().execute(request,processId=processId) } } }
@@ -257,13 +258,11 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                 return try { runInterruptible(Dispatchers.IO) {
                     YoutubeDL.getInstance().execute(request(job,directory,cookie,aria,snapshot),
                         processId=job.id,redirectErrorStream=false,callback={ _,_,line ->
-                            if(line.startsWith("ZenithWTitle:")) runCatching {
-                                val title=org.json.JSONTokener(line.removePrefix("ZenithWTitle:")).nextValue() as? String
-                                title?.takeIf(String::isNotBlank)?.let { value ->
-                                    store.change(job.id) { it.copy(title=value.filterNot(Char::isISOControl).take(500)) }
-                                }
+                            if(line.startsWith("ZenithWMetadata:")) runCatching {
+                                val data=JSONObject(line.removePrefix("ZenithWMetadata:"))
+                                store.change(job.id) { downloadMetadata(it,data) }
                             }
-                            store.log(line,job.id)
+                            else store.log(line,job.id)
                             tracker.accept(line)?.let { progress(it.percent,it.eta,it.line) }
                         })
                 } } finally { snapshot?.delete() }
@@ -276,7 +275,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                 catch(e: Exception) {
                     coroutineContext.ensureActive()
                     YoutubeDL.getInstance().destroyProcessById(job.id)
-                    if(!refreshed && Regex("(?i)(?:HTTP Error|HTTP status|status=)\\s*(403|410)\\b").containsMatchIn(e.message.orEmpty())) {
+                    if(metadata!=null && !refreshed && Regex("(?i)(?:HTTP Error|HTTP status|status=)\\s*(403|410)\\b").containsMatchIn(e.message.orEmpty())) {
                         metadata=null;forget(job.url,job.options.cookieId,job.options);refreshed=true
                         progress(0f,-1,"ZenithWRefreshing");continue
                     }
@@ -317,7 +316,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         r.addOption("--progress-template",DownloadProgress.TEMPLATE)
         r.addOption("--progress-template",DownloadProgress.POST)
         r.addOption("--print",DownloadProgress.PLAN)
-        r.addOption("--print","before_dl:ZenithWTitle:%(title)j")
+        r.addOption("--print","before_dl:ZenithWMetadata:%(.{title,thumbnail,thumbnails,duration})j")
         // --print otherwise implies quiet mode, whose progress screen is stderr.
         // The 0.18.1 wrapper forwards every stdout line to our callback; keep
         // stderr separate so its original HTTP errors remain available for retry.

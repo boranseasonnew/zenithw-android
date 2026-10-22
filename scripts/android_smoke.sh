@@ -37,6 +37,7 @@ run_test restoreSettings
 if [ "$MODE" != "engine-only" ]; then
   run_test languages
   run_test settingsCategories
+  run_test settingsKeepsScrollWhenReturningFromCategory
   run_test singleMediaPlaylistSelection
   run_test bulkLinkDraft
   run_test bulkWorkspace
@@ -44,6 +45,10 @@ if [ "$MODE" != "engine-only" ]; then
   for method in metadataOffersRealFormatsAndSubtitleLanguages privacyRetainsActiveQueueAndClearsPerMediaDefaults configurationIsAvailableWithoutWaitingForExtraction requestHonorsAudioFormatClipAndNetworkOptions; do
     run_test "$method" SealFlowTest
   done
+  for method in extractedArtworkAndDurationSurviveHistoryReload cookieRequestUsesCapturedBrowserAgentAndAllowsExplicitOverride singleVideoWithPlaylistDefaultStaysOnHomeAndQueuesOneItem privateArtworkIsResizedAndCanBeReadAfterRecreatingTheStore; do
+    run_test "$method" DownloadRegressionTest
+  done
+  run_test captureHomeDownloadCard
 fi
 for method in pythonPreambleIsHandledBeforeZipParsing ordinaryZipIsAlsoReadable realBundledZipappIsReadable malformedArchivesHaveActionableErrors oversizedVersionFileIsRejected; do
   run_test "$method" EngineArchiveTest

@@ -56,7 +56,8 @@ class DownloadWorker(context: Context,params: WorkerParameters): CoroutineWorker
                     val bytes=if(line.startsWith("ZenithWTransfer:")) line.split(':') else emptyList()
                     app.store.change(job.id) { it.copy(progress=percent.coerceIn(0f,99f),progressKnown=percent>=0,phase=phase,
                         etaSeconds=if(phase=="downloading") eta else -1,
-                        bytesDownloaded=bytes.getOrNull(1)?.toLongOrNull() ?: 0,totalBytes=bytes.getOrNull(2)?.toLongOrNull() ?: 0,
+                        bytesDownloaded=bytes.getOrNull(1)?.toLongOrNull() ?: it.bytesDownloaded,
+                        totalBytes=bytes.getOrNull(2)?.toLongOrNull() ?: it.totalBytes,
                         detail=DownloadPolicy.progressDetail(percent,eta,line)) }
                     setForegroundAsync(foreground(app.store.get(job.id)?.title ?: job.title,percent.toInt().coerceIn(0,99),percent<0 || phase!="downloading"))
                 }
@@ -74,6 +75,10 @@ class DownloadWorker(context: Context,params: WorkerParameters): CoroutineWorker
                 }
             }.thenBy { it.name })
             require(outputs.isNotEmpty()) { "No output files" }
+            // Read the embedded/sidecar cover before the temporary media is moved.
+            // This is local file work; no second extraction or network request.
+            JobArtwork(applicationContext).retain(job.id,outputs)
+            val mediaBytes=outputs.filter { it.extension.lowercase() in JobArtwork.MEDIA_EXTENSIONS }.sumOf { it.length() }
             for(output in outputs) {
                 currentCoroutineContext().ensureActive()
                 require(app.store.get(job.id)?.state!=JobState.CANCELLED) { "Cancelled" }
@@ -83,7 +88,10 @@ class DownloadWorker(context: Context,params: WorkerParameters): CoroutineWorker
                 output.delete()
             }
             publishedAll=true
-            app.store.change(job.id) { it.copy(state=JobState.COMPLETED,phase="complete",progressKnown=true,etaSeconds=-1,progress=100f,detail=if(outcome.notes.isEmpty()) "Kaydedildi" else "Kaydedildi · açıklamayı kontrol et",files=saved.toList(),notes=outcome.notes) }
+            app.store.change(job.id) { it.copy(state=JobState.COMPLETED,phase="complete",progressKnown=true,etaSeconds=-1,progress=100f,
+                bytesDownloaded=mediaBytes.takeIf { size -> size>0 } ?: it.bytesDownloaded,
+                totalBytes=mediaBytes.takeIf { size -> size>0 } ?: it.totalBytes,
+                detail=if(outcome.notes.isEmpty()) "Kaydedildi" else "Kaydedildi · açıklamayı kontrol et",files=saved.toList(),notes=outcome.notes) }
             app.store.log("TASK  Completed · ${saved.size} file(s)",job.id)
             Result.success()
         } catch(cancelled: CancellationException) {

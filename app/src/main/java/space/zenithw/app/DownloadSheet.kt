@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -45,11 +46,16 @@ import java.util.Calendar
         containerColor=Panel,contentColor=Silver,shape=RoundedCornerShape(topStart=30.dp,topEnd=30.dp)) {
         Column(Modifier.fillMaxWidth().heightIn(max=maxHeight).fillMaxHeight()) {
             Row(Modifier.padding(start=24.dp,end=12.dp,top=18.dp,bottom=14.dp),verticalAlignment=Alignment.CenterVertically) {
-                Box(Modifier.size(62.dp).clip(RoundedCornerShape(16.dp)).background(PanelRaised),contentAlignment=Alignment.Center) {
+                Box(Modifier.size(width=120.dp,height=78.dp).clip(RoundedCornerShape(16.dp)).background(PanelRaised),contentAlignment=Alignment.Center) {
                     if(preview.metadataReady && preview.thumbnail!=null)
-                        AsyncImage(preview.thumbnail,null,Modifier.fillMaxSize())
+                        AsyncImage(preview.thumbnail,null,Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
                     else if(analyzing) CircularProgressIndicator(Modifier.size(23.dp),strokeWidth=2.dp)
                     else Icon(if(analysisError!=null) Icons.Outlined.ErrorOutline else Icons.Outlined.Link,null,tint=Muted)
+                    if(preview.duration>0) Surface(color=Ink.copy(alpha=.85f),shape=RoundedCornerShape(6.dp),
+                        modifier=Modifier.align(Alignment.BottomEnd).padding(6.dp)) {
+                        Text(mediaDuration(preview.duration.toLong()),Modifier.padding(horizontal=6.dp,vertical=3.dp),
+                            style=MaterialTheme.typography.labelSmall,color=Silver)
+                    }
                 }
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
@@ -57,6 +63,8 @@ import java.util.Calendar
                         style=MaterialTheme.typography.titleMedium,maxLines=2,overflow=TextOverflow.Ellipsis)
                     Text(if(preview.metadataReady) preview.uploader.ifBlank { preview.url } else preview.url,
                         color=Muted,style=MaterialTheme.typography.bodySmall,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.padding(top=4.dp))
+                    val size=estimatedDownloadBytes(preview,o)
+                    if(size>0) Text("≈ ${mediaSize(size)}",color=Muted,style=MaterialTheme.typography.labelMedium,modifier=Modifier.padding(top=6.dp))
                 }
                 IconButton(onClick=onDismiss) { Icon(Icons.Outlined.Close,texts.getString(R.string.close_window)) }
             }

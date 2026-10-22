@@ -95,11 +95,12 @@ class CookieBrowserActivity: ComponentActivity() {
                         saving=true
                         val uri=Uri.parse(view.url ?: current)
                         val header=CookieManager.getInstance().getCookie(uri.toString()).orEmpty()
+                        val userAgent=view.settings.userAgentString
                         scope.launch {
                             try {
                                 require(uri.scheme=="https")
                                 val profile=withContext(Dispatchers.IO) {
-                                    val saved=vault.capture(uri.host ?: error(texts.getString(R.string.missing_site)),header)
+                                    val saved=vault.capture(uri.host ?: error(texts.getString(R.string.missing_site)),header,userAgent)
                                     CookieManager.getInstance().flush()
                                     saved
                                 }

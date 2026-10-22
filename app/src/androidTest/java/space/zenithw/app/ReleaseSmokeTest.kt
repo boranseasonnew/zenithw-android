@@ -203,6 +203,57 @@ class ReleaseSmokeTest {
         assertEquals("nightly · $saved",app.store.lastEngineVersion)
         println("NIGHTLY RESTORED WITHOUT NETWORK UPDATE: $saved")
     }
+    @Test fun captureHomeDownloadCard() {
+        val language=app.store.language
+        val directory=java.io.File(app.cacheDir,"home-card-fixture").apply { mkdirs() }
+        val job=DownloadJob(url="https://example.org/video",title="Örnek video",state=JobState.RUNNING,
+            progress=36f,progressKnown=true,phase="downloading",detail="İndiriliyor",durationSeconds=185,
+            bytesDownloaded=123_000_000,totalBytes=340_000_000,etaSeconds=92)
+        val bitmap=android.graphics.Bitmap.createBitmap(960,540,android.graphics.Bitmap.Config.ARGB_8888)
+        try {
+            val canvas=android.graphics.Canvas(bitmap)
+            val paint=android.graphics.Paint().apply { shader=android.graphics.LinearGradient(0f,0f,960f,540f,
+                android.graphics.Color.rgb(44,82,106),android.graphics.Color.rgb(109,93,137),android.graphics.Shader.TileMode.CLAMP) }
+            canvas.drawRect(0f,0f,960f,540f,paint)
+            paint.shader=null;paint.color=android.graphics.Color.rgb(196,207,213)
+            canvas.drawCircle(730f,125f,48f,paint)
+            paint.color=android.graphics.Color.rgb(25,47,61)
+            val path=android.graphics.Path().apply { moveTo(0f,540f);lineTo(0f,410f);lineTo(310f,175f);lineTo(610f,440f);lineTo(820f,270f);lineTo(960f,400f);lineTo(960f,540f);close() }
+            canvas.drawPath(path,paint)
+            val input=java.io.File(directory,"cover.png")
+            input.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) }
+            assertNotNull(JobArtwork(app).retain(job.id,listOf(input)))
+            app.store.language="tr";app.store.put(job)
+            app.startActivity(android.content.Intent(app,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
+            waitForLabel("Örnek video");waitForLabel("3:05")
+            waitForLabel("36%")
+            android.os.SystemClock.sleep(700)
+            captureUi("home-download-card")
+        } finally {
+            app.store.change(job.id) { it.copy(state=JobState.CANCELLED) }
+            JobArtwork(app).cached(job.id)?.delete()
+            bitmap.recycle();directory.listFiles()?.forEach { it.delete() };directory.delete()
+            app.store.language=language
+        }
+    }
+
+    @Test fun settingsKeepsScrollWhenReturningFromCategory() {
+        val language=app.store.language
+        try {
+            app.store.language="tr"
+            app.startActivity(android.content.Intent(app,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
+            clickLabel("Ayarlar")
+            scrollToLabel("Aralık, sıra ve hata davranışı")
+            val before=android.graphics.Rect().also { waitForLabel("Aralık, sıra ve hata davranışı").getBoundsInScreen(it) }
+            clickLabel("Oynatma listeleri")
+            waitForLabel("Liste indirmeye izin ver")
+            clickLabel("Ayarlara dön")
+            val after=android.graphics.Rect().also { waitForLabel("Aralık, sıra ve hata davranışı").getBoundsInScreen(it) }
+            assertTrue("Settings scroll moved: $before -> $after",kotlin.math.abs(before.top-after.top)<32)
+            captureUi("settings-scroll-restored")
+        } finally { app.store.language=language }
+    }
+
     @Test fun singleMediaPlaylistSelection() {
         val source="https://www.instagram.com/reel/fixture/"
         val single=org.json.JSONObject("""{"id":"fixture","title":"Reel","url":"https://cdn.example.org/expiring.mp4"}""")
