@@ -66,6 +66,12 @@ class MetadataBenchmarkTest {
             inspect("youtube_shorts","https://www.youtube.com/shorts/BGQWPY4IigY")
             inspect("vimeo","https://vimeo.com/22439234")
             inspect("invalid_url","not a valid address")
+            MetadataFixture().use { fixture ->
+                inspect("local_hls_cold",fixture.origin+"/first")
+                inspect("local_hls_warm_runtime",fixture.origin+"/second")
+                inspect("local_hls_cache",fixture.origin+"/second")
+            }
+            MetadataFixture(250).use { fixture -> inspect("local_hls_delayed",fixture.origin+"/delayed") }
             // Deterministic slow proxy: accept connections but never answer the CONNECT request.
             ServerSocket(0).use { server ->
                 val sockets=java.util.Collections.synchronizedList(mutableListOf<java.net.Socket>())
