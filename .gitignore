@@ -1,5 +1,6 @@
 .gradle/
 .kotlin/
+.cache/
 **/build/
 local.properties
 .signing/

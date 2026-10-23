@@ -150,4 +150,6 @@
     <string name="cookie_count">%1$d cookies · chiffrés</string>
     <string name="session_host">Session : %1$s</string>
     <string name="eta">Environ %1$s min %2$s s</string>
+    <string name="preview_preference">Préférence</string>
+    <string name="preview_formats_loading">Chargement des formats source…</string>
 </resources>

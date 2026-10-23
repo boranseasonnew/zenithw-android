@@ -14,6 +14,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -26,7 +27,7 @@ data class ScreenState(val tab: Int=0,val url: String="",val analyzing: Boolean=
     val themeMode: String="system",val dynamicColors: Boolean=false,val configureBeforeDownload: Boolean=true,
     val rememberDownloadChoices: Boolean=true,val showMediaPreview: Boolean=true,val keepHistory: Boolean=true,
     val updateIntervalHours: Int=24,val outputDirectory: String="",val separateMediaFolders: Boolean=false,
-    val homeJobId: String?=null)
+    val homeJobId: String?=null,val analysisState: AnalysisState=AnalysisState.Idle,val analysisId: String="")
 class ZenithViewModel(application: Application): AndroidViewModel(application) {
     val app=application as ZenithApplication
     private val mutableScreen=MutableStateFlow(ScreenState(profiles=app.vault.profiles(),
@@ -42,22 +43,36 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     val engine=app.engine.status
     private var inspection: Job?=null
     private val enqueueGate=Mutex()
-    private var generation=0L
+    @Volatile private var generation=0L
+    @Volatile private var analysisTrace: AnalysisTrace?=null
     private var playlistOptions: DownloadOptions?=null
     private var inspectionOptions: DownloadOptions?=null
-    private fun cancelInspection() { generation++;inspection?.cancel() }
+    private fun cancelInspection() {
+        generation++
+        if(inspection?.isActive==true) analysisTrace?.mark("cancelled")
+        inspection?.cancel()
+    }
     fun library(history: Boolean=false) {
         cancelInspection()
         edit { it.copy(tab=1,showHistory=history,message=null,analyzing=false,playlistLoading=false,preview=null,playlistEntries=emptyList()) }
     }
-    private fun edit(update: (ScreenState)->ScreenState) { mutableScreen.value=update(mutableScreen.value) }
+    private fun edit(update: (ScreenState)->ScreenState) { mutableScreen.update(update) }
     fun tab(tab: Int) {
         cancelInspection()
         edit { it.copy(tab=tab,message=null,analyzing=false,playlistLoading=false,preview=null,playlistEntries=emptyList()) }
     }
     fun url(url: String) {
         if(url!=mutableScreen.value.url) cancelInspection()
-        edit { it.copy(url=url,message=null,analyzing=false,preview=null,playlistEntries=emptyList(),playlistLoading=false) }
+        edit { it.copy(url=url,message=null,analyzing=false,preview=null,playlistEntries=emptyList(),playlistLoading=false,analysisState=AnalysisState.Idle) }
+    }
+    /** A complete pasted URL opens immediately; ordinary character edits stay editable. */
+    fun inputUrl(value: String) {
+        val pasted=value.length-mutableScreen.value.url.length>4
+        url(value)
+        if(pasted && value.trim().startsWith("http") && runCatching { normalizeUrl(value) }.isSuccess) analyze()
+    }
+    fun analysisRendered(id: String,event: String) {
+        analysisTrace?.takeIf { it.id==id && id==mutableScreen.value.analysisId }?.mark(event)
     }
     fun showMessage(value: String)=edit { it.copy(message=value) }
     fun importCookies(uri: Uri) {
@@ -78,8 +93,8 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         }
     }
     fun dismissMessage()=edit { it.copy(message=null) }
-    fun dismissPreview() { cancelInspection();edit { it.copy(preview=null,analyzing=false,analysisError=null) } }
-    fun cancelAnalysis() { cancelInspection();edit { it.copy(analyzing=false) } }
+    fun dismissPreview() { cancelInspection();edit { it.copy(preview=null,analyzing=false,analysisError=null,analysisState=AnalysisState.Idle) } }
+    fun cancelAnalysis() { cancelInspection();edit { it.copy(analyzing=false,analysisState=AnalysisState.Cancelled) } }
     fun cookie(id: String?) {
         cancelInspection()
         app.store.selectedCookieId=id
@@ -94,38 +109,48 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     fun shareIntent(text: String) {
         url(runCatching { normalizeUrl(text) }.getOrDefault(text))
         tab(0)
+        if(runCatching { normalizeUrl(text) }.isSuccess) analyze()
     }
     private fun text(id: Int,vararg args: Any)=AppLanguage.context(getApplication()).getString(id,*args)
     fun analyze() {
         val state=mutableScreen.value
         val url=try { normalizeUrl(state.url) } catch(e: Exception) {
-            showMessage(e.message ?: text(R.string.check_link));return
+            edit { it.copy(analysisState=AnalysisState.Error) };showMessage(e.message ?: text(R.string.check_link));return
         }
         cancelInspection()
         inspectionOptions=state.defaults
-        val uri=Uri.parse(url)
-        val listLink=uri.path.orEmpty().trimEnd('/').endsWith("/playlist")
-        edit { it.copy(url=url,preview=MediaPreview(url,url,isPlaylist=listLink || uri.getQueryParameter("list")!=null,
-            metadataReady=false),analyzing=false,analysisError=null,message=null,playlistLoading=false,playlistEntries=emptyList()) }
+        val trace=AnalysisTrace(app.store);analysisTrace=trace
+        edit { it.copy(url=url,preview=MediaPreview(url,url,isPlaylist=PreviewPolicy.isCollection(url),
+            metadataReady=false),analyzing=false,analysisError=null,message=null,playlistLoading=false,playlistEntries=emptyList(),
+            analysisState=AnalysisState.Preparing,analysisId=trace.id) }
+        trace.mark("panel_state")
         app.store.log("INSPECT configuration opened before metadata")
         if(!state.configureBeforeDownload) { enqueue(state.defaults);return }
-        if(state.showMediaPreview && !listLink) refreshInfo(false)
+        if(state.showMediaPreview) refreshInfo(false)
     }
     fun refreshInfo(slow: Boolean=false) {
         val state=mutableScreen.value
         val url=state.preview?.url ?: return
         cancelInspection();val request=generation
-        edit { it.copy(analyzing=true,inspectSlow=slow,analysisError=null) }
+        val trace=analysisTrace ?: AnalysisTrace(app.store).also { analysisTrace=it }
+        edit { it.copy(analyzing=true,inspectSlow=slow,analysisError=null,analysisState=AnalysisState.Preparing,analysisId=trace.id) }
         inspection=viewModelScope.launch {
             try {
-                val preview=app.engine.inspect(url,state.cookieId,inspectionOptions ?: state.defaults,slow)
+                val preview=app.engine.inspect(url,state.cookieId,inspectionOptions ?: state.defaults,slow,onUpdate={ phase,partial ->
+                    if(request==generation) edit { current ->
+                        if(request!=generation || current.url!=url || current.cookieId!=state.cookieId ||
+                            current.preview?.metadataReady==true && phase!=AnalysisState.Ready) current
+                        else current.copy(analysisState=phase,preview=partial ?: current.preview)
+                    }
+                },trace=trace)
                 coroutineContext.ensureActive()
                 if(request==generation && mutableScreen.value.url==url && mutableScreen.value.cookieId==state.cookieId)
-                    edit { it.copy(preview=preview) }
+                    edit { it.copy(preview=preview,analysisState=AnalysisState.Ready) }
             } catch(cancelled: CancellationException) { throw cancelled }
             catch(e: Exception) { if(request==generation) {
                 extractionFailureLines(e.message ?: e.javaClass.simpleName).forEach { app.store.log("INSPECT failed: $it") }
-                edit { it.copy(analysisError=text(R.string.media_error)) }
+                trace.mark("error")
+                edit { it.copy(analysisError=text(R.string.media_error),analysisState=AnalysisState.Error) }
             } }
             finally { if(request==generation) edit { it.copy(analyzing=false) } }
         }

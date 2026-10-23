@@ -150,4 +150,6 @@
     <string name="cookie_count">%1$d cookie · şifreli</string>
     <string name="session_host">Oturum: %1$s</string>
     <string name="eta">Yaklaşık %1$s dk %2$s sn</string>
+    <string name="preview_preference">Tercih</string>
+    <string name="preview_formats_loading">Kaynak formatları yükleniyor…</string>
 </resources>

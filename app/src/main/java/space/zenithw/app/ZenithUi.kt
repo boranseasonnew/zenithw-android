@@ -77,7 +77,7 @@ private val CardShape=RoundedCornerShape(26.dp)
     }
     // Also cover navigation initiated by a share intent or a queued download.
     LaunchedEffect(screen.tab) { finishInput() }
-    LaunchedEffect(screen.preview?.url) { if(screen.preview==null) finishInput() }
+    LaunchedEffect(screen.preview?.url) { finishInput() }
     LaunchedEffect(screen.message) {
         screen.message?.let { snackbar.showSnackbar(AppLanguage.message(texts,it)); model.dismissMessage() }
     }
@@ -98,7 +98,7 @@ private val CardShape=RoundedCornerShape(26.dp)
                         }
                     }) {
                         when(page) {
-                            0 -> HomeScreen(screen,jobs,model::url,model::analyze,{ cookies=true },model::cancel,model::retry) { job ->
+                            0 -> HomeScreen(screen,jobs,model::inputUrl,model::analyze,{ cookies=true },model::cancel,model::retry) { job ->
                                 runCatching { openFiles(context,job.files,false) }.onFailure { model.showMessage(texts.getString(R.string.no_opener)) }
                             }
                             1 -> DownloadsScreen(jobs,model::cancel,model::retry,screen.showHistory) { job,share ->
@@ -117,7 +117,7 @@ private val CardShape=RoundedCornerShape(26.dp)
     screen.preview?.let { DownloadSheet(it,screen.profiles.firstOrNull { p -> p.id==screen.cookieId }?.host,
         model.app.store.defaultOptions,model::downloadChoices,model::dismissPreview,onDownload,model::loadPlaylist,submitting=screen.submitting,
         analyzing=screen.analyzing,analysisError=screen.analysisError,onRefreshInfo=model::refreshInfo,onCancelAnalysis=model::cancelAnalysis,
-        inspectSlow=screen.inspectSlow) }
+        inspectSlow=screen.inspectSlow,onRendered={ event -> model.analysisRendered(screen.analysisId,event) }) }
     if(cookies) ProfileSheet(screen.profiles,screen.cookieId,{ cookies=false },
         { model.cookie(it); cookies=false },model::removeProfile,
         { cookies=false; newCookie=true },
