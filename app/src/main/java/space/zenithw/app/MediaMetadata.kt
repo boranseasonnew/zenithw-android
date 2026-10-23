@@ -51,7 +51,8 @@ fun mediaPreview(json: JSONObject,url: String,isPlaylist: Boolean=false): MediaP
     val languages=(listOf("subtitles","automatic_captions").flatMap { key ->
         json.optJSONObject(key)?.keys()?.asSequence()?.filter { it!="live_chat" }?.toList().orEmpty()
     }).distinct().sorted()
-    return MediaPreview(url,json.optString("title").ifBlank { url },json.optString("uploader"),
-        mediaThumbnail(json),json.optDouble("duration",0.0).toInt().coerceAtLeast(0),
+    return MediaPreview(url,json.optString("title").takeUnless { it.isBlank() || it=="null" }?.filterNot(Char::isISOControl)?.take(500) ?: url,
+        json.optString("uploader").takeUnless { it=="null" }.orEmpty(),
+        mediaThumbnail(json),json.optDouble("duration",0.0).takeIf { it.isFinite() && it>0 }?.toInt() ?: 0,
         formats.map { it.height }.filter { it>0 }.distinct(),isPlaylist,true,formats,languages)
 }

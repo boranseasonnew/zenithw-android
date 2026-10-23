@@ -108,6 +108,10 @@ jobs:
         if: github.event_name != 'workflow_dispatch' || inputs.run_tests
         run: python3 tests/run_jvm_checks.py "$HOME/.gradle"
 
+      - name: Test persistent metadata worker with real bundled yt-dlp
+        if: github.event_name != 'workflow_dispatch' || inputs.run_tests
+        run: python3 tests/test_metadata_worker.py -v
+
       - name: Enable Android emulator acceleration
         if: github.event_name != 'workflow_dispatch' || inputs.run_tests
         run: |

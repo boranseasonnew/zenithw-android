@@ -73,6 +73,40 @@ class MetadataOptimizationTest {
         }
     }
 
+    @Test fun sourceFailureRetainsRuntimeAndPlaylistCacheAvoidsAnotherRequest()=runBlocking {
+        MetadataFixture().use { fixture ->
+            assertNotNull(runCatching { app.engine.inspect(fixture.origin+"/fail",null,DownloadOptions()) }.exceptionOrNull())
+            app.store.clearLogs()
+            val recovered=app.engine.inspect(fixture.origin+"/recovered",null,DownloadOptions())
+            assertTrue(recovered.metadataReady)
+            assertTrue(app.store.logs.value.any { "event=python_import ms=0" in it })
+            val playlist=app.engine.playlist(fixture.origin+"/collection",null,DownloadOptions())
+            assertTrue(playlist.isNotEmpty())
+            val count=fixture.requests.get()
+            assertEquals(playlist,app.engine.playlist(fixture.origin+"/collection",null,DownloadOptions()))
+            assertEquals(count,fixture.requests.get())
+            val duration=app.engine.inspect(fixture.origin+"/declared-duration",null,DownloadOptions())
+            assertEquals(125,duration.duration)
+        }
+    }
+
+    @Test fun cancellationAndInvalidInputHaveExplicitStates() {
+        val before=app.store.showMediaPreview;val configure=app.store.configureBeforeDownload
+        try {
+            app.store.showMediaPreview=false;app.store.configureBeforeDownload=true
+            instrumentation.runOnMainSync {
+                val model=ZenithViewModel(app)
+                model.url("https://example.org/video");model.analyze();model.cancelAnalysis()
+                assertEquals(AnalysisState.Cancelled,model.screen.value.analysisState)
+                assertFalse(model.screen.value.analyzing)
+                model.url("not an address");model.analyze()
+                assertEquals(AnalysisState.Error,model.screen.value.analysisState)
+                assertNull(model.screen.value.preview)
+                model.tab(0);assertEquals(AnalysisState.Idle,model.screen.value.analysisState)
+            }
+        } finally { app.store.showMediaPreview=before;app.store.configureBeforeDownload=configure }
+    }
+
     @Test fun latestOfFiveLinksWinsAndUserChoicesSurvive()=runBlocking {
         val before=app.store.showMediaPreview;val configure=app.store.configureBeforeDownload;val defaults=app.store.defaultOptions
         val remember=app.store.rememberDownloadChoices

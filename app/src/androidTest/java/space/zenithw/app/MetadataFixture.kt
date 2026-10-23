@@ -25,6 +25,14 @@ internal class MetadataFixture(private val delayMillis: Long=0): java.io.Closeab
                         if(delayMillis>0) Thread.sleep(delayMillis)
                         val type: String
                         val body=when {
+                            path.startsWith("/declared-duration") -> {
+                                type="text/html; charset=utf-8"
+                                """<html><head><title>Declared duration</title><script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoObject","name":"Declared duration","description":"Controlled source metadata","duration":"PT2M5S","contentUrl":"$origin/video.mp4"}</script></head><body></body></html>"""
+                            }
+                            path.startsWith("/duration.mpd") -> {
+                                type="application/dash+xml"
+                                """<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" mediaPresentationDuration="PT125S" type="static" minBufferTime="PT1S"><Period duration="PT125S"><AdaptationSet mimeType="video/mp4" contentType="video" codecs="avc1.42e01e"><Representation id="video" bandwidth="500000" width="640" height="360"><BaseURL>$origin/video.mp4</BaseURL></Representation></AdaptationSet></Period></MPD>"""
+                            }
                             path.startsWith("/master") -> {
                                 type="application/vnd.apple.mpegurl"
                                 "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=500000,RESOLUTION=640x360,CODECS=\"avc1.42e01e,mp4a.40.2\"\n$origin/media.m3u8\n"
@@ -41,7 +49,8 @@ internal class MetadataFixture(private val delayMillis: Long=0): java.io.Closeab
                         }
                         val bytes=body.toByteArray()
                         connection.getOutputStream().apply {
-                            write("HTTP/1.1 200 OK\r\nContent-Type: $type\r\nContent-Length: ${bytes.size}\r\nConnection: close\r\n\r\n".toByteArray())
+                            val status=if(path.startsWith("/fail")) "503 Service Unavailable" else "200 OK"
+                            write("HTTP/1.1 $status\r\nContent-Type: $type\r\nContent-Length: ${bytes.size}\r\nConnection: close\r\n\r\n".toByteArray())
                             if(!request.startsWith("HEAD ")) write(bytes)
                             flush()
                         }

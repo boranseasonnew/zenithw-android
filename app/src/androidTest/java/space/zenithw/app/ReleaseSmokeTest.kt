@@ -333,7 +333,7 @@ class ReleaseSmokeTest {
             val field=nodes().first { it.className?.toString()=="android.widget.EditText" }
             assertTrue(field.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT,
                 android.os.Bundle().apply { putCharSequence(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,"https://example.org/video") }))
-            clickLabel("İndir")
+            // A complete pasted URL now opens configuration without a second tap.
             waitForLabel("İndirmeyi ayarla")
             waitForLabel("İndirmeyi başlat")
             captureUi("configure-before-metadata")

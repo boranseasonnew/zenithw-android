@@ -1,4 +1,5 @@
 name: Metadata benchmark
+# Paired source versions with a shared observer, image decode timing and declared DASH duration.
 on:
   push:
     branches: [codex/android-instant-preview]

@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
@@ -45,7 +46,14 @@ import java.util.Calendar
     val context=texts
     val plan=DownloadPolicy.thumbnailPlan(o.mode.name,o.container,o.audioFormat,o.embedThumbnail,o.downloadThumbnail,o.thumbnailFormat)
     val maxHeight=(LocalConfiguration.current.screenHeightDp*.90f).dp
-    ModalBottomSheet(onDismissRequest=onDismiss,sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true),
+    val density=LocalDensity.current
+    // Begin at the visible anchor. Opening the configuration must not wait for
+    // Material's hidden-to-expanded entrance animation before showing placeholders.
+    val instantSheet=remember(preview.url,density) {
+        SheetState(skipPartiallyExpanded=true,initialValue=SheetValue.Expanded,
+            positionalThreshold={ with(density) { 56.dp.toPx() } },velocityThreshold={ with(density) { 125.dp.toPx() } })
+    }
+    ModalBottomSheet(onDismissRequest=onDismiss,sheetState=instantSheet,
         sheetGesturesEnabled=false,dragHandle=null,
         containerColor=Panel,contentColor=Silver,shape=RoundedCornerShape(topStart=30.dp,topEnd=30.dp)) {
         Column(Modifier.fillMaxWidth().heightIn(max=maxHeight).fillMaxHeight().onGloballyPositioned {

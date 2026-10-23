@@ -36,7 +36,16 @@ class Source(http.server.BaseHTTPRequestHandler):
         if self.path.startswith('/fail'):
             self.send_error(503)
             return
-        if self.path.startswith('/master'):
+        if self.path.startswith('/declared-duration'):
+            schema = {'@context': 'https://schema.org', '@type': 'VideoObject', 'name': 'Declared duration',
+                      'description': 'Controlled source metadata', 'duration': 'PT2M5S',
+                      'contentUrl': origin+'/video.mp4'}
+            text = '<html><head><title>Declared duration</title><script type="application/ld+json">'+json.dumps(schema)+'</script></head><body></body></html>'
+            kind = 'text/html'
+        elif self.path.startswith('/duration.mpd'):
+            text = f'<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" mediaPresentationDuration="PT125S" type="static" minBufferTime="PT1S"><Period duration="PT125S"><AdaptationSet mimeType="video/mp4" contentType="video" codecs="avc1.42e01e"><Representation id="video" bandwidth="500000" width="640" height="360"><BaseURL>{origin}/video.mp4</BaseURL></Representation></AdaptationSet></Period></MPD>'
+            kind = 'application/dash+xml'
+        elif self.path.startswith('/master'):
             text = f'#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=500000,RESOLUTION=640x360,CODECS="avc1.42e01e,mp4a.40.2"\n{origin}/media.m3u8\n'
             kind = 'application/vnd.apple.mpegurl'
         elif self.path.startswith('/media'):
@@ -152,6 +161,17 @@ class MetadataWorkerTests(unittest.TestCase):
         self.assertEqual('HTTP_503', events[-1]['code'])
         self.assertNotIn('hidden', json.dumps(events))
         self.assertEqual('result', self.worker.inspect(self.origin+'/recovery', self.snapshot)[-1]['event'])
+
+    def test_duration_is_read_from_source_metadata(self):
+        result = self.worker.inspect(self.origin+'/declared-duration', self.snapshot)[-1]
+        self.assertEqual('result', result['event'], result)
+        self.assertEqual(125, result['info']['duration'])
+        self.assertTrue(result['info']['formats'])
+
+    def test_unknown_duration_is_not_invented(self):
+        result = self.worker.inspect(self.origin+'/duration.mpd', self.snapshot)[-1]
+        self.assertEqual('result', result['event'], result)
+        self.assertNotIn('duration', result['info'])
 
 
 if __name__ == '__main__':
