@@ -1,5 +1,8 @@
 name: Metadata benchmark
 on:
+  push:
+    branches: [codex/android-instant-preview]
+    paths: ['.github/workflows/metadata-benchmark.yml']
   workflow_dispatch:
     inputs:
       variant:
@@ -19,7 +22,7 @@ jobs:
         run: cp app/src/androidTest/java/space/zenithw/app/MetadataBenchmarkTest.kt /tmp/MetadataBenchmarkTest.kt
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.variant == 'baseline' && 'v2.3.1' || github.sha }}
+          ref: ${{ (inputs.variant || 'baseline') == 'baseline' && 'v2.3.1' || github.sha }}
       - name: Restore common harness and signing key
         env:
           SIGNING_KEY: ${{ secrets.ANDROID_SIGNING_KEY_BASE64 }}
@@ -63,6 +66,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: metadata-${{ inputs.variant }}
+          name: metadata-${{ inputs.variant || 'baseline' }}
           path: benchmark-results/
           retention-days: 14
