@@ -150,4 +150,6 @@
     <string name="cookie_count">%1$d cookie · зашифрованы</string>
     <string name="session_host">Сеанс: %1$s</string>
     <string name="eta">Примерно %1$s мин %2$s с</string>
+    <string name="preview_preference">Предпочтение</string>
+    <string name="preview_formats_loading">Загрузка форматов источника…</string>
 </resources>

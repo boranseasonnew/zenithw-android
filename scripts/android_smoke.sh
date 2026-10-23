@@ -48,8 +48,14 @@ if [ "$MODE" != "engine-only" ]; then
   for method in extractedArtworkAndDurationSurviveHistoryReload cookieRequestUsesCapturedBrowserAgentAndAllowsExplicitOverride singleVideoWithPlaylistDefaultStaysOnHomeAndQueuesOneItem privateArtworkIsResizedAndCanBeReadAfterRecreatingTheStore; do
     run_test "$method" DownloadRegressionTest
   done
+  for method in completePasteOpensPanelWithoutNetworkOrLosingOptions latestOfFiveLinksWinsAndUserChoicesSurvive timingLogsContainNoMetadataOrCredentials; do
+    run_test "$method" MetadataOptimizationTest
+  done
   run_test captureHomeDownloadCard
 fi
+for method in realFormatsCacheAvoidsNetworkAndPreservesQueryIdentity cancellationUnblocksReplacementAndDoesNotLeaveWorkerBusy; do
+  run_test "$method" MetadataOptimizationTest
+done
 for method in pythonPreambleIsHandledBeforeZipParsing ordinaryZipIsAlsoReadable realBundledZipappIsReadable malformedArchivesHaveActionableErrors oversizedVersionFileIsRejected; do
   run_test "$method" EngineArchiveTest
 done

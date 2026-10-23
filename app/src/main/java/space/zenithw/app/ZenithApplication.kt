@@ -21,5 +21,6 @@ class ZenithApplication : Application() {
         engine=DownloadEngine(this,store,vault)
         DownloadWorker.resumeQueue(this)
         applicationScope.launch { engine.initializeAndUpdate() }
+        applicationScope.launch { engine.prepareMetadataRuntime() }
     }
 }

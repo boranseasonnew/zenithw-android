@@ -6,6 +6,8 @@ import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -19,6 +21,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
@@ -29,6 +32,9 @@ data class EngineStatus(val ready: Boolean=false, val updating: Boolean=false,
 class DownloadEngine(private val context: Context, private val store: LocalStore, private val vault: CookieVault, private val updateHttp: EngineHttp=EngineHttp()) {
     private val gate=Mutex()
     private val updateGate=Mutex()
+    private val inspectionGate=Mutex()
+    private val metadataRuntime=MetadataRuntime(context)
+    private val basicPreview=BasicPreviewFetcher()
     private var activeProcesses=0
     private var idle=CompletableDeferred<Unit>().apply { complete(Unit) }
     private data class CachedPreview(val created: Long,val preview: MediaPreview,val json: String?)
@@ -36,12 +42,12 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
     private var initialized=false
     private val mutableStatus=MutableStateFlow(EngineStatus())
     val status=mutableStatus.asStateFlow()
-    private suspend fun <T> withEngine(block: suspend ()->T): T {
+    private suspend fun <T> withEngine(block: suspend ()->T): T=withContext(Dispatchers.IO) {
         gate.withLock {
             init()
             if(activeProcesses++==0) idle=CompletableDeferred()
         }
-        try { return block() }
+        try { block() }
         finally { withContext(NonCancellable) { gate.withLock { if(--activeProcesses==0) idle.complete(Unit) } } }
     }
     private suspend fun installWhenIdle(block: ()->Unit) {
@@ -54,7 +60,8 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         }
     }
     private fun cacheKey(url: String,cookieId: String?,options: DownloadOptions)=listOf(normalizeUrl(url),cookieId.orEmpty(),
-        options.proxy,options.networkMode,options.userAgent,vault.userAgent(cookieId),vault.revision(cookieId),options.autoSubtitles,options.subtitleLanguages).joinToString("\u0000")
+        options.proxy,options.networkMode,options.userAgent,vault.userAgent(cookieId),vault.revision(cookieId),options.autoSubtitles,options.subtitleLanguages,
+        store.lastEngineVersion).joinToString("\u0000")
     private fun cached(url: String,cookieId: String?,options: DownloadOptions): CachedPreview?=synchronized(previews) {
         previews[cacheKey(url,cookieId,options)]?.takeIf { android.os.SystemClock.elapsedRealtime()-it.created<90000 }
     }
@@ -62,7 +69,6 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
     private fun init() {
         if(initialized) return
         YoutubeDL.getInstance().init(context)
-        FFmpeg.getInstance().init(context)
         installBundledFloor()
         initialized=true
     }
@@ -136,6 +142,8 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         // not prevent a download from starting on an already usable engine.
         installWhenIdle {
             if(store.channel!=channel) return@installWhenIdle
+            metadataRuntime.close()
+            synchronized(previews) { previews.clear() }
             val directory=File(context.noBackupFilesDir,"youtubedl-android/yt-dlp").apply { mkdirs() }
             val staged=File(directory,"yt-dlp.download")
             val destination=File(directory,"yt-dlp")
@@ -170,43 +178,79 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         val userAgent=o.userAgent.ifBlank { vault.userAgent(cookieId) }
         if(userAgent.isNotBlank()) { require(!userAgent.any { it.isISOControl() });request.addOption("--user-agent",userAgent) }
     }
-    suspend fun inspect(url: String, cookieId: String?,options: DownloadOptions=store.defaultOptions,slow: Boolean=false): MediaPreview=withContext(Dispatchers.IO) {
-        val start=android.os.SystemClock.elapsedRealtime()
-        cached(url,cookieId,options)?.let { store.log("INSPECT cache hit");return@withContext it.preview }
-        withEngine {
-            val initializedAt=android.os.SystemClock.elapsedRealtime()
-            val processId="inspect-${java.util.UUID.randomUUID()}"
-            val directory=File(context.cacheDir,processId).apply { mkdirs() }
-            try {
-                val uri=android.net.Uri.parse(normalizeUrl(url))
-                val listLink=uri.path.orEmpty().trimEnd('/').endsWith("/playlist")
-                val request=baseRequest(url).apply {
-                    addOption("--dump-single-json"); addOption("--skip-download")
-                    addOption("--playlist-end","1")
-                    if(listLink) addOption("--flat-playlist")
-                    else addOption("--no-playlist")
-                    addOption("--socket-timeout",InspectionPolicy.socketTimeout(slow).toString())
-                    addOption("--extractor-retries",InspectionPolicy.extractorRetries(slow).toString())
-                    addOption("--retries","1")
-                    if(!options.autoSubtitles) addOption("--extractor-args","youtube:skip=translated_subs")
-                    applyNetwork(this,options,cookieId)
-                    vault.temporaryFile(cookieId,directory)?.let { addOption("--cookies",it.absolutePath) }
+    suspend fun prepareMetadataRuntime() {
+        try { withEngine { withTimeout(10000) {
+            val trace=AnalysisTrace(store)
+            metadataRuntime.execute(null,onEvent={ event ->
+                if(event.optString("event")=="runtime_ready") trace.sample("python_import",event.optLong("import_ms"))
+            })
+        } } } catch(cancelled: CancellationException) { throw cancelled }
+        catch(_: Exception) { metadataRuntime.close() /* Retried on demand, no download impact. */ }
+    }
+    suspend fun inspect(url: String,cookieId: String?,options: DownloadOptions=store.defaultOptions,slow: Boolean=false,
+        onUpdate: (AnalysisState,MediaPreview?)->Unit={ _,_ -> },trace: AnalysisTrace?=null): MediaPreview=withContext(Dispatchers.IO) {
+        val normalized=normalizeUrl(url)
+        val timing=trace ?: AnalysisTrace(store)
+        // Serialize access and recheck the cache after waiting: duplicate callers
+        // cannot start a second extractor for a completed/in-flight request.
+        inspectionGate.withLock {
+            cached(normalized,cookieId,options)?.let {
+                timing.mark("cache_hit");timing.preview(it.preview);onUpdate(AnalysisState.Ready,it.preview)
+                return@withContext it.preview
+            }
+            coroutineScope {
+                val hint=launch {
+                    withTimeoutOrNull(2500) { basicPreview.fetch(normalized,cookieId,options) }?.let {
+                        timing.preview(it);onUpdate(AnalysisState.BasicInfoReady,it)
+                        onUpdate(AnalysisState.FetchingFormats,null)
+                    }
                 }
-                val response=try { withTimeout(InspectionPolicy.totalTimeoutMillis(slow)) { runInterruptible { YoutubeDL.getInstance().execute(request,processId=processId) } } }
-                    catch(timeout: TimeoutCancellationException) { throw java.io.IOException("Metadata request timed out",timeout) }
-                val extractedAt=android.os.SystemClock.elapsedRealtime()
-                coroutineContext.ensureActive()
-                require(response.out.length<=16*1024*1024) { "Metadata exceeds the safe size limit" }
-                val json=JSONObject(response.out)
-                val preview=mediaPreview(json,normalizeUrl(url),listLink || json.has("entries") || uri.getQueryParameter("list")!=null)
-                store.log("INSPECT init=${initializedAt-start}ms extract=${extractedAt-initializedAt}ms parse=${android.os.SystemClock.elapsedRealtime()-extractedAt}ms slow=$slow")
-                synchronized(previews) {
-                    while(previews.size>=8) previews.remove(previews.keys.first())
-                    previews[cacheKey(url,cookieId,options)]=CachedPreview(android.os.SystemClock.elapsedRealtime(),preview,
-                        response.out.takeIf { !json.has("entries") && it.length<=4*1024*1024 })
-                }
-                preview
-            } finally { YoutubeDL.getInstance().destroyProcessById(processId); directory.deleteRecursively() }
+                try { withEngine {
+                    timing.mark("engine_ready");onUpdate(AnalysisState.FetchingMetadata,null)
+                    val directory=File(context.cacheDir,"inspect-${java.util.UUID.randomUUID()}").apply { mkdirs() }
+                    try {
+                        val listLink=PreviewPolicy.isPlaylistOnly(normalized)
+                        val request=baseRequest(null).apply {
+                            addOption("--skip-download");addOption("--playlist-end","1")
+                            addOption(if(listLink) "--flat-playlist" else "--no-playlist")
+                            addOption("--socket-timeout",InspectionPolicy.socketTimeout(slow).toString())
+                            addOption("--extractor-retries",InspectionPolicy.extractorRetries(slow).toString())
+                            addOption("--retries","1")
+                            if(!options.autoSubtitles) addOption("--extractor-args","youtube:skip=translated_subs")
+                            addOption("--js-runtimes","quickjs:${File(context.applicationInfo.nativeLibraryDir,"libqjs.so").absolutePath}")
+                            addOption("--ffmpeg-location",File(context.applicationInfo.nativeLibraryDir,"libffmpeg.so").absolutePath)
+                            applyNetwork(this,options,cookieId)
+                            vault.temporaryFile(cookieId,directory)?.let { addOption("--cookies",it.absolutePath) }
+                        }
+                        val snapshot=File(directory,"source-info.json")
+                        val result=try { withTimeout(InspectionPolicy.totalTimeoutMillis(slow)) {
+                            metadataRuntime.execute(request,normalized,snapshot) { event ->
+                                when(event.optString("event")) {
+                                    "runtime_process" -> { timing.sample("python_spawn",event.optLong("spawn_ms"));if(event.optBoolean("reused")) timing.sample("python_import",0) }
+                                    "runtime_ready" -> timing.sample("python_import",event.optLong("import_ms"))
+                                    "extracting" -> { timing.sample("ydl_object",event.optLong("construct_ms"));timing.mark("extractor_started") }
+                                    "network" -> timing.sample("http_headers",event.optLong("headers_ms"))
+                                }
+                            }
+                        } } catch(timeout: TimeoutCancellationException) { throw java.io.IOException("Metadata request timed out",timeout) }
+                        coroutineContext.ensureActive()
+                        hint.cancel()
+                        val json=result.getJSONObject("info")
+                        val preview=mediaPreview(json,normalized,listLink || json.has("entries") || PreviewPolicy.isCollection(normalized))
+                        timing.sample("extraction",result.optLong("extract_ms"))
+                        timing.sample("serialization",result.optLong("serialize_ms"))
+                        timing.preview(preview);timing.mark("metadata_total")
+                        store.log("INSPECT requests=${result.optInt("network_count")} headers_ms=${result.optLong("network_headers_ms")} metadata_worker=true")
+                        synchronized(previews) {
+                            while(previews.size>=8) previews.remove(previews.keys.first())
+                            previews[cacheKey(normalized,cookieId,options)]=CachedPreview(android.os.SystemClock.elapsedRealtime(),preview,
+                                snapshot.takeIf { !json.has("entries") && it.isFile && it.length()<=4*1024*1024 }?.readText())
+                        }
+                        onUpdate(AnalysisState.Ready,preview)
+                        preview
+                    } finally { directory.deleteRecursively() }
+                } } finally { hint.cancel() }
+            }
         }
     }
     suspend fun playlist(url: String,cookieId: String?,options: DownloadOptions=store.defaultOptions): List<PlaylistEntry> = withContext(Dispatchers.IO) {
@@ -232,6 +276,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                          progress: (Float,Long,String)->Unit): DownloadOutcome = withEngine {
         started()
         progress(0f,-1,"ZenithWPreparing")
+        withContext(Dispatchers.IO) { FFmpeg.getInstance().init(context) }
         val notes=mutableListOf<String>()
         val plan=DownloadPolicy.thumbnailPlan(job.options.mode.name,job.options.container,
             job.options.audioFormat,job.options.embedThumbnail,job.options.downloadThumbnail,job.options.thumbnailFormat)

@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -32,7 +33,8 @@ import java.util.Calendar
 @Composable fun DownloadSheet(preview: MediaPreview,cookieHost: String?,defaults: DownloadOptions,
     onDefaults: (DownloadOptions)->Unit,onDismiss: ()->Unit,onDownload: (DownloadOptions)->Unit,
     onPlaylistSelect: (DownloadOptions)->Unit,submitting: Boolean=false,
-    analyzing: Boolean=false,analysisError: String?=null,onRefreshInfo: (Boolean)->Unit={},onCancelAnalysis: ()->Unit={},inspectSlow: Boolean=false) {
+    analyzing: Boolean=false,analysisError: String?=null,onRefreshInfo: (Boolean)->Unit={},onCancelAnalysis: ()->Unit={},inspectSlow: Boolean=false,
+    onRendered: (String)->Unit={}) {
     var raw by rememberSaveable(preview.url) { mutableStateOf(defaults.json().toString()) }
     var showFormats by rememberSaveable(preview.url) { mutableStateOf(false) }
     val o=remember(raw) { DownloadOptions.from(JSONObject(raw)) }
@@ -44,23 +46,31 @@ import java.util.Calendar
     ModalBottomSheet(onDismissRequest=onDismiss,sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true),
         sheetGesturesEnabled=false,dragHandle=null,
         containerColor=Panel,contentColor=Silver,shape=RoundedCornerShape(topStart=30.dp,topEnd=30.dp)) {
-        Column(Modifier.fillMaxWidth().heightIn(max=maxHeight).fillMaxHeight()) {
+        Column(Modifier.fillMaxWidth().heightIn(max=maxHeight).fillMaxHeight().onGloballyPositioned { onRendered("panel_first_layout") }) {
             Row(Modifier.padding(start=24.dp,end=12.dp,top=18.dp,bottom=14.dp),verticalAlignment=Alignment.CenterVertically) {
                 Box(Modifier.size(width=120.dp,height=78.dp).clip(RoundedCornerShape(16.dp)).background(PanelRaised),contentAlignment=Alignment.Center) {
-                    if(preview.metadataReady && preview.thumbnail!=null)
-                        AsyncImage(preview.thumbnail,null,Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
-                    else if(analyzing) CircularProgressIndicator(Modifier.size(23.dp),strokeWidth=2.dp)
+                    if(preview.thumbnail!=null)
+                        AsyncImage(preview.thumbnail,null,Modifier.fillMaxSize(),contentScale=ContentScale.Crop,
+                            onSuccess={ onRendered("cover_loaded") })
+                    else if(analyzing) PreviewSkeleton(Modifier.fillMaxSize())
                     else Icon(if(analysisError!=null) Icons.Outlined.ErrorOutline else Icons.Outlined.Link,null,tint=Muted)
                     if(preview.duration>0) Surface(color=Ink.copy(alpha=.85f),shape=RoundedCornerShape(6.dp),
-                        modifier=Modifier.align(Alignment.BottomEnd).padding(6.dp)) {
+                        modifier=Modifier.align(Alignment.BottomEnd).padding(6.dp).onGloballyPositioned { onRendered("duration_drawn") }) {
                         Text(mediaDuration(preview.duration.toLong()),Modifier.padding(horizontal=6.dp,vertical=3.dp),
                             style=MaterialTheme.typography.labelSmall,color=Silver)
                     }
                 }
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(if(preview.metadataReady) preview.title else texts.getString(if(analyzing && inspectSlow) R.string.seal_finding_media_slow else if(analyzing) R.string.seal_finding_media else if(analysisError!=null) R.string.seal_info_unavailable else R.string.seal_configure_download),
+                    if(preview.title!=preview.url && preview.title.isNotBlank())
+                        Text(preview.title,modifier=Modifier.onGloballyPositioned { onRendered("title_drawn") },
+                            style=MaterialTheme.typography.titleMedium,maxLines=2,overflow=TextOverflow.Ellipsis)
+                    else if(analyzing) {
+                        PreviewSkeleton(Modifier.fillMaxWidth(.92f).height(18.dp))
+                        Spacer(Modifier.height(7.dp));PreviewSkeleton(Modifier.fillMaxWidth(.6f).height(14.dp))
+                    } else Text(texts.getString(if(analysisError!=null) R.string.seal_info_unavailable else R.string.seal_configure_download),
                         style=MaterialTheme.typography.titleMedium,maxLines=2,overflow=TextOverflow.Ellipsis)
+                    if(analyzing && preview.duration<=0) PreviewSkeleton(Modifier.padding(top=8.dp).width(44.dp).height(12.dp))
                     Text(if(preview.metadataReady) preview.uploader.ifBlank { preview.url } else preview.url,
                         color=Muted,style=MaterialTheme.typography.bodySmall,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.padding(top=4.dp))
                     val size=estimatedDownloadBytes(preview,o)
@@ -105,8 +115,9 @@ import java.util.Calendar
                 }
                 if(o.mode==MediaMode.VIDEO) item {
                     Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                        val heights=(preview.heights+listOf(o.height)).filter { it>0 }.distinct().sortedDescending()
-                        OptionPicker(texts.getString(R.string.quality),listOf("0" to texts.getString(R.string.best))+heights.map { it.toString() to "${it}p" },o.height.toString()) {
+                        val heights=preview.heights.filter { it>0 }.distinct().sortedDescending()
+                        val preferred=if(o.height>0 && o.height !in heights) listOf(o.height.toString() to "${o.height}p · ${texts.getString(R.string.preview_preference)}") else emptyList()
+                        OptionPicker(texts.getString(R.string.quality),listOf("0" to texts.getString(R.string.best))+preferred+heights.map { it.toString() to "${it}p" },o.height.toString()) {
                             update(o.copy(height=it.toInt(),selectedFormat=""))
                         }
                         Spacer(Modifier.height(4.dp))
@@ -129,6 +140,8 @@ import java.util.Calendar
                         Text(if(o.selectedFormat.isBlank()) texts.getString(R.string.seal_choose_format) else texts.getString(R.string.seal_selected_format,o.selectedFormat),maxLines=1,overflow=TextOverflow.Ellipsis)
                         Spacer(Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null,Modifier.size(19.dp))
                     }
+                    if(analyzing && eligible.isEmpty()) Text(texts.getString(R.string.preview_formats_loading),color=Muted,
+                        style=MaterialTheme.typography.bodySmall,modifier=Modifier.padding(top=6.dp))
                     plan.note?.let { Text(AppLanguage.message(texts,it),color=Muted,style=MaterialTheme.typography.bodySmall,modifier=Modifier.padding(top=6.dp)) }
                 }
                 item {
@@ -277,3 +290,7 @@ import java.util.Calendar
     },numeric=true)
 }
 
+
+@Composable private fun PreviewSkeleton(modifier: Modifier=Modifier) {
+    Box(modifier.clip(RoundedCornerShape(6.dp)).background(Silver.copy(alpha=.10f)))
+}

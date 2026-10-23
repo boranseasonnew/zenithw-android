@@ -27,7 +27,7 @@ assert any(p.name.startswith("kotlin-compiler-embeddable-2.2.20") for p in jars)
 classpath = os.pathsep.join(map(str, jars))
 java = Path(os.environ["JAVA_HOME"]) / "bin/java"
 source = root / "app/src/main/java/space/zenithw/app"
-names = ["DownloadPolicy", "BulkLinks", "InspectionPolicy", "CommandArguments", "ExtractionDiagnostics"]
+names = ["DownloadPolicy", "BulkLinks", "InspectionPolicy", "CommandArguments", "ExtractionDiagnostics", "PreviewPolicy"]
 with tempfile.TemporaryDirectory(prefix="zenith-checks-") as output:
     files = [str(source / f"{name}.kt") for name in names]
     files += [str(root / f"tests/{name}Check.kt") for name in names]

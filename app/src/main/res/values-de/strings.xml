@@ -150,4 +150,6 @@
     <string name="cookie_count">%1$d Cookies · verschlüsselt</string>
     <string name="session_host">Sitzung: %1$s</string>
     <string name="eta">Etwa %1$s Min. %2$s Sek.</string>
+    <string name="preview_preference">Vorgabe</string>
+    <string name="preview_formats_loading">Quellformate werden geladen…</string>
 </resources>
