@@ -102,10 +102,10 @@ class MetadataBenchmarkTest {
             inspect("vimeo","https://vimeo.com/22439234")
             inspect("invalid_url","not a valid address")
             MetadataFixture().use { fixture ->
-                inspect("local_hls_cold",fixture.origin+"/first")
+                inspect("local_hls_uncached",fixture.origin+"/first")
                 inspect("local_hls_warm_runtime",fixture.origin+"/second")
                 inspect("local_hls_cache",fixture.origin+"/second")
-                inspect("local_hls_duration",fixture.origin+"/structured")
+                inspect("local_declared_duration",fixture.origin+"/declared-duration")
             }
             MetadataFixture(250).use { fixture -> inspect("local_hls_delayed",fixture.origin+"/delayed") }
             // Deterministic slow proxy: accept connections but never answer the CONNECT request.

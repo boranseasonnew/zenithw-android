@@ -54,12 +54,12 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     }
     fun library(history: Boolean=false) {
         cancelInspection()
-        edit { it.copy(tab=1,showHistory=history,message=null,analyzing=false,playlistLoading=false,preview=null,playlistEntries=emptyList()) }
+        edit { it.copy(tab=1,showHistory=history,message=null,analyzing=false,playlistLoading=false,preview=null,playlistEntries=emptyList(),analysisState=AnalysisState.Idle) }
     }
     private fun edit(update: (ScreenState)->ScreenState) { mutableScreen.update(update) }
     fun tab(tab: Int) {
         cancelInspection()
-        edit { it.copy(tab=tab,message=null,analyzing=false,playlistLoading=false,preview=null,playlistEntries=emptyList()) }
+        edit { it.copy(tab=tab,message=null,analyzing=false,playlistLoading=false,preview=null,playlistEntries=emptyList(),analysisState=AnalysisState.Idle) }
     }
     fun url(url: String) {
         if(url==mutableScreen.value.url) return
@@ -99,7 +99,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     fun cookie(id: String?) {
         cancelInspection()
         app.store.selectedCookieId=id
-        edit { it.copy(cookieId=id,analyzing=false,preview=null,playlistEntries=emptyList(),playlistLoading=false) }
+        edit { it.copy(cookieId=id,analyzing=false,preview=null,playlistEntries=emptyList(),playlistLoading=false,analysisState=AnalysisState.Idle) }
     }
     fun refreshProfiles() {
         val profiles=app.vault.profiles()
@@ -209,24 +209,25 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         if(state.submitting || state.playlistLoading) return
         val url=runCatching { normalizeUrl(state.preview?.url ?: state.url) }.getOrElse { showMessage(text(R.string.check_link));return }
         cancelInspection();val request=generation;playlistOptions=options.copy(cookieId=state.cookieId)
-        edit { it.copy(playlistLoading=true,analyzing=false,preview=null,playlistEntries=emptyList(),message=null) }
+        edit { it.copy(playlistLoading=true,analyzing=false,preview=null,playlistEntries=emptyList(),message=null,analysisState=AnalysisState.FetchingMetadata) }
         inspection=viewModelScope.launch {
             try {
                 val entries=app.engine.playlist(url,state.cookieId,options)
                 coroutineContext.ensureActive()
                 if(request==generation && mutableScreen.value.cookieId==state.cookieId) {
                     if(entries.isEmpty()) showMessage(text(R.string.playlist_empty))
-                    else edit { it.copy(playlistEntries=entries) }
+                    edit { it.copy(playlistEntries=entries,analysisState=AnalysisState.Ready) }
                 }
             } catch(cancelled: CancellationException) { throw cancelled }
             catch(e: Exception) { if(request==generation) {
                 extractionFailureLines(e.message ?: e.javaClass.simpleName).forEach { app.store.log("PLAYLIST failed: $it") }
+                edit { it.copy(analysisState=AnalysisState.Error) }
                 showMessage(text(R.string.playlist_error))
             } }
             finally { if(request==generation) edit { it.copy(playlistLoading=false) } }
         }
     }
-    fun dismissPlaylist() { cancelInspection();edit { it.copy(playlistEntries=emptyList(),playlistLoading=false) } }
+    fun dismissPlaylist() { cancelInspection();edit { it.copy(playlistEntries=emptyList(),playlistLoading=false,analysisState=AnalysisState.Idle) } }
     fun enqueuePlaylist(indices: Set<Int>) {
         val options=(playlistOptions ?: mutableScreen.value.defaults).copy(playlist=false,playlistItems="",selectedFormat="")
         val entries=mutableScreen.value.playlistEntries.filter { it.index in indices }

@@ -9,18 +9,22 @@ import struct
 import time
 import select
 import re
+import threading
 from pathlib import Path
 
 wire = sys.stdout.buffer
+wire_lock = threading.Lock()
+stats_lock = threading.Lock()
 
 
 def emit(event, **values):
     payload = json.dumps(dict(event=event, **values), ensure_ascii=False).encode('utf-8')
     if len(payload) > 16 * 1024 * 1024:
         raise ValueError('Metadata frame too large')
-    wire.write(struct.pack('>I', len(payload)))
-    wire.write(payload)
-    wire.flush()
+    with wire_lock:
+        wire.write(struct.pack('>I', len(payload)))
+        wire.write(payload)
+        wire.flush()
 
 
 class QuietStream:
@@ -30,6 +34,11 @@ class QuietStream:
 
     def flush(self):
         pass
+
+    encoding = 'utf-8'
+
+    def isatty(self):
+        return False
 
 
 sys.stdout = sys.stderr = QuietStream()
@@ -114,10 +123,12 @@ while True:
                 return original_urlopen(req)
             finally:
                 elapsed = round((time.monotonic()-tick)*1000)
-                network_count += 1
-                network_headers_ms += elapsed
+                with stats_lock:
+                    network_count += 1
+                    network_headers_ms += elapsed
+                    number = network_count
                 # No URL, query, request headers, cookies or tokens in events.
-                emit('network', request=network_count, headers_ms=elapsed)
+                emit('network', request=number, headers_ms=elapsed)
 
         ydl.urlopen = timed_urlopen
         try:
@@ -137,9 +148,24 @@ while True:
         sanitized = ydl.sanitize_info(info)
         # Retain the full info dictionary only in the app-private snapshot used by
         # --load-info-json. The small UI message avoids per-character huge JSON reads.
-        snapshot = json.dumps(sanitized, ensure_ascii=False)
-        if len(snapshot.encode('utf-8')) <= 4*1024*1024:
-            Path(request['snapshot']).write_text(snapshot, encoding='utf-8')
+        if 'entries' not in sanitized:
+            destination = Path(request['snapshot'])
+            destination.unlink(missing_ok=True)
+            staged = destination.with_suffix('.partial')
+            size = 0
+            complete = True
+            try:
+                with staged.open('w', encoding='utf-8') as output:
+                    for chunk in json.JSONEncoder(ensure_ascii=False).iterencode(sanitized):
+                        size += len(chunk.encode('utf-8'))
+                        if size > 4*1024*1024:
+                            complete = False
+                            break
+                        output.write(chunk)
+                if complete:
+                    staged.replace(destination)
+            finally:
+                staged.unlink(missing_ok=True)
         if not reusable:
             # Finish cookie persistence before Kotlin removes its private directory.
             ydl.close()

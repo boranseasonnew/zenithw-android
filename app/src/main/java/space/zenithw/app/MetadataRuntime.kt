@@ -81,7 +81,12 @@ internal class MetadataRuntime(private val context: Context) {
                         onEvent(event)
                         when(event.getString("event")) {
                             "pong","result" -> { continuation.resume(event);return@submit }
-                            "error" -> throw IOException("ERROR: metadata ${event.optString("code","failed")}")
+                            "error" -> {
+                                // A valid source error leaves the protocol aligned.
+                                // Keep imports alive for a corrected URL or login retry.
+                                continuation.resumeWithException(IOException("ERROR: metadata ${event.optString("code","failed")}"))
+                                return@submit
+                            }
                         }
                     }
                     stop(current)
