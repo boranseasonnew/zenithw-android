@@ -54,7 +54,7 @@ The interface supports **English, Turkish, German, French and Russian**. The Git
 2. Choose video, audio or subtitles in the download panel while media details load.
 3. Start the download and follow its progress on the home screen.
 
-**New in 2.3.1:** single downloads avoid unnecessary playlist discovery, active downloads stay on the home screen, artwork is retained for history, and settings restore your scroll position. See the [release notes](releases/2.3.1.md). **Not tested:** automated tests and lint were skipped for this publication.
+**New in 2.4.0:** instant configuration with progressive real previews, a reusable metadata runtime, safer cancellation and bundled yt-dlp **2026.10.21**. See [release notes](releases/2.4.0.md) and the measured [performance report](docs/metadata-performance-2.4.0.md), including CI authentication and device-testing limits.
 
 ## Availability & limitations
 
