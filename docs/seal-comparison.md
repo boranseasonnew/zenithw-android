@@ -94,3 +94,8 @@ implementations; no Seal screenshots, artwork or source files were bundled.
 The optional session/User-Agent handling was also compared with the referenced
 Seal source. See the [implementation and verification record](download-flow-20261023.md)
 for the playlist, artwork, navigation and source-access changes and their limits.
+
+
+## 2.4.0 metadata follow-up
+
+ZenithW independently adds a persistent Python metadata worker, public preview hints, bounded caches and generation-safe cancellation. These are not copied Seal implementations. See [measured results and limitations](metadata-performance-2.4.0.md); no direct Seal speed comparison was measured.

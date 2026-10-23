@@ -54,7 +54,7 @@ Arayüz **Türkçe, İngilizce, Almanca, Fransızca ve Rusça** sunulur. GitHub 
 2. Medya bilgileri yüklenirken indirme panelinden video, ses veya altyazıyı seç.
 3. İndirmeyi başlat ve ilerlemeyi ana ekrandan takip et.
 
-**2.3.1 yenilikleri:** tekli indirmelerde gereksiz oynatma listesi çözümlemesi önlenir, etkin indirmeler ana ekranda kalır, kapaklar geçmiş için saklanır ve ayarlarda kaydırma konumu korunur. Ayrıntılar [sürüm notlarında](releases/2.3.1.md). **Test edilmedi:** bu yayın için otomatik testler ve lint çalıştırılmadı.
+**2.4.0 yenilikleri:** anında açılan panel, aşamalı gerçek önizleme, yeniden kullanılan metadata çalışma ortamı, güvenli iptal ve **2026.10.21** yt-dlp motoru. [Sürüm notları](releases/2.4.0.md) ve CI erişim / cihaz testi sınırlarını da açıklayan [ölçüm raporu](docs/metadata-performance-2.4.0.md).
 
 ## Dağıtım ve sınırlar
 
