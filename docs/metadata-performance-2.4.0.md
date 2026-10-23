@@ -41,7 +41,7 @@ PERF logs contain random attempt IDs and numeric milliseconds, never source titl
 
 ## Verification and risks
 
-The validation workflow runs Python worker tests, JVM policy checks, lint, signed ABI/package/certificate checks and Android 13/7 instrumentation. See its final job result before interpreting it as passed. Tests cover real local HLS/JSON-LD extraction, snapshot reuse, cookies, sanitized errors, timeout/recovery, cache identity, concurrent requests, cancellation, five-link replacement and explicit analysis states. Benchmark JSON and screenshots are retained as workflow artifacts.
+The validation workflow runs Python worker tests, JVM policy checks, lint, signed ABI/package/certificate checks and Android 13/7 instrumentation. All these validation stages passed in run 39882007211. Seven Python worker tests passed; the paired benchmark also passed. Tests cover real local HLS/JSON-LD extraction, snapshot reuse, cookies, sanitized errors, timeout/recovery, cache identity, concurrent requests, cancellation, five-link replacement and explicit analysis states. Benchmark JSON and screenshots are retained as workflow artifacts.
 
 No claim is made that all source authentication issues, impersonation, or physical-device performance are fixed. Native 16 KB page compatibility remains unestablished. Snapshot size is capped at 4 MB with the normal extraction path as fallback. The worker exits after 120 seconds idle, so a later cold analysis pays startup cost again. Routing/session hints deliberately favor compatibility over speculative speed. Existing URL parameters are preserved.
 
