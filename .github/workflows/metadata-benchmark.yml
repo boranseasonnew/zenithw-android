@@ -1,0 +1,68 @@
+name: Metadata benchmark
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        type: choice
+        options: [baseline, candidate]
+        default: candidate
+        required: true
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Save common benchmark harness
+        run: cp app/src/androidTest/java/space/zenithw/app/MetadataBenchmarkTest.kt /tmp/MetadataBenchmarkTest.kt
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.variant == 'baseline' && 'v2.3.1' || github.sha }}
+      - name: Restore common harness and signing key
+        env:
+          SIGNING_KEY: ${{ secrets.ANDROID_SIGNING_KEY_BASE64 }}
+        run: |
+          cp /tmp/MetadataBenchmarkTest.kt app/src/androidTest/java/space/zenithw/app/
+          mkdir -p .signing
+          printf '%s' "$SIGNING_KEY" | base64 --decode > .signing/preview.keystore
+          chmod 600 .signing/preview.keystore
+          chmod +x gradlew
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - run: ./gradlew --no-daemon assembleRelease assembleReleaseAndroidTest
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          target: default
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            mkdir -p benchmark-results
+            adb install --no-streaming -r app/build/outputs/apk/release/app-x86_64-release.apk
+            adb install --no-streaming -r $(find app/build/outputs/apk/androidTest/release -name '*.apk' -print -quit)
+            adb shell am instrument -w -r -e class space.zenithw.app.MetadataBenchmarkTest space.zenithw.app.stable.test/androidx.test.runner.AndroidJUnitRunner > benchmark-results/instrumentation.txt
+            cat benchmark-results/instrumentation.txt
+            adb pull /sdcard/Android/data/space.zenithw.app.stable/files/metadata-benchmark.json benchmark-results/
+            adb logcat -d -s ZenithPerf > benchmark-results/timings.log
+            grep -q 'OK (1 test)' benchmark-results/instrumentation.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: metadata-${{ inputs.variant }}
+          path: benchmark-results/
+          retention-days: 14
