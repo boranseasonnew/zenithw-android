@@ -8,6 +8,10 @@ import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Test
+import coil.ImageLoader
+import coil.EventListener
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import java.io.File
 import java.net.ServerSocket
 import kotlin.concurrent.thread
@@ -21,15 +25,32 @@ class MetadataBenchmarkTest {
         app.store.autoUpdate=false; app.store.showMediaPreview=true
         app.store.configureBeforeDownload=true;app.store.selectedCookieId=null
         app.store.defaultOptions=DownloadOptions()
+        // Join any startup updater, then pin each revision to its bundled engine.
+        // Otherwise an automatic engine update makes before/after irreproducible.
+        runBlocking { app.engine.initializeAndUpdate(false) }
+        runCatching {
+            val field=app.engine.javaClass.getDeclaredField("metadataRuntime").apply { isAccessible=true }
+            val runtime=field.get(app.engine);runtime.javaClass.getMethod("close").invoke(runtime)
+        }
+        val executable=File(app.noBackupFilesDir,"youtubedl-android/yt-dlp/yt-dlp")
+        app.resources.openRawResource(R.raw.ytdlp).use { input -> executable.outputStream().use { input.copyTo(it) } }
+        app.store.lastEngineVersion="stable · ${BundledEngine.VERSION}"
+        val covers=java.util.concurrent.ConcurrentHashMap<String,Long>()
+        val loader=ImageLoader.Builder(app).eventListener(object: EventListener {
+            override fun onSuccess(request: ImageRequest,result: SuccessResult) { covers[request.data.toString()]=SystemClock.elapsedRealtime() }
+        }).build()
+        instrument.runOnMainSync { coil.Coil.setImageLoader(loader) }
         val samples=JSONArray()
         val versionStart=SystemClock.elapsedRealtime()
         val runtime=runBlocking { app.engine.runtimeVersion() }
         val versionMillis=SystemClock.elapsedRealtime()-versionStart
+        val startupTrace=JSONArray(app.store.logs.value.filter { "PERF " in it })
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             lateinit var model: ZenithViewModel
             scenario.onActivity { model=ViewModelProvider(it)[ZenithViewModel::class.java] }
             fun inspect(name: String,url: String,options: DownloadOptions=DownloadOptions()) {
                 app.store.clearLogs()
+                covers.clear()
                 val result=JSONObject().put("scenario",name)
                 var start=0L
                 scenario.onActivity {
@@ -37,6 +58,14 @@ class MetadataBenchmarkTest {
                     start=SystemClock.elapsedRealtime();model.analyze()
                     result.put("panel_state_ms",SystemClock.elapsedRealtime()-start)
                 }
+                fun screenshot(suffix: String) {
+                    instrument.uiAutomation.takeScreenshot()?.let { bitmap ->
+                        val file=File(app.getExternalFilesDir(null),"metadata-$suffix.png")
+                        file.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) }
+                        bitmap.recycle()
+                    }
+                }
+                if(name=="local_hls_delayed") { Thread.sleep(350);screenshot("skeleton") }
                 val deadline=start+40000
                 var title: Long?=null;var duration: Long?=null;var thumbnail: Long?=null;var formats: Long?=null
                 while(SystemClock.elapsedRealtime()<deadline) {
@@ -51,13 +80,19 @@ class MetadataBenchmarkTest {
                     Thread.sleep(10)
                 }
                 val s=model.screen.value
+                val metadataTotal=SystemClock.elapsedRealtime()-start
+                val coverDeadline=SystemClock.elapsedRealtime()+2500
+                val coverUrl=s.preview?.thumbnail
+                while(coverUrl!=null && !covers.containsKey(coverUrl) && SystemClock.elapsedRealtime()<coverDeadline) Thread.sleep(10)
+                val coverLoaded=coverUrl?.let { covers[it] }?.let { (it-start).coerceAtLeast(thumbnail ?: 0) }
                 result.put("title_ms",title ?: JSONObject.NULL).put("duration_ms",duration ?: JSONObject.NULL)
                     .put("thumbnail_url_ms",thumbnail ?: JSONObject.NULL).put("formats_ms",formats ?: JSONObject.NULL)
-                    .put("total_ms",SystemClock.elapsedRealtime()-start)
+                    .put("cover_loaded_ms",coverLoaded ?: JSONObject.NULL).put("total_ms",metadataTotal)
                     .put("success",s.preview?.metadataReady==true && s.analysisError==null)
                     .put("error",s.analysisError ?: JSONObject.NULL)
                     .put("trace",JSONArray(app.store.logs.value.filter { "PERF " in it || "INSPECT " in it }))
                 samples.put(result)
+                if(name=="local_hls_delayed") screenshot("ready")
                 scenario.onActivity { model.dismissPreview() }
             }
             inspect("youtube_video","https://www.youtube.com/watch?v=aqz-KE-bpKQ")
@@ -70,6 +105,7 @@ class MetadataBenchmarkTest {
                 inspect("local_hls_cold",fixture.origin+"/first")
                 inspect("local_hls_warm_runtime",fixture.origin+"/second")
                 inspect("local_hls_cache",fixture.origin+"/second")
+                inspect("local_hls_duration",fixture.origin+"/structured")
             }
             MetadataFixture(250).use { fixture -> inspect("local_hls_delayed",fixture.origin+"/delayed") }
             // Deterministic slow proxy: accept connections but never answer the CONNECT request.
@@ -94,6 +130,7 @@ class MetadataBenchmarkTest {
             scenario.onActivity { model.dismissPreview() }
         }
         val result=JSONObject().put("runtime",runtime).put("version_command_ms",versionMillis)
+            .put("startup_trace",startupTrace)
             .put("sdk",android.os.Build.VERSION.SDK_INT).put("abi",android.os.Build.SUPPORTED_ABIS.first())
             .put("measurement_note","panel_state_ms measures state publication, not first displayed frame; thumbnail_url_ms is not image decode time")
             .put("samples",samples)

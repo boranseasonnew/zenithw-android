@@ -62,6 +62,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         edit { it.copy(tab=tab,message=null,analyzing=false,playlistLoading=false,preview=null,playlistEntries=emptyList()) }
     }
     fun url(url: String) {
+        if(url==mutableScreen.value.url) return
         if(url!=mutableScreen.value.url) cancelInspection()
         edit { it.copy(url=url,message=null,analyzing=false,preview=null,playlistEntries=emptyList(),playlistLoading=false,analysisState=AnalysisState.Idle) }
     }
@@ -126,13 +127,14 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         trace.mark("panel_state")
         app.store.log("INSPECT configuration opened before metadata")
         if(!state.configureBeforeDownload) { enqueue(state.defaults);return }
-        if(state.showMediaPreview) refreshInfo(false)
+        if(state.showMediaPreview) startInspection(false,true)
     }
-    fun refreshInfo(slow: Boolean=false) {
+    fun refreshInfo(slow: Boolean=false)=startInspection(slow,false)
+    private fun startInspection(slow: Boolean,reuseTrace: Boolean) {
         val state=mutableScreen.value
         val url=state.preview?.url ?: return
         cancelInspection();val request=generation
-        val trace=analysisTrace ?: AnalysisTrace(app.store).also { analysisTrace=it }
+        val trace=(analysisTrace.takeIf { reuseTrace } ?: AnalysisTrace(app.store)).also { analysisTrace=it }
         edit { it.copy(analyzing=true,inspectSlow=slow,analysisError=null,analysisState=AnalysisState.Preparing,analysisId=trace.id) }
         inspection=viewModelScope.launch {
             try {

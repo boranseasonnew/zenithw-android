@@ -23,6 +23,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -46,7 +48,11 @@ import java.util.Calendar
     ModalBottomSheet(onDismissRequest=onDismiss,sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true),
         sheetGesturesEnabled=false,dragHandle=null,
         containerColor=Panel,contentColor=Silver,shape=RoundedCornerShape(topStart=30.dp,topEnd=30.dp)) {
-        Column(Modifier.fillMaxWidth().heightIn(max=maxHeight).fillMaxHeight().onGloballyPositioned { onRendered("panel_first_layout") }) {
+        Column(Modifier.fillMaxWidth().heightIn(max=maxHeight).fillMaxHeight().onGloballyPositioned {
+            onRendered("panel_first_layout")
+            val bounds=it.boundsInWindow()
+            if(bounds.height>0 && bounds.top<it.findRootCoordinates().size.height) onRendered("panel_visible")
+        }) {
             Row(Modifier.padding(start=24.dp,end=12.dp,top=18.dp,bottom=14.dp),verticalAlignment=Alignment.CenterVertically) {
                 Box(Modifier.size(width=120.dp,height=78.dp).clip(RoundedCornerShape(16.dp)).background(PanelRaised),contentAlignment=Alignment.Center) {
                     if(preview.thumbnail!=null)
