@@ -19,7 +19,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Save common benchmark harness
-        run: cp app/src/androidTest/java/space/zenithw/app/MetadataBenchmarkTest.kt /tmp/MetadataBenchmarkTest.kt
+        run: |
+          cp app/src/androidTest/java/space/zenithw/app/MetadataBenchmarkTest.kt /tmp/MetadataBenchmarkTest.kt
+          cp app/src/androidTest/java/space/zenithw/app/MetadataFixture.kt /tmp/MetadataFixture.kt
       - uses: actions/checkout@v4
         with:
           ref: ${{ (inputs.variant || 'baseline') == 'baseline' && 'v2.3.1' || github.sha }}
@@ -28,6 +30,7 @@ jobs:
           SIGNING_KEY: ${{ secrets.ANDROID_SIGNING_KEY_BASE64 }}
         run: |
           cp /tmp/MetadataBenchmarkTest.kt app/src/androidTest/java/space/zenithw/app/
+          cp /tmp/MetadataFixture.kt app/src/androidTest/java/space/zenithw/app/
           mkdir -p .signing
           printf '%s' "$SIGNING_KEY" | base64 --decode > .signing/preview.keystore
           chmod 600 .signing/preview.keystore
