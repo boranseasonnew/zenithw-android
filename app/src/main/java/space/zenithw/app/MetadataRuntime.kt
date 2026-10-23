@@ -49,7 +49,7 @@ internal class MetadataRuntime(private val context: Context) {
             // Python's private worker suppresses raw diagnostics. Drain remaining
             // native stderr without retaining potentially sensitive strings.
         }.start()
-        Thread({ process.errorStream.use { stream -> val bytes=ByteArray(4096);while(stream.read(bytes)>=0) Unit } },"ZenithMetadataStderr").apply { isDaemon=true;start() }
+        Thread({ runCatching { process.errorStream.use { stream -> val bytes=ByteArray(4096);while(stream.read(bytes)>=0) Unit } } },"ZenithMetadataStderr").apply { isDaemon=true;start() }
         Worker(process,DataInputStream(BufferedInputStream(process.inputStream,32768)),version).also { worker=it }
     }
     private fun alive(process: Process)=try { process.exitValue();false } catch(_: IllegalThreadStateException) { true }

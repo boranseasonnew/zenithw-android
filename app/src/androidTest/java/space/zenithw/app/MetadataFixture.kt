@@ -35,7 +35,8 @@ internal class MetadataFixture(private val delayMillis: Long=0): java.io.Closeab
                             }
                             else -> {
                                 type="text/html; charset=utf-8"
-                                """<html><head><title>Fixture $path</title><meta property="og:title" content="Fixture $path"><meta property="og:image" content="https://i.ytimg.com/vi/aqz-KE-bpKQ/hqdefault.jpg"></head><body><video controls><source src="$origin/master.m3u8" type="application/x-mpegURL"></video></body></html>"""
+                                val schema=if(path.startsWith("/structured")) """<script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoObject","name":"Structured fixture","description":"Controlled HLS fixture","duration":"PT2M5S","contentUrl":"$origin/master.m3u8","thumbnailUrl":"https://i.ytimg.com/vi/aqz-KE-bpKQ/hqdefault.jpg"}</script>""" else ""
+                                """<html><head><title>Fixture $path</title><meta property="og:title" content="Fixture $path"><meta property="og:image" content="https://i.ytimg.com/vi/aqz-KE-bpKQ/hqdefault.jpg">$schema</head><body><video controls><source src="$origin/master.m3u8" type="application/x-mpegURL"></video></body></html>"""
                             }
                         }
                         val bytes=body.toByteArray()
@@ -50,5 +51,5 @@ internal class MetadataFixture(private val delayMillis: Long=0): java.io.Closeab
             }
         }
     }
-    override fun close() { server.close();sockets.toList().forEach { runCatching { it.close() } };accept.join(1000) }
+    override fun close() { server.close();synchronized(sockets) { sockets.toList() }.forEach { runCatching { it.close() } };accept.join(1000) }
 }

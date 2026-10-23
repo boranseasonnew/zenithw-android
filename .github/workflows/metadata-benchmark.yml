@@ -14,6 +14,11 @@ permissions:
   contents: read
 jobs:
   benchmark:
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: ${{ fromJSON(inputs.variant == 'baseline' && '["baseline"]' || inputs.variant == 'candidate' && '["candidate"]' || '["baseline","candidate"]') }}
+    name: metadata-${{ matrix.variant }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -24,7 +29,7 @@ jobs:
           cp app/src/androidTest/java/space/zenithw/app/MetadataFixture.kt /tmp/MetadataFixture.kt
       - uses: actions/checkout@v4
         with:
-          ref: ${{ (inputs.variant || 'candidate') == 'baseline' && 'v2.3.1' || github.sha }}
+          ref: ${{ matrix.variant == 'baseline' && 'v2.3.1' || github.sha }}
       - name: Restore common harness and signing key
         env:
           SIGNING_KEY: ${{ secrets.ANDROID_SIGNING_KEY_BASE64 }}
@@ -64,11 +69,13 @@ jobs:
             adb shell am instrument -w -r -e class space.zenithw.app.MetadataBenchmarkTest space.zenithw.app.stable.test/androidx.test.runner.AndroidJUnitRunner > benchmark-results/instrumentation.txt
             cat benchmark-results/instrumentation.txt
             adb pull /sdcard/Android/data/space.zenithw.app.stable/files/metadata-benchmark.json benchmark-results/
+            adb pull /sdcard/Android/data/space.zenithw.app.stable/files/metadata-skeleton.png benchmark-results/ || true
+            adb pull /sdcard/Android/data/space.zenithw.app.stable/files/metadata-ready.png benchmark-results/ || true
             adb logcat -d -s ZenithPerf > benchmark-results/timings.log
             grep -q 'OK (1 test)' benchmark-results/instrumentation.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: metadata-${{ inputs.variant || 'candidate' }}
+          name: metadata-${{ matrix.variant }}
           path: benchmark-results/
           retention-days: 14

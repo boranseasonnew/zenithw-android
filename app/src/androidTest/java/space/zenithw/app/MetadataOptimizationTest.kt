@@ -62,6 +62,17 @@ class MetadataOptimizationTest {
         }
     }
 
+    @Test fun concurrentIdenticalRequestsShareOneExtraction()=runBlocking {
+        MetadataFixture().use { fixture ->
+            app.engine.inspect(fixture.origin+"/reference",null,DownloadOptions())
+            val perExtraction=fixture.requests.get();fixture.requests.set(0)
+            val one=async(Dispatchers.IO) { app.engine.inspect(fixture.origin+"/shared",null,DownloadOptions()) }
+            val two=async(Dispatchers.IO) { app.engine.inspect(fixture.origin+"/shared",null,DownloadOptions()) }
+            assertEquals(one.await(),two.await())
+            assertEquals(perExtraction,fixture.requests.get())
+        }
+    }
+
     @Test fun latestOfFiveLinksWinsAndUserChoicesSurvive()=runBlocking {
         val before=app.store.showMediaPreview;val configure=app.store.configureBeforeDownload;val defaults=app.store.defaultOptions
         val remember=app.store.rememberDownloadChoices

@@ -83,6 +83,8 @@ while True:
     begin = time.monotonic()
     network_count = 0
     network_headers_ms = 0
+    ydl = None
+    reusable = True
     try:
         args = request['args']
         # Cookie-bearing objects are deliberately not reused after their temporary
@@ -138,12 +140,19 @@ while True:
         snapshot = json.dumps(sanitized, ensure_ascii=False)
         if len(snapshot.encode('utf-8')) <= 4*1024*1024:
             Path(request['snapshot']).write_text(snapshot, encoding='utf-8')
+        if not reusable:
+            # Finish cookie persistence before Kotlin removes its private directory.
+            ydl.close()
+            ydl = None
         emit('result', info=compact(sanitized), extract_ms=extract_ms,
              serialize_ms=round((time.monotonic()-serialization)*1000),
              network_count=network_count, network_headers_ms=network_headers_ms)
-        if not reusable:
-            ydl.close()
     except Exception as error:
+        if not reusable and ydl is not None:
+            try:
+                ydl.close()
+            except Exception:
+                pass
         # Report actionable categories, never raw third-party error text.
         status = re.search(r'(?:HTTP Error|HTTP status|status[=:])\s*(\d{3})', str(error))
         message = str(error).lower()

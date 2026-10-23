@@ -1,6 +1,6 @@
 package space.zenithw.app
 
 object BundledEngine {
-    const val VERSION = "2026.08.19"
-    const val SHA256 = "1fa6733c37ea6fb51c99ad8fe785e7b7e5f3246c9b980230329d4fb72ed8d4d6"
+    const val VERSION = "2026.10.21"
+    const val SHA256 = "b7af77f686e95f7845ce8d09d21957718febb8b48b30555adb9dd2292ad7bf14"
 }

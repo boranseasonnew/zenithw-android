@@ -25,6 +25,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
+import java.util.concurrent.atomic.AtomicBoolean
 
 data class EngineStatus(val ready: Boolean=false, val updating: Boolean=false,
     val label: String="Motor hazırlanıyor", val version: String="", val warning: String?=null)
@@ -195,18 +196,21 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         // cannot start a second extractor for a completed/in-flight request.
         inspectionGate.withLock {
             cached(normalized,cookieId,options)?.let {
-                timing.mark("cache_hit");timing.preview(it.preview);onUpdate(AnalysisState.Ready,it.preview)
+                timing.mark("cache_hit");timing.preview(it.preview);timing.mark("metadata_total");onUpdate(AnalysisState.Ready,it.preview)
                 return@withContext it.preview
             }
             coroutineScope {
+                val basicReady=AtomicBoolean(false)
                 val hint=launch {
                     withTimeoutOrNull(2500) { basicPreview.fetch(normalized,cookieId,options) }?.let {
+                        basicReady.set(true)
                         timing.preview(it);onUpdate(AnalysisState.BasicInfoReady,it)
                         onUpdate(AnalysisState.FetchingFormats,null)
                     }
                 }
                 try { withEngine {
-                    timing.mark("engine_ready");onUpdate(AnalysisState.FetchingMetadata,null)
+                    timing.mark("engine_ready");onUpdate(if(basicReady.get()) AnalysisState.FetchingFormats else AnalysisState.FetchingMetadata,null)
+                    val identity=cacheKey(normalized,cookieId,options)
                     val directory=File(context.cacheDir,"inspect-${java.util.UUID.randomUUID()}").apply { mkdirs() }
                     try {
                         val listLink=PreviewPolicy.isPlaylistOnly(normalized)
@@ -243,8 +247,12 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                         store.log("INSPECT requests=${result.optInt("network_count")} headers_ms=${result.optLong("network_headers_ms")} metadata_worker=true")
                         synchronized(previews) {
                             while(previews.size>=8) previews.remove(previews.keys.first())
-                            previews[cacheKey(normalized,cookieId,options)]=CachedPreview(android.os.SystemClock.elapsedRealtime(),preview,
-                                snapshot.takeIf { !json.has("entries") && it.isFile && it.length()<=4*1024*1024 }?.readText())
+                            if(identity==cacheKey(normalized,cookieId,options)) {
+                                val serialized=snapshot.takeIf { !json.has("entries") && it.isFile && it.length()<=4*1024*1024 }?.readText()
+                                while(previews.isNotEmpty() && previews.values.sumOf { it.json?.length ?: 0 }+(serialized?.length ?: 0)>8*1024*1024)
+                                    previews.remove(previews.keys.first())
+                                previews[identity]=CachedPreview(android.os.SystemClock.elapsedRealtime(),preview,serialized)
+                            }
                         }
                         onUpdate(AnalysisState.Ready,preview)
                         preview
