@@ -32,7 +32,7 @@ class DownloadWorker(context: Context,params: WorkerParameters): CoroutineWorker
     private val app=applicationContext as ZenithApplication
     override suspend fun doWork(): Result=withContext(Dispatchers.IO) {
         val job=app.store.get(inputData.getString("jobId") ?: id.toString()) ?: return@withContext Result.failure()
-        if(job.state in listOf(JobState.COMPLETED,JobState.CANCELLED)) return@withContext Result.success()
+        if(job.state in listOf(JobState.COMPLETED,JobState.CANCELLED,JobState.SKIPPED)) return@withContext Result.success()
         // Independent WorkRequests keep cancelling one item from cancelling the
         // rest of a dependency chain. Claim the oldest currently eligible item.
         if(!claimTurn(job)) return@withContext Result.success()
@@ -63,6 +63,12 @@ class DownloadWorker(context: Context,params: WorkerParameters): CoroutineWorker
                 }
             })
             currentCoroutineContext().ensureActive()
+            if(outcome.archiveSkipped) {
+                app.store.change(job.id) { it.copy(state=JobState.SKIPPED,phase="archive_skipped",progress=0f,
+                    progressKnown=false,etaSeconds=-1,detail="İndirme arşivinde kayıtlı; atlandı. Yeniden indirmek için tekrar dene.") }
+                app.store.log("TASK  Skipped: already recorded in download archive",job.id)
+                return@withContext Result.success()
+            }
             app.store.change(job.id) { it.copy(state=JobState.SAVING,phase="saving",progressKnown=false,etaSeconds=-1,detail="Cihaza kaydediliyor",notes=outcome.notes) }
             app.store.log("TASK  Saving output files",job.id)
             val outputs=directory.listFiles()?.filter {

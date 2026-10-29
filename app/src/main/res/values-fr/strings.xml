@@ -152,4 +152,5 @@
     <string name="eta">Environ %1$s min %2$s s</string>
     <string name="preview_preference">Préférence</string>
     <string name="preview_formats_loading">Chargement des formats source…</string>
+    <string name="archive_skipped">Ignoré : déjà dans l’archive. Réessayez pour télécharger à nouveau.</string>
 </resources>

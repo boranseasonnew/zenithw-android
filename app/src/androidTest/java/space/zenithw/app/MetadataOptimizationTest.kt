@@ -10,6 +10,64 @@ class MetadataOptimizationTest {
     private val instrumentation get()=InstrumentationRegistry.getInstrumentation()
     private val app get()=instrumentation.targetContext.applicationContext as ZenithApplication
 
+
+    @Test fun repeatAnalyzeAndStaleDismissPreserveNewPanel() {
+        val before=app.store.showMediaPreview;val configure=app.store.configureBeforeDownload
+        try {
+            app.store.showMediaPreview=false;app.store.configureBeforeDownload=true
+            instrumentation.runOnMainSync {
+                val model=ZenithViewModel(app)
+                model.url("https://youtu.be/LAqBFGH1r_c");model.analyze()
+                val old=model.screen.value.analysisId;val preview=model.screen.value.preview
+                model.analyze()
+                assertSame(preview,model.screen.value.preview)
+                assertEquals(old,model.screen.value.analysisId)
+                model.url("https://youtu.be/aqz-KE-bpKQ");model.analyze()
+                model.dismissPreview(old)
+                assertNotNull(model.screen.value.preview)
+                assertNotEquals(old,model.screen.value.analysisId)
+                model.dismissPreview()
+                assertNull(model.screen.value.preview)
+            }
+        } finally { app.store.showMediaPreview=before;app.store.configureBeforeDownload=configure }
+    }
+
+    @Test fun completedCardsDisappearButFailuresAndActiveDownloadsRemain() {
+        val job=DownloadJob(url="https://youtu.be/LAqBFGH1r_c",title="Example")
+        for(state in listOf(JobState.COMPLETED,JobState.CANCELLED,JobState.SKIPPED))
+            assertNull(homeDownloadJob(listOf(job.copy(state=state)),job.id))
+        for(state in listOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING,JobState.FAILED))
+            assertEquals(state,homeDownloadJob(listOf(job.copy(state=state)),job.id)!!.state)
+        val next=job.copy(id="next",state=JobState.RUNNING)
+        assertEquals("next",homeDownloadJob(listOf(job.copy(state=JobState.COMPLETED),next),job.id)!!.id)
+    }
+
+    @Test fun archivedVideoIsSkippedWithoutAttemptingPublication()=runBlocking {
+        val archive=java.io.File(app.noBackupFilesDir,"download-archive.txt")
+        val previous=archive.takeIf { it.exists() }?.readBytes()
+        val output=java.io.File(app.cacheDir,"archive-regression").apply { mkdirs() }
+        try {
+            MetadataFixture().use { fixture ->
+                val url=fixture.origin+"/archived"
+                app.engine.inspect(url,null,DownloadOptions()) // Initialize bundled native engine.
+                withContext(Dispatchers.IO) {
+                    val request=com.yausername.youtubedl_android.YoutubeDLRequest(url)
+                    request.addOption("--skip-download");request.addOption("--force-write-archive")
+                    request.addOption("--download-archive",archive.absolutePath)
+                    com.yausername.youtubedl_android.YoutubeDL.getInstance().execute(request)
+                }
+                assertTrue(archive.length()>0)
+                val outcome=app.engine.download(DownloadJob(url=url,title="Archived",options=DownloadOptions(downloadArchive=true)),
+                    output,started={},progress={ _,_,_ -> })
+                assertTrue(outcome.archiveSkipped)
+                assertTrue(output.listFiles().orEmpty().none { DownloadPolicy.isPublicOutput(it.name) })
+            }
+        } finally {
+            if(previous==null) archive.delete() else archive.writeBytes(previous)
+            output.deleteRecursively()
+        }
+    }
+
     @Test fun completePasteOpensPanelWithoutNetworkOrLosingOptions() {
         val before=app.store.showMediaPreview;val configure=app.store.configureBeforeDownload
         val defaults=app.store.defaultOptions

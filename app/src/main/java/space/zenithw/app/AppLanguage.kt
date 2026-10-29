@@ -133,6 +133,7 @@ object AppLanguage {
         "Seçili oturum bulunamadı; yeniden bağlan." to R.string.missing_session,
         "Bağlantı ve medya hazırlanıyor" to R.string.preparing_media,
         "Cihaza kaydediliyor" to R.string.saving_device,
+        "İndirme arşivinde kayıtlı; atlandı. Yeniden indirmek için tekrar dene." to R.string.archive_skipped,
         "Kaydedildi" to R.string.saved,
         "Kaydedildi · açıklamayı kontrol et" to R.string.saved_notes,
         "İptal edildi" to R.string.cancelled,

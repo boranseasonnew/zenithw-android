@@ -152,4 +152,5 @@
     <string name="eta">Etwa %1$s Min. %2$s Sek.</string>
     <string name="preview_preference">Vorgabe</string>
     <string name="preview_formats_loading">Quellformate werden geladen…</string>
+    <string name="archive_skipped">Übersprungen: bereits im Download-Archiv. Zum erneuten Herunterladen erneut versuchen.</string>
 </resources>
