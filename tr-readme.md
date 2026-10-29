@@ -27,15 +27,15 @@ ZenithW; **yt-dlp**, **FFmpeg** ve **Aria2c** kullanan, Kotlin ve Jetpack Compos
 
 ## Kurulum
 
-İmzalı APK'yı [son sürümden](https://github.com/boranseasonnew/zenithw-android/releases/latest) indir. **Android 7.0+ (API 24)**, internet bağlantısı ve yeterli boş depolama alanı gerekir.
+**Güncel kararlı sürüm: [2.4.1](https://github.com/boranseasonnew/zenithw-android/releases/tag/v2.4.1).** **Android 7.0+ (API 24)**, internet bağlantısı ve yeterli boş depolama alanı gerekir. Cihazına uygun imzalı APK'yı seç:
 
 | APK mimarisi | Hangi cihazlar için? |
 | --- | --- |
-| **arm64-v8a** | Güncel Android telefon ve tabletlerin çoğu |
-| **armeabi-v7a** | 32 bit ARM Android çalıştıran eski cihazlar |
-| **x86_64** | Uyumlu Intel/AMD Android cihazları ve emülatörler |
+| [**arm64-v8a APK**](https://github.com/boranseasonnew/zenithw-android/releases/download/v2.4.1/Zenith-2.4.1-stable-arm64-v8a.apk) | Güncel Android telefon ve tabletlerin çoğu |
+| [**armeabi-v7a APK**](https://github.com/boranseasonnew/zenithw-android/releases/download/v2.4.1/Zenith-2.4.1-stable-armeabi-v7a.apk) | 32 bit ARM Android çalıştıran eski cihazlar |
+| [**x86_64 APK**](https://github.com/boranseasonnew/zenithw-android/releases/download/v2.4.1/Zenith-2.4.1-stable-x86_64.apk) | Uyumlu Intel/AMD Android cihazları ve emülatörler |
 
-APK'yı aç; Android isterse kullandığın tarayıcıya veya dosya yöneticisine yükleme izni ver. Mevcut stable kurulumunu aynı imzalı sürümle güncelleyebilirsin. Yayın dosyalarında `SHA256SUMS.txt`, depoda ise [imza sertifikasının parmak izi](release-certificate.sha256) bulunur.
+APK'yı aç; Android isterse kullandığın tarayıcıya veya dosya yöneticisine yükleme izni ver. Mevcut stable kurulumunu aynı imzalı sürümle güncelleyebilirsin. İndirdiğin dosyayı [SHA256SUMS.txt](https://github.com/boranseasonnew/zenithw-android/releases/download/v2.4.1/SHA256SUMS.txt) ile doğrulayabilirsin; [imza sertifikasının parmak izi](release-certificate.sha256) de herkese açıktır.
 
 ## Neler yapabilirsin?
 
@@ -54,7 +54,15 @@ Arayüz **Türkçe, İngilizce, Almanca, Fransızca ve Rusça** sunulur. GitHub 
 2. Medya bilgileri yüklenirken indirme panelinden video, ses veya altyazıyı seç.
 3. İndirmeyi başlat ve ilerlemeyi ana ekrandan takip et.
 
-**2.4.0 yenilikleri:** anında açılan panel, aşamalı gerçek önizleme, yeniden kullanılan metadata çalışma ortamı, güvenli iptal ve **2026.10.21** yt-dlp motoru. [Sürüm notları](releases/2.4.0.md) ve CI erişim / cihaz testi sınırlarını da açıklayan [ölçüm raporu](docs/metadata-performance-2.4.0.md).
+## 2.4.1 yenilikleri
+
+- Arşivde kayıtlı videolar “No output files” hatası yerine atlandı olarak gösterilir. Tekrar dene, arşiv tercihini değiştirmeden videoyu yeniden indirir.
+- Tamamlanan indirme kartları ana ekrandan kaldırılır; kaydedilen dosyalara geçmişten erişilir.
+- İndirme panelinin açılma ve kapanma akışı düzeltildi; tekrar dokunulduğunda açık panel kullanılır ve indirmeye başlarken erken gelen gerçek başlık korunur.
+
+Ayrıntılar: [sürüm notları](releases/2.4.1.md). [GitHub Actions doğrulamasında](https://github.com/boranseasonnew/zenithw-android/actions/runs/40908115943) Android 13/7 emülatör kontrolleri, lint, JVM ve Python testleri ile imzalı paket kontrolleri geçti. Bu düzeltme **fiziksel cihazda YouTube indirmesiyle doğrulanmadı**.
+
+2.4.0'da gelen anında önizleme sisteminin ölçümleri ve test sınırları [performans raporunda](docs/metadata-performance-2.4.0.md) bulunur. Paketlenen yt-dlp sürümü **2026.10.21**; Ayarlar'dan güncellenen motorun sürümü uygulama sürümünden farklı olabilir.
 
 ## Dağıtım ve sınırlar
 

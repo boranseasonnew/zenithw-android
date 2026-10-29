@@ -12,4 +12,4 @@ In this edition, external engine updates are disabled in the engine itself, incl
 
 Dependencies are AndroidX, Kotlin coroutines, Coil and `io.github.junkfood02.youtubedl-android` 0.18.1 (library, FFmpeg and aria2 modules), fetched from Google Maven and Maven Central. Native-tool dependencies and the bundled yt-dlp archive need F-Droid's provenance/license review. The bundled engine's upstream release and checksum are recorded in `yt-dlp-bundle.json`; source is https://github.com/yt-dlp/yt-dlp/tree/2026.10.21 . Bundled Python code comes from that project's official zipapp release, not proprietary code.
 
-Release version: 2.1.3; versionCode: 2001003; minimum Android version: 7.0 (API 24). Public source license: AGPL-3.0-only. Store descriptions and the icon are in `fastlane/metadata/android/`.
+Release version: 2.4.1; versionCode: 2004001; minimum Android version: 7.0 (API 24). Public source license: AGPL-3.0-only. Store descriptions and the icon are in `fastlane/metadata/android/`.

@@ -27,15 +27,15 @@ ZenithW is a native Kotlin and Jetpack Compose app powered by **yt-dlp**, **FFmp
 
 ## Installation
 
-Get a signed APK from the [latest release](https://github.com/boranseasonnew/zenithw-android/releases/latest). Requires **Android 7.0+ (API 24)**, internet access and enough free storage.
+**Current stable: [2.4.1](https://github.com/boranseasonnew/zenithw-android/releases/tag/v2.4.1).** Requires **Android 7.0+ (API 24)**, internet access and enough free storage. Choose a signed APK below:
 
 | APK architecture | Choose this for |
 | --- | --- |
-| **arm64-v8a** | Most modern Android phones and tablets |
-| **armeabi-v7a** | Older devices running 32-bit ARM Android |
-| **x86_64** | Compatible Intel/AMD Android devices and emulators |
+| [**arm64-v8a APK**](https://github.com/boranseasonnew/zenithw-android/releases/download/v2.4.1/Zenith-2.4.1-stable-arm64-v8a.apk) | Most modern Android phones and tablets |
+| [**armeabi-v7a APK**](https://github.com/boranseasonnew/zenithw-android/releases/download/v2.4.1/Zenith-2.4.1-stable-armeabi-v7a.apk) | Older devices running 32-bit ARM Android |
+| [**x86_64 APK**](https://github.com/boranseasonnew/zenithw-android/releases/download/v2.4.1/Zenith-2.4.1-stable-x86_64.apk) | Compatible Intel/AMD Android devices and emulators |
 
-Open the APK and allow installation from your browser or file manager if Android asks. Existing stable installations can be updated with the same signed edition. Release files include `SHA256SUMS.txt`; the [signing-certificate fingerprint](release-certificate.sha256) is also public.
+Open the APK and allow installation from your browser or file manager if Android asks. Existing stable installations can be updated with the same signed edition. Verify downloads with [SHA256SUMS.txt](https://github.com/boranseasonnew/zenithw-android/releases/download/v2.4.1/SHA256SUMS.txt); the [signing-certificate fingerprint](release-certificate.sha256) is also public.
 
 ## What you can do
 
@@ -54,7 +54,15 @@ The interface supports **English, Turkish, German, French and Russian**. The Git
 2. Choose video, audio or subtitles in the download panel while media details load.
 3. Start the download and follow its progress on the home screen.
 
-**New in 2.4.0:** instant configuration with progressive real previews, a reusable metadata runtime, safer cancellation and bundled yt-dlp **2026.10.21**. See [release notes](releases/2.4.0.md) and the measured [performance report](docs/metadata-performance-2.4.0.md), including CI authentication and device-testing limits.
+## New in 2.4.1
+
+- Previously archived videos show as skipped instead of failing with “No output files.” An explicit retry downloads again without changing your archive preference.
+- Finished download cards leave the home screen; saved files remain accessible from history.
+- Download-panel opening and dismissal are more reliable, repeated taps reuse the open panel, and early preview titles are retained when starting a download.
+
+See the [release notes](releases/2.4.1.md). [GitHub Actions validation](https://github.com/boranseasonnew/zenithw-android/actions/runs/40908115943) passed Android 13/7 instrumentation checks, lint, JVM and Python tests, and signed-package checks. This patch has **not** been verified with a physical-device YouTube download.
+
+The instant preview system introduced in 2.4.0 is documented in the [performance report](docs/metadata-performance-2.4.0.md), with measured results and testing limits. The bundled yt-dlp version is **2026.10.21**; an engine updated through Settings can have a different version from the app.
 
 ## Availability & limitations
 
