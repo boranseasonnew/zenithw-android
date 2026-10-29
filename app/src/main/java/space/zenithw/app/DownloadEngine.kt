@@ -351,6 +351,9 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                 }
             }
             response.err.lineSequence().filter(String::isNotBlank).take(100).forEach { store.log(it,job.id) }
+            if(DownloadPolicy.archiveSkipped(response.out+"\n"+response.err) &&
+                directory.listFiles().orEmpty().none { it.isFile && DownloadPolicy.isPublicOutput(it.name) })
+                return@withEngine DownloadOutcome(notes.distinct(),archiveSkipped=true)
             // EmbedThumbnail can finish without embedding when the source has no usable image.
             DownloadPolicy.thumbnailWarning(response.out+"\n"+response.err)?.let { notes.add(it) }
             if(job.options.customArguments.isBlank() && job.options.embedThumbnail && job.options.mode!=MediaMode.SUBTITLES) {

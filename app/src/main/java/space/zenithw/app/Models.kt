@@ -6,7 +6,7 @@ import org.json.JSONObject
 import java.util.UUID
 
 enum class MediaMode(val label: String) { VIDEO("Video"), AUDIO("Ses"), SUBTITLES("Altyazı") }
-enum class JobState { QUEUED, RUNNING, SAVING, COMPLETED, FAILED, CANCELLED }
+enum class JobState { QUEUED, RUNNING, SAVING, COMPLETED, FAILED, CANCELLED, SKIPPED }
 data class MediaPreview(val url: String, val title: String, val uploader: String = "",
     val thumbnail: String? = null, val duration: Int = 0, val heights: List<Int> = emptyList(),
     val isPlaylist: Boolean = false, val metadataReady: Boolean = true,
@@ -184,4 +184,13 @@ fun normalizeUrl(input: String): String {
     require(!uri.host.isNullOrBlank() && uri.host!!.contains('.') && uri.userInfo == null) { "Geçerli bir site adresi gir." }
     require(!normalized.any { it.isISOControl() }) { "Bağlantıda geçersiz karakter var." }
     return normalized
+}
+
+internal fun homeDownloadJob(jobs: List<DownloadJob>,focusedId: String?): DownloadJob? {
+    val focused=jobs.firstOrNull { it.id==focusedId }
+    val active=setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING)
+    return focused?.takeIf { it.state in active }
+        ?: jobs.firstOrNull { it.state in setOf(JobState.RUNNING,JobState.SAVING) }
+        ?: jobs.lastOrNull { it.state==JobState.QUEUED }
+        ?: focused?.takeIf { it.state==JobState.FAILED }
 }

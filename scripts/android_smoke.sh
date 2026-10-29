@@ -51,6 +51,9 @@ if [ "$MODE" != "engine-only" ]; then
   for method in completePasteOpensPanelWithoutNetworkOrLosingOptions latestOfFiveLinksWinsAndUserChoicesSurvive timingLogsContainNoMetadataOrCredentials concurrentIdenticalRequestsShareOneExtraction cancellationAndInvalidInputHaveExplicitStates; do
     run_test "$method" MetadataOptimizationTest
   done
+  for method in repeatAnalyzeAndStaleDismissPreserveNewPanel completedCardsDisappearButFailuresAndActiveDownloadsRemain archivedVideoIsSkippedWithoutAttemptingPublication; do
+    run_test "$method" MetadataOptimizationTest
+  done
   run_test captureHomeDownloadCard
 fi
 for method in realFormatsCacheAvoidsNetworkAndPreservesQueryIdentity cancellationUnblocksReplacementAndDoesNotLeaveWorkerBusy sourceFailureRetainsRuntimeAndPlaylistCacheAvoidsAnotherRequest; do

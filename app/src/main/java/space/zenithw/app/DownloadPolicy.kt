@@ -35,6 +35,10 @@ object DownloadPolicy {
         Regex("(?i)(?:aria2c|libaria2c\\.so) exited with code [1-9][0-9]*").containsMatchIn(message) ||
         Regex("(?i)(?:aria2c|libaria2c\\.so)[^\\n]*(?:not found|cannot execute|permission denied)").containsMatchIn(message)
 
+    fun archiveSkipped(output: String): Boolean = output.lineSequence().any {
+        it.trim().startsWith("[download] ") && it.contains("has already been recorded in the archive")
+    }
+
     fun isPublicOutput(name: String): Boolean {
         if(name.startsWith(".") || name.contains(".temp.") || name.contains(".part.") || name=="source-info.json") return false
         if(name.endsWith(".info.json") || name.endsWith(".description")) return true

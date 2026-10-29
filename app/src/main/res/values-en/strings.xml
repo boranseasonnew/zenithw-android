@@ -152,4 +152,5 @@
     <string name="eta">About %1$s min %2$s sec</string>
     <string name="preview_preference">Preference</string>
     <string name="preview_formats_loading">Loading source formats…</string>
+    <string name="archive_skipped">Skipped: already in download archive. Tap retry to download again.</string>
 </resources>

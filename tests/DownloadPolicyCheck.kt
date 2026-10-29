@@ -1,6 +1,10 @@
 package space.zenithw.app
 
 fun main() {
+    check(DownloadPolicy.archiveSkipped("[download] LAqBFGH1r_c: has already been recorded in the archive"))
+    check(!DownloadPolicy.archiveSkipped("[download] Destination: example.mp4"))
+    check(!DownloadPolicy.archiveSkipped("title: has already been recorded in the archive"))
+
     var count=0
     fun expect(condition: Boolean) { check(condition); count++ }
     val p=DownloadPolicy

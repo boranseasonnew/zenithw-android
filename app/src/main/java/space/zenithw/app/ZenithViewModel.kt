@@ -64,7 +64,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     fun url(url: String) {
         if(url==mutableScreen.value.url) return
         if(url!=mutableScreen.value.url) cancelInspection()
-        edit { it.copy(url=url,message=null,analyzing=false,preview=null,playlistEntries=emptyList(),playlistLoading=false,analysisState=AnalysisState.Idle) }
+        edit { it.copy(url=url,homeJobId=null,message=null,analyzing=false,preview=null,playlistEntries=emptyList(),playlistLoading=false,analysisState=AnalysisState.Idle) }
     }
     /** A complete pasted URL opens immediately; ordinary character edits stay editable. */
     fun inputUrl(value: String) {
@@ -94,7 +94,11 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         }
     }
     fun dismissMessage()=edit { it.copy(message=null) }
-    fun dismissPreview() { cancelInspection();edit { it.copy(preview=null,analyzing=false,analysisError=null,analysisState=AnalysisState.Idle) } }
+    fun dismissPreview()=dismissPreview(mutableScreen.value.analysisId)
+    fun dismissPreview(id: String) {
+        if(id!=mutableScreen.value.analysisId || mutableScreen.value.submitting) return
+        cancelInspection();edit { it.copy(preview=null,analyzing=false,analysisError=null,analysisState=AnalysisState.Idle) }
+    }
     fun cancelAnalysis() { cancelInspection();edit { it.copy(analyzing=false,analysisState=AnalysisState.Cancelled) } }
     fun cookie(id: String?) {
         cancelInspection()
@@ -118,6 +122,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         val url=try { normalizeUrl(state.url) } catch(e: Exception) {
             edit { it.copy(analysisState=AnalysisState.Error) };showMessage(e.message ?: text(R.string.check_link));return
         }
+        if(state.preview?.url==url) return
         cancelInspection()
         inspectionOptions=state.defaults
         val trace=AnalysisTrace(app.store);analysisTrace=trace
@@ -164,7 +169,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         if(state.rememberDownloadChoices) defaults(options)
         if(options.playlist && preview.isPlaylist) { loadPlaylist(options);return }
         cancelInspection();edit { it.copy(analyzing=false) }
-        enqueueBatch(listOf(DownloadJob(url=preview.url,title=if(preview.metadataReady) preview.title else Uri.parse(preview.url).host.orEmpty(),thumbnail=preview.thumbnail,
+        enqueueBatch(listOf(DownloadJob(url=preview.url,title=preview.title.takeIf { it.isNotBlank() && it!=preview.url } ?: Uri.parse(preview.url).host.orEmpty(),thumbnail=preview.thumbnail,
             durationSeconds=preview.duration,options=options.copy(cookieId=state.cookieId,playlist=false,playlistItems=""))))
     }
     fun bulkMode(mode: MediaMode)=edit { it.copy(bulkMode=mode) }
@@ -275,7 +280,9 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     }
     fun cancel(id: String)=DownloadWorker.cancel(app,id)
     fun retry(job: DownloadJob) {
-        val replacement=job.copy(id=UUID.randomUUID().toString(),state=JobState.QUEUED,progress=0f,
+        val replacement=job.copy(id=UUID.randomUUID().toString(),
+            options=if(job.options.customArguments.isBlank()) job.options.copy(downloadArchive=false) else job.options,
+            state=JobState.QUEUED,progress=0f,
             detail="Sırada",phase="queued",progressKnown=false,etaSeconds=-1,bytesDownloaded=0,totalBytes=0,createdAt=System.currentTimeMillis(),files=emptyList(),notes=emptyList())
         enqueueBatch(listOf(replacement),stayTerminal=job.options.customArguments.isNotBlank())
     }

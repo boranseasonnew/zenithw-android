@@ -152,4 +152,5 @@
     <string name="eta">Примерно %1$s мин %2$s с</string>
     <string name="preview_preference">Предпочтение</string>
     <string name="preview_formats_loading">Загрузка форматов источника…</string>
+    <string name="archive_skipped">Пропущено: уже в архиве загрузок. Повторите, чтобы скачать снова.</string>
 </resources>

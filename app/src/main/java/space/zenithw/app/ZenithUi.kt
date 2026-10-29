@@ -114,10 +114,11 @@ private val CardShape=RoundedCornerShape(26.dp)
         }
     }
     if(screen.playlistEntries.isNotEmpty()) PlaylistSelectionSheet(screen.playlistEntries,model::dismissPlaylist,submitting=screen.submitting) { indices -> onQueuedDownload();model.enqueuePlaylist(indices) }
-    screen.preview?.let { DownloadSheet(it,screen.profiles.firstOrNull { p -> p.id==screen.cookieId }?.host,
-        model.app.store.defaultOptions,model::downloadChoices,model::dismissPreview,onDownload,model::loadPlaylist,submitting=screen.submitting,
+    val panelId=screen.analysisId
+    key(panelId) { screen.preview?.let { DownloadSheet(it,screen.profiles.firstOrNull { p -> p.id==screen.cookieId }?.host,
+        model.app.store.defaultOptions,model::downloadChoices,{ model.dismissPreview(panelId) },onDownload,model::loadPlaylist,submitting=screen.submitting,
         analyzing=screen.analyzing,analysisError=screen.analysisError,onRefreshInfo=model::refreshInfo,onCancelAnalysis=model::cancelAnalysis,
-        inspectSlow=screen.inspectSlow,onRendered={ event -> model.analysisRendered(screen.analysisId,event) }) }
+        inspectSlow=screen.inspectSlow,onRendered={ event -> model.analysisRendered(panelId,event) }) } }
     if(cookies) ProfileSheet(screen.profiles,screen.cookieId,{ cookies=false },
         { model.cookie(it); cookies=false },model::removeProfile,
         { cookies=false; newCookie=true },
@@ -135,10 +136,7 @@ private val CardShape=RoundedCornerShape(26.dp)
     val clipboard=LocalClipboardManager.current
     val keyboard=LocalSoftwareKeyboardController.current
     fun analyze() { keyboard?.hide();onAnalyze() }
-    val focused=jobs.firstOrNull { it.id==screen.homeJobId }
-    val current=focused?.takeIf { it.state in setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING) }
-        ?: jobs.firstOrNull { it.state in setOf(JobState.RUNNING,JobState.SAVING) }
-        ?: jobs.lastOrNull { it.state==JobState.QUEUED } ?: focused
+    val current=homeDownloadJob(jobs,screen.homeJobId)
     Column(Modifier.fillMaxSize().padding(horizontal=24.dp,vertical=24.dp)) {
         LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(18.dp,Alignment.CenterVertically)) {
         current?.let { job -> item(key=job.id) { HomeDownloadCard(job,{ onCancel(job.id) },{ onRetry(job) },{ onOpen(job) }) } }
@@ -174,7 +172,7 @@ private val CardShape=RoundedCornerShape(26.dp)
     onRetry: (DownloadJob)->Unit,initialHistory: Boolean=false,onOpen: (DownloadJob,Boolean)->Unit) {
     val texts=LocalAppContext.current
     var history by rememberSaveable(initialHistory) { mutableStateOf(initialHistory) }
-    val visible=jobs.filter { (it.state in setOf(JobState.COMPLETED,JobState.FAILED,JobState.CANCELLED))==history }
+    val visible=jobs.filter { (it.state in setOf(JobState.COMPLETED,JobState.FAILED,JobState.CANCELLED,JobState.SKIPPED))==history }
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
         item { Choices(listOf("queue" to texts.getString(R.string.queue_filter),"history" to texts.getString(R.string.history_filter)),if(history) "history" else "queue") { history=it=="history" } }
         item {
@@ -220,7 +218,7 @@ private val CardShape=RoundedCornerShape(26.dp)
                         TextButton(onClick={ onOpen(job,false) }) { Icon(Icons.Outlined.OpenInNew,null,Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(texts.getString(R.string.open)) }
                         TextButton(onClick={ onOpen(job,true) }) { Icon(Icons.Outlined.Share,null,Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(texts.getString(R.string.share)) }
                     }
-                    if(job.state in listOf(JobState.FAILED,JobState.CANCELLED)) TextButton(onClick={ onRetry(job) }) { Text(texts.getString(R.string.retry)) }
+                    if(job.state in listOf(JobState.FAILED,JobState.CANCELLED,JobState.SKIPPED)) TextButton(onClick={ onRetry(job) }) { Text(texts.getString(R.string.retry)) }
                 }
             }
         }

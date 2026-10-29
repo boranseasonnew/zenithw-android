@@ -46,13 +46,9 @@ import java.util.Calendar
     val context=texts
     val plan=DownloadPolicy.thumbnailPlan(o.mode.name,o.container,o.audioFormat,o.embedThumbnail,o.downloadThumbnail,o.thumbnailFormat)
     val maxHeight=(LocalConfiguration.current.screenHeightDp*.90f).dp
-    val density=LocalDensity.current
-    // Begin at the visible anchor. Opening the configuration must not wait for
-    // Material's hidden-to-expanded entrance animation before showing placeholders.
-    val instantSheet=remember(preview.url,density) {
-        SheetState(skipPartiallyExpanded=true,initialValue=SheetValue.Expanded,
-            positionalThreshold={ with(density) { 56.dp.toPx() } },velocityThreshold={ with(density) { 125.dp.toPx() } })
-    }
+    // Let Material establish its anchors before expansion. Starting Expanded before
+    // IME/inset layout settled could dismiss the sheet as its anchors changed.
+    val instantSheet=rememberModalBottomSheetState(skipPartiallyExpanded=true)
     ModalBottomSheet(onDismissRequest=onDismiss,sheetState=instantSheet,
         sheetGesturesEnabled=false,dragHandle=null,
         containerColor=Panel,contentColor=Silver,shape=RoundedCornerShape(topStart=30.dp,topEnd=30.dp)) {
