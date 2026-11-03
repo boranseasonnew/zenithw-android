@@ -1,7 +1,17 @@
-# Third-party acknowledgements: Seal comparison
+# Third-party acknowledgements
 
 ZenithW Android's own source remains under [AGPL-3.0-only](LICENSE).
 Third-party libraries and bundled tools retain their respective licenses.
+
+## Native browser transport candidate
+
+The candidate packages official Android curl-impersonate 2.3.2 executables from
+[lexiforest/curl-impersonate](https://github.com/lexiforest/curl-impersonate/releases/tag/v2.3.2).
+The yt-dlp adapter is independently implemented; it does not copy Seal code.
+Exact source, archive and executable digests are recorded in
+`native-curl-manifest.json`. All ten complete upstream component notices are
+included in APK assets under `third_party/native-curl/`. See the
+[provenance, notices and compatibility limits](docs/native-curl-NOTICES.md).
 
 ## Seal
 

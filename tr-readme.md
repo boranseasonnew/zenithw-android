@@ -56,7 +56,7 @@ Dosya bütünlüğünü [SHA256SUMS.txt](https://github.com/boranseasonnew/zenit
 
 **2.4.1** sürümü arşivlenmiş öğelerin işlenmesini, tamamlanan indirme geçmişini ve indirme panelinin davranışını iyileştirir. Ayrıntılar [sürüm notlarında](releases/2.4.1.md). [GitHub Actions doğrulamasında](https://github.com/boranseasonnew/zenithw-android/actions/runs/40908115943) Android 13 ve Android 7 emülatör kontrolleri, lint, JVM ve Python testleri ile imzalı paket kontrolleri geçti. Bu sürüm **fiziksel bir cihazda YouTube indirmesiyle doğrulanmadı**.
 
-İndirmeler yt-dlp desteğine ve kaynağın erişim koşullarına bağlıdır. Paketlenen Android çalışma ortamında şu anda `curl_cffi` impersonation desteği bulunmuyor; bu nedenle cookie veya VPN erişim garantisi vermez. Yerel 16 KB bellek sayfası uyumluluğu tam olarak doğrulanmış değildir.
+İndirmeler yt-dlp desteğine ve kaynağın erişim koşullarına bağlıdır. Yayımlanmış 2.4.1'de tarayıcı taklidi desteği yoktur. Bu dal, bağımsız geliştirilen native tarayıcı aktarımının test adayını içerir; [gerçek Android karşılaştırması ve doğrulama sınırları](docs/PORNHUB_DIAGNOSIS_2026-11-03.md) raporda bulunur. Fiziksel telefon doğrulaması beklemededir. Yerel 16 KB bellek sayfası uyumluluğu tam olarak doğrulanmış değildir.
 
 [F-Droid başvurusu](docs/FDROID.md) beklemededir.
 

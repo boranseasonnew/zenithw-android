@@ -1,5 +1,44 @@
 # Android Pornhub comparison — 3 November 2026
 
+## Verified outcome
+
+The independently implemented browser transport resolves the reproduced HTTP 403 on
+the Android emulators. Android 13 engine checks passed in
+[run 41720064696](https://github.com/boranseasonnew/zenithw-android/actions/runs/41720064696),
+and Android 7 checks plus signed APK integrity verification passed in
+[run 41723372834](https://github.com/boranseasonnew/zenithw-android/actions/runs/41723372834).
+The earlier full Android 13 run passed the UI checks on identical application
+code; only its old concurrent-log assertion needed the test-only correction.
+
+Latest Android 13 actual-source comparison, no personal cookies and normal device routing:
+
+| Measurement | Ordinary CLI | Native browser worker |
+| --- | --- | --- |
+| Metadata result | HTTP 403, no formats | Success, 8 formats |
+| Total wall time | 1774 ms until failure | 6877 ms |
+| Extractor time | No metadata | 6170 ms |
+| Real title / duration | Absent | Present / 1358 seconds |
+| Actual media sample | Not attempted | 10,241 bytes in 2275 ms |
+
+Android 7 independently reproduced the same baseline HTTP 403 (1992 ms), then
+returned 4 real formats and the same title/duration in 3980 ms (3279 ms
+extraction). Its real 10,241-byte media sample completed in 3976 ms. Available
+format counts vary with the upstream response; no synthetic formats are added.
+
+The sample uses the existing downloader and a cached info snapshot in yt-dlp's
+test-download mode. It is not a complete video download. Controlled Android
+tests additionally verify CLI extraction/download, selected-cookie and captured
+User-Agent propagation, CDN cookie isolation, normal certificate checks,
+source HTTP 403 preservation and native-process cancellation. All 10 adapter unit
+tests also pass with the exact official nightly 2026.10.29.232701 in the phone log.
+
+Candidate APKs are built by GitHub Actions with the retained stable certificate;
+the stable release and main remain unchanged. Physical-phone VPN/account
+validation is explicitly pending. All three downloaded APK checksums, packaged
+native executable hashes and complete license notices were verified again locally.
+The known 16 KiB page-size limitation is documented in
+[native runtime provenance](native-curl-NOTICES.md).
+
 ## Targets and evidence
 
 - ZenithW Android source: `boranseasonnew/zenithw-android`, main `94538f4`, application version 2.4.1. Restored to an ignored checkout solely for this task.
@@ -34,9 +73,9 @@ No Seal code was copied.
 
 - Existing real Python metadata-worker regression suite: **9 tests passed** (8-test run plus the separately added warning-category test), using a controlled local HLS/HTML/DASH fixture and the bundled yt-dlp archive.
 - git diff --check passed.
-- New Android instrumentation tests are **written but not run**: no local Android SDK/emulator/device was found. The Python suite does not validate Compose/ViewModel changes or real Pornhub access.
-- Local stage: no Android APK built and no phone cookies read. A separate test branch and the existing artifact-only GitHub Actions workflow will compile and exercise the instrumentation changes; no public release or version tag is authorized.
-- A full fix for phone HTTP403 is **not verified**. It still requires a real-device retry with the profile explicitly selected, engine/version comparison, and checking that the VPN includes ZenithW. Updating User-Agent, disabling TLS checks or claiming an impersonation fix without evidence would be unjustified.
+- Initial local validation had no Android SDK/emulator/device. Subsequent GitHub Actions instrumentation and real-source results are recorded above and below; local Python checks alone were not treated as Android proof.
+- APKs were subsequently built and signed by the artifact-only GitHub Actions workflow. No phone cookies were read, and no public version tag or stable release was published.
+- The reproduced emulator HTTP403 is resolved; the physical phone/VPN/account combination remains **unverified**. Normal TLS verification is retained, and successful metadata is distinguished from full-video download verification.
 
 ## Extended shipped-runtime comparison
 

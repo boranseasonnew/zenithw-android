@@ -56,7 +56,7 @@ For file integrity, compare the downloaded APK with [SHA256SUMS.txt](https://git
 
 Version **2.4.1** improves handling of previously archived items, completed-download history and download-panel behavior. See the [release notes](releases/2.4.1.md). Its [GitHub Actions validation](https://github.com/boranseasonnew/zenithw-android/actions/runs/40908115943) passed Android 13 and Android 7 instrumentation checks, lint, JVM and Python tests, and signed-package checks. This release has **not** been verified with a physical-device YouTube download.
 
-Downloads depend on yt-dlp support and the source's access requirements. The bundled Android runtime currently lacks `curl_cffi` impersonation support, so cookies or a VPN cannot guarantee access. Full native 16 KB memory-page compatibility has not been established.
+Downloads depend on yt-dlp support and the source's access requirements. Published 2.4.1 does not include browser impersonation. This branch adds an independently implemented native browser transport candidate; see the [actual Android comparison and validation limits](docs/PORNHUB_DIAGNOSIS_2026-11-03.md). Physical-phone verification is pending. Full native 16 KB memory-page compatibility has not been established.
 
 The [F-Droid submission](docs/FDROID.md) is pending.
 
