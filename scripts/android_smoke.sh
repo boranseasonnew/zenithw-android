@@ -32,6 +32,7 @@ require_all_tests_passed() {
   fi
 }
 run_test nativeBrowserTransportMetadataDownloadTlsAndCancellation BrowserTransportTest
+run_test livePornhubNetworkComparison LivePornhubProbeTest
 run_test saveSettings
 adb shell am force-stop "$PACKAGE"
 run_test restoreSettings
