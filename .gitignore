@@ -9,3 +9,5 @@ local.properties
 release-assets/
 __pycache__/
 *.pyc
+app/src/main/jniLibs/*/libzenithcurl.so
+app/src/main/assets/third_party/native-curl/

@@ -35,7 +35,8 @@ internal class MetadataRuntime(private val context: Context) {
         val script=File(context.cacheDir,"metadata-worker.py")
         context.resources.openRawResource(R.raw.metadata_worker).use { input -> script.outputStream().use { input.copyTo(it) } }
         val command=listOf(File(native,"libpython.so").absolutePath,"-u",script.absolutePath,
-            File(context.noBackupFilesDir,"youtubedl-android/yt-dlp/yt-dlp").absolutePath)
+            File(context.noBackupFilesDir,"youtubedl-android/yt-dlp/yt-dlp").absolutePath,
+            File(BrowserTransport.prepare(context),"zenith/yt_dlp_plugins/extractor/zenith_browser.py").absolutePath)
         val process=ProcessBuilder(command).apply {
             environment().apply {
                 put("PYTHONHOME",File(packages,"python/usr").absolutePath)

@@ -11,6 +11,7 @@ import select
 import re
 import threading
 import ssl
+import importlib.util
 from pathlib import Path
 
 wire = sys.stdout.buffer
@@ -46,6 +47,11 @@ sys.stdout = sys.stderr = QuietStream()
 started = time.monotonic()
 sys.path.insert(0, sys.argv[1])
 import yt_dlp
+browser_transport = None
+if len(sys.argv) > 2:
+    spec = importlib.util.spec_from_file_location('zenith_browser_transport', sys.argv[2])
+    browser_transport = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(browser_transport)
 emit('runtime_ready', import_ms=round((time.monotonic() - started) * 1000),
      python_version=sys.version.split()[0], openssl_version=ssl.OPENSSL_VERSION)
 
@@ -85,6 +91,7 @@ class RequestLogger:
 
 cached_ydl = None
 cached_args = None
+cached_browser = None
 while True:
     # Release the imported interpreter after two idle minutes. No busy polling.
     if sys.platform != 'win32' and not select.select([sys.stdin], [], [], 120)[0]:
@@ -106,11 +113,12 @@ while True:
     reusable = True
     try:
         args = request['args']
+        use_browser = browser_transport is not None and browser_transport.source_url(request['url'])
         # Cookie-bearing objects are deliberately not reused after their temporary
         # cookie file is removed. The interpreter/import cache is still shared.
         reusable = '--cookies' not in args
         construct = time.monotonic()
-        reused = reusable and cached_ydl is not None and args == cached_args
+        reused = reusable and cached_ydl is not None and args == cached_args and use_browser == cached_browser
         if reused:
             ydl = cached_ydl
         else:
@@ -119,10 +127,12 @@ while True:
             params.update(logger=RequestLogger(), quiet=True, noprogress=True, ignoreerrors=False,
                           simulate=True, skip_download=True, postprocessors=[])
             ydl = yt_dlp.YoutubeDL(params)
+            if use_browser:
+                browser_transport.install(ydl)
             if reusable:
                 if cached_ydl is not None:
                     cached_ydl.close()
-                cached_ydl, cached_args = ydl, args
+                cached_ydl, cached_args, cached_browser = ydl, args, use_browser
         ydl.params['logger'].impersonation_unavailable = False
         handlers = sorted(name for name in ydl._request_director.handlers
                           if re.fullmatch(r'[A-Za-z0-9_]+', name))
@@ -201,7 +211,8 @@ while True:
             ('private video', 'AUTH_REQUIRED'), ('timed out', 'NETWORK_TIMEOUT'),
             ('unsupported url', 'UNSUPPORTED_URL'), ('no video formats', 'NO_FORMATS'),
             ('video unavailable', 'UNAVAILABLE')) if needle in message), type(error).__name__)
-        code = 'HTTP_' + status[1] if status else category
+        browser_code = re.search(r'\bBROWSER_[A-Z_]+(?:_\d+)?\b', str(error))
+        code = 'HTTP_' + status[1] if status else browser_code[0] if browser_code else category
         emit('error', code=code, elapsed_ms=round((time.monotonic()-begin)*1000),
              network_count=network_count, network_headers_ms=network_headers_ms,
              impersonation_unavailable=bool(ydl is not None and

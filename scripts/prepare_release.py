@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import zipfile
 
 
 ABIS = ("arm64-v8a", "armeabi-v7a", "x86_64")
@@ -37,6 +38,15 @@ def verify_apk(apk, abi, version, version_code, build_tools, certificate):
         raise ValueError(f"{apk}: unexpected minimum Android version")
     if not re.search(r"^targetSdkVersion:'36'$", badging, re.M):
         raise ValueError(f"{apk}: unexpected target Android version")
+    manifest = json.loads((Path(__file__).resolve().parents[1] / 'native-curl-manifest.json').read_text())
+    with zipfile.ZipFile(apk) as archive:
+        native = archive.read(f'lib/{abi}/libzenithcurl.so')
+        if hashlib.sha256(native).hexdigest() != manifest['abis'][abi]['binary_sha256']:
+            raise ValueError(f"{apk}: native browser executable differs from the reviewed upstream pin")
+        for name, expected in manifest['licenses'].items():
+            notice = archive.read('assets/third_party/native-curl/' + name)
+            if hashlib.sha256(notice).hexdigest() != expected:
+                raise ValueError(f"{apk}: missing or altered native browser license notice")
     print(f"Verified {apk.name}: {PACKAGE}, {version}, {abi}, certificate {certificate}")
 
 

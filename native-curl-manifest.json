@@ -1,0 +1,98 @@
+{
+  "schema": 1,
+  "project": "https://github.com/lexiforest/curl-impersonate",
+  "version": "2.3.2",
+  "source_commit": "5b1c3542fc7fc0e9fe623a6c9a848d16f92fe99a",
+  "profile": "chrome136",
+  "member": "curl-impersonate",
+  "output_name": "libzenithcurl.so",
+  "minimum_android_api": 21,
+  "archive_limit_bytes": 16777216,
+  "binary_limit_bytes": 33554432,
+  "licenses": {
+    "LICENSE": "c25fc35eb1692c95fa1406efca2f08cc14afda2c71d5cb1ae44da60358d1787b",
+    "LICENSE_BORINGSSL": "827c8d8fc207c2392794eef9e00fe246f9f61fdcc132556c275be3dd8c3cd97f",
+    "LICENSE_BROTLI": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94",
+    "LICENSE_CARES": "460f5e768fda3752ca2169a95df062578a10fb126bfd65f3b9b1a1bed2f84807",
+    "LICENSE_CURL": "82f2f4427d6545ee5aaac4f0b80428da6cc8ba41c2cf5da3a03680ec327b9681",
+    "LICENSE_NGHTTP2": "6b94f3abc1aabd0c72a7c7d92a77f79dda7c8a0cb3df839a97890b4116a2de2a",
+    "LICENSE_NGHTTP3": "58cc3fc8c6d6cb2485ab35eb5918e849b5bf1e56522974e106d7a39a88d61dcd",
+    "LICENSE_NGTCP2": "542dd526d2ea23565f0571cc68df6f05ed11248a90ff0f32de19d8ba589db513",
+    "LICENSE_ZLIB": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2",
+    "LICENSE_ZSTD": "7055266497633c9025b777c78eb7235af13922117480ed5c674677adc381c9d8"
+  },
+  "abis": {
+    "arm64-v8a": {
+      "archive": "curl-impersonate-v2.3.2.aarch64-linux-android.tar.gz",
+      "url": "https://github.com/lexiforest/curl-impersonate/releases/download/v2.3.2/curl-impersonate-v2.3.2.aarch64-linux-android.tar.gz",
+      "archive_sha256": "89485c596d8122af8b64f7dd938a41f377e28b3145baaad46a6c83c6528b4a14",
+      "binary_sha256": "ab03807c4cb67072d4e1765371dd66066e58ff2b231f90240ff5fdfc8462a4a8",
+      "binary_bytes": 19518352,
+      "elf_class": 64,
+      "elf_machine": 183,
+      "interpreter": "/system/bin/linker64",
+      "needed": [
+        "libc++_shared.so",
+        "libdl.so",
+        "libm.so",
+        "libc.so"
+      ],
+      "load_alignment": 4096,
+      "supports_16k": false
+    },
+    "armeabi-v7a": {
+      "archive": "curl-impersonate-v2.3.2.armv7-linux-android.tar.gz",
+      "url": "https://github.com/lexiforest/curl-impersonate/releases/download/v2.3.2/curl-impersonate-v2.3.2.armv7-linux-android.tar.gz",
+      "archive_sha256": "b653d1634fb0a59f0079cc9b37c8b991c2de3633481a443a697ab1f8f4a4eec1",
+      "binary_sha256": "4d58084f90b8cfe7618da6cf977f4b62542422e97745059628c6dcd0bf6993c0",
+      "binary_bytes": 15097972,
+      "elf_class": 32,
+      "elf_machine": 40,
+      "interpreter": "/system/bin/linker",
+      "needed": [
+        "libc++_shared.so",
+        "libdl.so",
+        "libm.so",
+        "libc.so"
+      ],
+      "load_alignment": 4096,
+      "supports_16k": false
+    },
+    "x86": {
+      "archive": "curl-impersonate-v2.3.2.x86-linux-android.tar.gz",
+      "url": "https://github.com/lexiforest/curl-impersonate/releases/download/v2.3.2/curl-impersonate-v2.3.2.x86-linux-android.tar.gz",
+      "archive_sha256": "ac759af8ce346f8eec79dfc619dbfce37c6ab587ae58d2f3391d4d161934653f",
+      "binary_sha256": "29797c04e1462fe0929548b60125b1c6fc08b7e746d2988fd06aa54d1990739b",
+      "binary_bytes": 15656204,
+      "elf_class": 32,
+      "elf_machine": 3,
+      "interpreter": "/system/bin/linker",
+      "needed": [
+        "libc++_shared.so",
+        "libdl.so",
+        "libm.so",
+        "libc.so"
+      ],
+      "load_alignment": 4096,
+      "supports_16k": false
+    },
+    "x86_64": {
+      "archive": "curl-impersonate-v2.3.2.x86_64-linux-android.tar.gz",
+      "url": "https://github.com/lexiforest/curl-impersonate/releases/download/v2.3.2/curl-impersonate-v2.3.2.x86_64-linux-android.tar.gz",
+      "archive_sha256": "621dbef84b4817ae8031279fae1e8aa4769262d9a4895cda7659e27a523799a1",
+      "binary_sha256": "f199632d85ef9540b055891a877c615fdd5e015e042d12f8bfd052d8b9ab6fd2",
+      "binary_bytes": 19169392,
+      "elf_class": 64,
+      "elf_machine": 62,
+      "interpreter": "/system/bin/linker64",
+      "needed": [
+        "libc++_shared.so",
+        "libdl.so",
+        "libm.so",
+        "libc.so"
+      ],
+      "load_alignment": 4096,
+      "supports_16k": false
+    }
+  }
+}

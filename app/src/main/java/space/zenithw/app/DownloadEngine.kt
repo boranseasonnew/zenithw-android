@@ -73,6 +73,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         if(initialized) return
         YoutubeDL.getInstance().init(context)
         installBundledFloor()
+        BrowserTransport.prepare(context)
         initialized=true
     }
     private fun binaryVersion(file: File): String? = runCatching { EngineArchive.version(file) }.getOrNull()
@@ -172,6 +173,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         addOption("--socket-timeout","20")
         addOption("--cache-dir",File(context.cacheDir,"yt-dlp-cache").apply { mkdirs() }.absolutePath)
         if(!BuildConfig.F_DROID) addOption("--remote-components","ejs:github")
+        url?.let { BrowserTransport.apply(context,this,it) }
     }
     private fun applyNetwork(request: YoutubeDLRequest,o: DownloadOptions,cookieId: String?=o.cookieId) {
         when(o.networkMode) { "ipv4" -> request.addOption("--force-ipv4"); "ipv6" -> request.addOption("--force-ipv6") }

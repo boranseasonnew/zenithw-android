@@ -47,7 +47,12 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    packaging { jniLibs.useLegacyPackaging = true }
+    packaging {
+        jniLibs.useLegacyPackaging = true
+        // This is an upstream PIE executable with a pinned SHA-256, not a JNI
+        // library to strip. Keep its reviewed bytes identical in every APK.
+        jniLibs.keepDebugSymbols += "**/libzenithcurl.so"
+    }
     splits {
         abi {
             isEnable = !fdroidBuild
@@ -57,6 +62,22 @@ android {
         }
     }
 }
+
+val verifyBrowserTransport=tasks.register("verifyBrowserTransport") {
+    doLast {
+        val abis=if(fdroidBuild) listOf("arm64-v8a","armeabi-v7a","x86","x86_64")
+            else listOf("arm64-v8a","armeabi-v7a","x86_64")
+        abis.forEach { abi ->
+            check(file("src/main/jniLibs/$abi/libzenithcurl.so").isFile) {
+                "Run python scripts/package_native_curl.py before building: missing browser transport for $abi"
+            }
+        }
+        check(file("src/main/assets/third_party/native-curl/provenance.json").isFile) {
+            "Native browser transport provenance and license notices are required"
+        }
+    }
+}
+tasks.named("preBuild") { dependsOn(verifyBrowserTransport) }
 dependencies {
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

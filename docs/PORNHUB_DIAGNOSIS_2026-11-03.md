@@ -73,3 +73,38 @@ Test branch: `codex/android-session-diagnostics`. Existing `android-release.yml`
 Run41708771077 compiled all signed ABI APKs and passed lint, JVM policies and Python worker checks. Android13 completed46instrumentation tests successfully, including both new session tests. Its only failed test was the existing `ReleaseSmokeTest#bulkWorkspace`: the screenshot showed the correct blank link field, while the platform accessibility representation merged its empty editable value and label (`", Bağlantı 1"`). The old finder accepted only plain text/contentDescription equality. Android7was not reached after this step failed.
 
 The correction is limited to test code: EditText hints and the exact `", Label"` empty-field form are accepted. Other classes retain exact matching; partial-label matches remain rejected by a new explicit regression. No test is skipped, assertion removed, timeout enlarged or product behavior changed. The full artifact-only workflow is rerun for this test-only correction.
+
+### Native browser transport candidate
+
+The diagnostic/session workflow rerun41711473944 completed successfully, including
+the configured Android13andAndroid7 checks. This predates the native transport.
+
+The next candidate adds an independent, per-YoutubeDL request handler backed by
+the pinned official curl-impersonate2.3.2 Android executable. It handles only
+explicit HTTPS browser-impersonation requests to Pornhub and its recognized CDN
+domains. No Seal application code or older Python/OpenSSL runtime is copied.
+The same adapter is attached by the metadata worker and a minimal extractor
+initialization plugin in the normal download CLI. Upstream extractor parsing,
+ordinary media transfers, selected sessions and user download settings remain.
+
+The adapter retains selected cookie and User-Agent settings, configured proxies,
+IP-family selection, normal CA verification and the device's VPN routing. It
+checks redirects individually, recalculates scoped cookies per hop and rejects
+foreign domains, HTTPS downgrades and cross-origin POST replay. Transfers are
+bounded to16MiB/20seconds; on Android a parent-death signal closes native curl
+when its owning analysis process is cancelled. No URLs, cookies, tokens, proxy
+credentials or raw native diagnostics are written to logs or process arguments.
+
+Archives, ELF executables and complete dependency notices have pinned hashes;
+APK staging independently verifies the packaged executable and notices again.
+See `native-curl-NOTICES.md` for upstream source/license records and the explicit
+4KiB/16KiB page-size limitation. The APK size increases by the native executable
+(approximately15–19MiB uncompressed per ABI).
+
+Local verification:9existing metadata tests,10new transport tests and11packaging
+tests passed. A new Android instrumentation scenario exercises actual native
+execution, metadata/CLI extraction and fixture media download through a local
+TLS proxy, source403 handling, selected-cookie/User-Agent propagation, CDN
+cookie isolation, rejection of an untrusted CA and native-process cancellation.
+Its emulator result and a real-phone retry remain pending; local tests alone
+do not establish that the reported phone403 is resolved.

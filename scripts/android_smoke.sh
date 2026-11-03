@@ -31,6 +31,7 @@ require_all_tests_passed() {
     return 1
   fi
 }
+run_test nativeBrowserTransportMetadataDownloadTlsAndCancellation BrowserTransportTest
 run_test saveSettings
 adb shell am force-stop "$PACKAGE"
 run_test restoreSettings
