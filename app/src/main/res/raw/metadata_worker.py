@@ -10,6 +10,7 @@ import time
 import select
 import re
 import threading
+import ssl
 from pathlib import Path
 
 wire = sys.stdout.buffer
@@ -45,7 +46,8 @@ sys.stdout = sys.stderr = QuietStream()
 started = time.monotonic()
 sys.path.insert(0, sys.argv[1])
 import yt_dlp
-emit('runtime_ready', import_ms=round((time.monotonic() - started) * 1000))
+emit('runtime_ready', import_ms=round((time.monotonic() - started) * 1000),
+     python_version=sys.version.split()[0], openssl_version=ssl.OPENSSL_VERSION)
 
 FORMAT_FIELDS = ('format_id', 'ext', 'height', 'width', 'fps', 'vcodec', 'acodec',
                  'tbr', 'filesize', 'filesize_approx', 'has_drm')
@@ -67,10 +69,18 @@ def compact(info):
 
 
 class RequestLogger:
+    def __init__(self):
+        self.impersonation_unavailable = False
+
     def debug(self, message):
         pass
 
-    info = warning = error = debug
+    info = error = debug
+
+    def warning(self, message):
+        # Retain only a capability bit; raw warnings can contain private URLs.
+        if 'no impersonate target is available' in str(message).lower():
+            self.impersonation_unavailable = True
 
 
 cached_ydl = None
@@ -113,7 +123,11 @@ while True:
                 if cached_ydl is not None:
                     cached_ydl.close()
                 cached_ydl, cached_args = ydl, args
-        emit('extracting', construct_ms=round((time.monotonic()-construct)*1000), reused=reused)
+        ydl.params['logger'].impersonation_unavailable = False
+        handlers = sorted(name for name in ydl._request_director.handlers
+                          if re.fullmatch(r'[A-Za-z0-9_]+', name))
+        emit('extracting', construct_ms=round((time.monotonic()-construct)*1000), reused=reused,
+             handlers=handlers)
         original_urlopen = ydl.urlopen
 
         def timed_urlopen(req):
@@ -189,4 +203,6 @@ while True:
             ('video unavailable', 'UNAVAILABLE')) if needle in message), type(error).__name__)
         code = 'HTTP_' + status[1] if status else category
         emit('error', code=code, elapsed_ms=round((time.monotonic()-begin)*1000),
-             network_count=network_count, network_headers_ms=network_headers_ms)
+             network_count=network_count, network_headers_ms=network_headers_ms,
+             impersonation_unavailable=bool(ydl is not None and
+                 getattr(ydl.params.get('logger'), 'impersonation_unavailable', False)))

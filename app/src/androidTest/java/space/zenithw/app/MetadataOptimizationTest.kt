@@ -10,6 +10,38 @@ class MetadataOptimizationTest {
     private val instrumentation get()=InstrumentationRegistry.getInstrumentation()
     private val app get()=instrumentation.targetContext.applicationContext as ZenithApplication
 
+    @Test fun selectingSessionKeepsTheOpenPanelAndCurrentChoices() {
+        val before=app.store.showMediaPreview;val configure=app.store.configureBeforeDownload
+        val selected=app.store.selectedCookieId;val remember=app.store.rememberDownloadChoices
+        try {
+            app.store.showMediaPreview=false;app.store.configureBeforeDownload=true
+            app.store.rememberDownloadChoices=false
+            instrumentation.runOnMainSync {
+                val model=ZenithViewModel(app)
+                model.cookie(null);model.url("https://example.org/video");model.analyze()
+                val panel=model.screen.value.analysisId
+                model.downloadChoices(DownloadOptions(mode=MediaMode.AUDIO,audioFormat="m4a"))
+                model.cookie("fixture-session")
+                assertEquals("fixture-session",model.screen.value.cookieId)
+                assertNotNull(model.screen.value.preview)
+                assertEquals(panel,model.screen.value.analysisId)
+                assertFalse(model.screen.value.preview!!.metadataReady)
+                assertEquals(AnalysisState.Preparing,model.screen.value.analysisState)
+                val options=ZenithViewModel::class.java.getDeclaredField("inspectionOptions").apply { isAccessible=true }
+                assertEquals("m4a",(options.get(model) as DownloadOptions).audioFormat)
+                // Explicit anonymous selection also invalidates source data and
+                // keeps configuration open; no unrequested account is selected.
+                model.cookie(null)
+                assertNotNull(model.screen.value.preview)
+                assertEquals(panel,model.screen.value.analysisId)
+                model.dismissPreview()
+            }
+        } finally {
+            app.store.showMediaPreview=before;app.store.configureBeforeDownload=configure
+            app.store.selectedCookieId=selected;app.store.rememberDownloadChoices=remember
+        }
+    }
+
 
     @Test fun repeatAnalyzeAndStaleDismissPreserveNewPanel() {
         val before=app.store.showMediaPreview;val configure=app.store.configureBeforeDownload

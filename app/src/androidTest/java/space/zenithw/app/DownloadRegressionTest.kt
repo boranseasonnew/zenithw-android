@@ -18,6 +18,23 @@ class DownloadRegressionTest {
     private val instrumentation get()=InstrumentationRegistry.getInstrumentation()
     private val app get()=instrumentation.targetContext.applicationContext as ZenithApplication
 
+    @Test fun selectedSessionIsIncludedDuringMetadataExtraction() {
+        val profile=app.vault.capture("fixture-${UUID.randomUUID()}.example.org","session=fixture","Fixture browser/1.0")
+        val directory=File(app.cacheDir,"metadata-session-regression-${UUID.randomUUID()}").apply { mkdirs() }
+        try {
+            val method=DownloadEngine::class.java.getDeclaredMethod("metadataRequest",String::class.java,
+                DownloadOptions::class.java,File::class.java,java.lang.Boolean.TYPE,java.lang.Boolean.TYPE,
+                Integer.TYPE).apply { isAccessible=true }
+            val request=method.invoke(app.engine,profile.id,DownloadOptions(),directory,false,false,1) as YoutubeDLRequest
+            assertEquals("Fixture browser/1.0",request.getOption("--user-agent"))
+            val cookies=request.getOption("--cookies")
+            assertNotNull(cookies)
+            assertTrue(File(cookies!!).readText().contains("session\tfixture"))
+            val anonymous=method.invoke(app.engine,null,DownloadOptions(),directory,false,false,1) as YoutubeDLRequest
+            assertFalse(anonymous.hasOption("--cookies"))
+        } finally { app.vault.remove(profile.id);directory.deleteRecursively() }
+    }
+
     @Test fun extractedArtworkAndDurationSurviveHistoryReload() {
         val name="metadata-regression-${UUID.randomUUID()}"
         val context=object: ContextWrapper(app) {

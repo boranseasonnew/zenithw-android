@@ -101,9 +101,19 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     }
     fun cancelAnalysis() { cancelInspection();edit { it.copy(analyzing=false,analysisState=AnalysisState.Cancelled) } }
     fun cookie(id: String?) {
+        val state=mutableScreen.value
+        if(id==state.cookieId) return
         cancelInspection()
         app.store.selectedCookieId=id
-        edit { it.copy(cookieId=id,analyzing=false,preview=null,playlistEntries=emptyList(),playlistLoading=false,analysisState=AnalysisState.Idle) }
+        // Changing a session must invalidate source data, not dismiss the open
+        // configuration or silently keep metadata fetched anonymously. Keep the
+        // panel identity so its current format choices survive the refresh.
+        val pending=state.preview?.let { MediaPreview(it.url,it.url,
+            isPlaylist=PreviewPolicy.isCollection(it.url),metadataReady=false) }
+        edit { it.copy(cookieId=id,analyzing=false,preview=pending,analysisError=null,
+            playlistEntries=emptyList(),playlistLoading=false,
+            analysisState=if(pending==null) AnalysisState.Idle else AnalysisState.Preparing) }
+        if(pending!=null && state.showMediaPreview) startInspection(false,true)
     }
     fun refreshProfiles() {
         val profiles=app.vault.profiles()

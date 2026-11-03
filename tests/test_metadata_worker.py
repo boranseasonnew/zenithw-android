@@ -2,6 +2,7 @@
 No account, cookies, external site or media download is required.
 """
 import http.server
+import ast
 import json
 import os
 from pathlib import Path
@@ -133,6 +134,26 @@ class MetadataWorkerTests(unittest.TestCase):
                                capture_output=True, text=True, timeout=20)
         self.assertEqual(0, check.returncode, check.stderr)
         self.assertIn('formats', json.loads(check.stdout))
+
+    def test_runtime_capabilities_are_reported_without_private_request_data(self):
+        self.assertRegex(self.worker.ready['python_version'], r'^\d+\.\d+\.\d+')
+        self.assertIn('openssl_version', self.worker.ready)
+        events = self.worker.inspect(self.origin+'/one?token=hidden', self.snapshot)
+        handlers = next(e for e in events if e['event']=='extracting')['handlers']
+        self.assertTrue(handlers)
+        for handler in handlers:
+            self.assertRegex(handler, r'^[A-Za-z0-9_]+$')
+        self.assertNotIn('hidden', json.dumps([e for e in events if e['event']!='result']))
+
+    def test_impersonation_warning_retains_only_a_capability_bit(self):
+        source = ast.parse(SCRIPT.read_text(encoding='utf-8'))
+        logger_class = next(node for node in source.body if isinstance(node, ast.ClassDef) and node.name=='RequestLogger')
+        scope = {}
+        exec(compile(ast.Module(body=[logger_class],type_ignores=[]),str(SCRIPT),'exec'),scope)
+        logger = scope['RequestLogger']()
+        logger.warning('The extractor is attempting impersonation, but no impersonate target is available. https://example.test/?token=secret')
+        self.assertTrue(logger.impersonation_unavailable)
+        self.assertEqual({'impersonation_unavailable': True},vars(logger))
 
     def test_interpreter_and_safe_anonymous_object_are_reused(self):
         first = self.worker.inspect(self.origin+'/one', self.snapshot)

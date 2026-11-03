@@ -196,10 +196,14 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         try { withEngine { withTimeout(10000) {
             val trace=AnalysisTrace(store)
             metadataRuntime.execute(null,onEvent={ event ->
-                if(event.optString("event")=="runtime_ready") trace.sample("python_import",event.optLong("import_ms"))
+                if(event.optString("event")=="runtime_ready") metadataRuntimeReady(event,trace)
             })
         } } } catch(cancelled: CancellationException) { throw cancelled }
         catch(_: Exception) { metadataRuntime.close() /* Retried on demand, no download impact. */ }
+    }
+    private fun metadataRuntimeReady(event: JSONObject,trace: AnalysisTrace) {
+        trace.sample("python_import",event.optLong("import_ms"))
+        store.log("ENGINE metadata Python=${event.optString("python_version","unknown")} TLS=${event.optString("openssl_version","unknown")}")
     }
     suspend fun inspect(url: String,cookieId: String?,options: DownloadOptions=store.defaultOptions,slow: Boolean=false,
         onUpdate: (AnalysisState,MediaPreview?)->Unit={ _,_ -> },trace: AnalysisTrace?=null): MediaPreview=withContext(Dispatchers.IO) {
@@ -228,13 +232,17 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                     try {
                         val listLink=PreviewPolicy.isPlaylistOnly(normalized)
                         val request=metadataRequest(cookieId,options,directory,slow,listLink,1)
+                        store.log("INSPECT session=${if(cookieId==null) "none" else "selected"}")
                         val snapshot=File(directory,"source-info.json")
                         val result=try { withTimeout(InspectionPolicy.totalTimeoutMillis(slow)) {
                             metadataRuntime.execute(request,normalized,snapshot) { event ->
                                 when(event.optString("event")) {
                                     "runtime_process" -> { timing.sample("python_spawn",event.optLong("spawn_ms"));if(event.optBoolean("reused")) timing.sample("python_import",0) }
-                                    "runtime_ready" -> timing.sample("python_import",event.optLong("import_ms"))
-                                    "extracting" -> { timing.sample("ydl_object",event.optLong("construct_ms"));timing.mark("extractor_started") }
+                                    "runtime_ready" -> metadataRuntimeReady(event,timing)
+                                    "extracting" -> {
+                                        timing.sample("ydl_object",event.optLong("construct_ms"));timing.mark("extractor_started")
+                                        store.log("INSPECT handlers=${event.optJSONArray("handlers") ?: "[]"}")
+                                    }
                                     "network" -> timing.sample("http_headers",event.optLong("headers_ms"))
                                     "error" -> timing.sample("extraction_error",event.optLong("elapsed_ms"))
                                 }

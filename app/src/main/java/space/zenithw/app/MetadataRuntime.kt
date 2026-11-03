@@ -84,7 +84,8 @@ internal class MetadataRuntime(private val context: Context) {
                             "error" -> {
                                 // A valid source error leaves the protocol aligned.
                                 // Keep imports alive for a corrected URL or login retry.
-                                continuation.resumeWithException(IOException("ERROR: metadata ${event.optString("code","failed")}"))
+                                val capability=if(event.optBoolean("impersonation_unavailable")) " BROWSER_IMPERSONATION_UNAVAILABLE" else ""
+                                continuation.resumeWithException(IOException("ERROR: metadata ${event.optString("code","failed")}$capability"))
                                 return@submit
                             }
                         }
