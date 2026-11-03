@@ -35,6 +35,7 @@ run_test saveSettings
 adb shell am force-stop "$PACKAGE"
 run_test restoreSettings
 if [ "$MODE" != "engine-only" ]; then
+  run_test accessibilityLabelMatcherHandlesEmptyMergedFieldsExactly
   run_test languages
   run_test settingsCategories
   run_test settingsKeepsScrollWhenReturningFromCategory

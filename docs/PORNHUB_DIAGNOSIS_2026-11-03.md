@@ -67,3 +67,9 @@ The candidate patch additionally reports Python/OpenSSL versions at metadata run
 ## Artifact-only CI verification
 
 Test branch: `codex/android-session-diagnostics`. Existing `android-release.yml` inputs: `release_tag=v2.4.1`, `publish_release=false`, `run_tests=true`, `test_release_tag=`. This leaves the public2.4.1release and main unchanged. New instrumentation methods are included explicitly in `scripts/android_smoke.sh`. Android13and7execution results must be reported from the workflow, independently of local Python tests.
+
+### First CI attempt and test-finder correction
+
+Run41708771077 compiled all signed ABI APKs and passed lint, JVM policies and Python worker checks. Android13 completed46instrumentation tests successfully, including both new session tests. Its only failed test was the existing `ReleaseSmokeTest#bulkWorkspace`: the screenshot showed the correct blank link field, while the platform accessibility representation merged its empty editable value and label (`", Bağlantı 1"`). The old finder accepted only plain text/contentDescription equality. Android7was not reached after this step failed.
+
+The correction is limited to test code: EditText hints and the exact `", Label"` empty-field form are accepted. Other classes retain exact matching; partial-label matches remain rejected by a new explicit regression. No test is skipped, assertion removed, timeout enlarged or product behavior changed. The full artifact-only workflow is rerun for this test-only correction.

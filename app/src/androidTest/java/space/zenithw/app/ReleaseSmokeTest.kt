@@ -60,11 +60,32 @@ class ReleaseSmokeTest {
         while(android.os.SystemClock.uptimeMillis()<deadline) {
             // Compose exposes virtual accessibility nodes. Walk them directly instead of
             // using the platform text-search method, which need not search virtual children.
-            nodes().firstOrNull { it.text?.toString()==label || it.contentDescription?.toString()==label }?.let { return it }
+            nodes().firstOrNull { matchesLabel(it,label) }?.let { return it }
             android.os.SystemClock.sleep(100)
         }
         captureUi("missing-label")
         error("UI label missing: $label; visible: ${nodes().mapNotNull { it.text?.toString() }}")
+    }
+    private fun matchesLabel(node: android.view.accessibility.AccessibilityNodeInfo,label: String): Boolean {
+        if(node.text?.toString()==label || node.contentDescription?.toString()==label) return true
+        if(node.className?.toString()!="android.widget.EditText") return false
+        if(android.os.Build.VERSION.SDK_INT>=26 && node.hintText?.toString()==label) return true
+        // Some Compose/platform versions expose an empty editable value merged
+        // with its label as ", Label". Match that exact form only, not substrings.
+        return node.text?.toString()==", $label"
+    }
+    @Test fun accessibilityLabelMatcherHandlesEmptyMergedFieldsExactly() {
+        val node=android.view.accessibility.AccessibilityNodeInfo.obtain()
+        try {
+            node.className="android.widget.EditText";node.text=", Bağlantı 1"
+            assertTrue(matchesLabel(node,"Bağlantı 1"))
+            assertFalse(matchesLabel(node,"Bağlantı 10"))
+            assertFalse(matchesLabel(node,"Bağlantı"))
+            node.className="android.widget.TextView"
+            assertFalse(matchesLabel(node,"Bağlantı 1"))
+            node.text="Bağlantı 1"
+            assertTrue(matchesLabel(node,"Bağlantı 1"))
+        } finally { node.recycle() }
     }
     private fun clickLabel(label: String) {
         val deadline=android.os.SystemClock.uptimeMillis()+8000
