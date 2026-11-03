@@ -127,3 +127,20 @@ child identity, connection closure and process-exit assertions remain required.
 The actual source exposed no direct HTTPS MP4 for the small range probe, so a
 separate one-fragment HLS test download is added using the existing snapshot.
 No full real-source download or Android7 native verification is claimed yet.
+
+### Second native Android result
+
+Run41717184327 passed the complete controlled browser-transport test, including
+native cancellation. The actual source again returned8formats, a title and
+1358seconds duration:8859ms total,7938ms extraction. Normal Python CLI again
+failed with403 in2619ms. The existing downloader then successfully saved a
+10,241-byte real HLS test sample in3923ms. This is a media sample, not a complete
+video download. All native checks and the Android13 UI checks passed.
+
+The run's only failed assertion was an existing update test that expected its
+checksum error to remain the last global log entry. Logcat confirms the expected
+UPDATE_CHECKSUM rejection; runtime startup logging could append another entry.
+The tests now require a new operation-specific error while preserving the
+unchanged-engine/version checks. A focused engine rerun is selected explicitly
+for the same application source. It retains native/live/update/archive tests
+on Android13 and Android7; public release validation still defaults to full.

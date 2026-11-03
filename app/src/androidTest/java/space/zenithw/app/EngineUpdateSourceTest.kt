@@ -94,12 +94,15 @@ class EngineUpdateSourceTest {
         try {
             app.store.channel="nightly"
             val engine=DownloadEngine(app,app.store,app.vault,http)
+            val previousLogs=app.store.logs.value.toSet()
             engine.initializeAndUpdate(force=true)
             assertTrue(engine.status.value.ready)
             assertNotNull(engine.status.value.warning)
             assertEquals(before,engine.runtimeVersion())
             assertEquals(oldVersion,app.store.lastEngineVersion)
-            assertTrue(app.store.logs.value.last().contains("UPDATE_CHECKSUM"))
+            // Startup prewarming also writes logs. Require a new checksum error
+            // from this operation, irrespective of unrelated later log entries.
+            assertTrue(app.store.logs.value.any { it !in previousLogs && it.contains("UPDATE_CHECKSUM") })
         } finally { app.store.channel=oldChannel }
     }
     @Test fun mismatchedVersionKeepsWorkingEngineAndNamesBothVersions()=runBlocking {
@@ -118,12 +121,13 @@ class EngineUpdateSourceTest {
         try {
             app.store.channel="nightly"
             val engine=DownloadEngine(app,app.store,app.vault,http)
+            val previousLogs=app.store.logs.value.toSet()
             engine.initializeAndUpdate(force=true)
             assertTrue(engine.status.value.ready)
             assertNotNull(engine.status.value.warning)
             assertEquals(before,engine.runtimeVersion())
             assertEquals(oldVersion,app.store.lastEngineVersion)
-            val detail=app.store.logs.value.last()
+            val detail=app.store.logs.value.filterNot { it in previousLogs }.joinToString("\n")
             assertTrue(detail.contains("expected=$nightly"))
             assertTrue(detail.contains("actual=${BundledEngine.VERSION}"))
         } finally { app.store.channel=oldChannel }
