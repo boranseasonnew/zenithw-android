@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/boranseasonnew/zenithw-android/releases/latest"><img src="https://img.shields.io/github/v/release/boranseasonnew/zenithw-android?style=flat&color=8b5cf6" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/Android-7.0%2B-3DDC84?logo=android&logoColor=white" alt="Android 7.0 or later">
-  <a href="https://github.com/boranseasonnew/zenithw-android/releases"><img src="https://img.shields.io/badge/release%20downloads-173-6366f1?logo=github" alt="173 GitHub release asset downloads as of 2026-10-30"></a>
+  <a href="https://github.com/boranseasonnew/zenithw-android/releases"><img src="https://img.shields.io/badge/release%20downloads-173-6366f1?logo=github" alt="180 GitHub release asset downloads as of 2026-10-30"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0--only-64748b" alt="AGPL-3.0-only license"></a>
 </p>
 
