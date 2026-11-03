@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/boranseasonnew/zenithw-android/releases/latest"><img src="https://img.shields.io/github/v/release/boranseasonnew/zenithw-android?style=flat&color=8b5cf6" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/Android-7.0%2B-3DDC84?logo=android&logoColor=white" alt="Android 7.0 or later">
-  <a href="https://github.com/boranseasonnew/zenithw-android/releases"><img src="https://img.shields.io/badge/release%20downloads-173-6366f1?logo=github" alt="180 GitHub release asset downloads as of 2026-10-30"></a>
+  <a href="https://github.com/boranseasonnew/zenithw-android/releases"><img src="https://img.shields.io/github/downloads/boranseasonnew/zenithw-android/total?color=6366f1&logo=github" alt="Total GitHub release downloads"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0--only-64748b" alt="AGPL-3.0-only license"></a>
 </p>
 
@@ -42,21 +42,21 @@ The interface is available in **English, Turkish, German, French and Russian**. 
 
 ## Get the app
 
-The latest stable release is **[2.4.1](https://github.com/boranseasonnew/zenithw-android/releases/tag/v2.4.1)** and requires **Android 7.0 or later (API 24+)**. Download the APK that matches your device:
+The latest stable release is **[3.0.0](https://github.com/boranseasonnew/zenithw-android/releases/tag/v3.0.0)** and requires **Android 7.0 or later (API 24+)**. Download the APK that matches your device:
 
 | APK | Typical devices |
 | --- | --- |
-| [arm64-v8a](https://github.com/boranseasonnew/zenithw-android/releases/download/v2.4.1/Zenith-2.4.1-stable-arm64-v8a.apk) | Most modern Android phones and tablets |
-| [armeabi-v7a](https://github.com/boranseasonnew/zenithw-android/releases/download/v2.4.1/Zenith-2.4.1-stable-armeabi-v7a.apk) | Older 32-bit ARM devices |
-| [x86_64](https://github.com/boranseasonnew/zenithw-android/releases/download/v2.4.1/Zenith-2.4.1-stable-x86_64.apk) | Compatible Intel/AMD devices and emulators |
+| [arm64-v8a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.0.0/Zenith-3.0.0-stable-arm64-v8a.apk) | Most modern Android phones and tablets |
+| [armeabi-v7a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.0.0/Zenith-3.0.0-stable-armeabi-v7a.apk) | Older 32-bit ARM devices |
+| [x86_64](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.0.0/Zenith-3.0.0-stable-x86_64.apk) | Compatible Intel/AMD devices and emulators |
 
-For file integrity, compare the downloaded APK with [SHA256SUMS.txt](https://github.com/boranseasonnew/zenithw-android/releases/download/v2.4.1/SHA256SUMS.txt). The public [signing-certificate fingerprint](release-certificate.sha256) helps verify update compatibility.
+For file integrity, compare the downloaded APK with [SHA256SUMS.txt](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.0.0/SHA256SUMS.txt). The public [signing-certificate fingerprint](release-certificate.sha256) helps verify update compatibility.
 
 ## Project status
 
-Version **2.4.1** improves handling of previously archived items, completed-download history and download-panel behavior. See the [release notes](releases/2.4.1.md). Its [GitHub Actions validation](https://github.com/boranseasonnew/zenithw-android/actions/runs/40908115943) passed Android 13 and Android 7 instrumentation checks, lint, JVM and Python tests, and signed-package checks. This release has **not** been verified with a physical-device YouTube download.
+Version **3.0.0** adds native browser-compatible requests for Pornhub metadata and downloads, preserves configuration when changing saved sessions, and improves cancellation and safe diagnostics. See the [English release notes](releases/3.0.0.md) and [actual Android comparison](docs/PORNHUB_DIAGNOSIS_2026-11-03.md). Android 13 and Android 7 metadata, media-sample, TLS/cookie and cancellation checks passed for the release candidate; physical-phone VPN/account verification remains pending.
 
-Downloads depend on yt-dlp support and the source's access requirements. Published 2.4.1 does not include browser impersonation. This branch adds an independently implemented native browser transport candidate; see the [actual Android comparison and validation limits](docs/PORNHUB_DIAGNOSIS_2026-11-03.md). Physical-phone verification is pending. Full native 16 KB memory-page compatibility has not been established.
+Downloads depend on yt-dlp support and the source's access requirements. Full native 16 KB memory-page compatibility has not been established; see the [runtime provenance and limits](docs/native-curl-NOTICES.md).
 
 The [F-Droid submission](docs/FDROID.md) is pending.
 

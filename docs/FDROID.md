@@ -19,4 +19,11 @@ prebuilt dependency, not a source rebuild. F-Droid inclusion still requires
 review and, where required, a recipe rebuilding the native components from
 source. See [native runtime provenance and limits](native-curl-NOTICES.md).
 
-Release version: 2.4.1; versionCode: 2004001; minimum Android version: 7.0 (API 24). Public source license: AGPL-3.0-only. Store descriptions and the icon are in `fastlane/metadata/android/`.
+Release version: 3.0.0; versionCode: 3000000; minimum Android version: 7.0 (API 24). Public source license: AGPL-3.0-only. Store descriptions, the icon and the English 3.0.0 changelog are in `fastlane/metadata/android/`.
+
+The [inclusion request](https://gitlab.com/fdroid/rfp/-/work_items/4542) remains
+open as checked on 4 November 2026. Its submitted description still references
+2.1.3; no `space.zenithw.app.fdroid` recipe was found in the official fdroiddata
+master branch. Publishing a new GitHub release does not itself publish an
+F-Droid build. The request and native-component build recipe need review for
+the current version before store availability can be claimed.

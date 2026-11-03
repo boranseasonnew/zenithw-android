@@ -42,21 +42,21 @@ Arayüz **Türkçe, İngilizce, Almanca, Fransızca ve Rusça** dillerinde kulla
 
 ## Uygulamayı indir
 
-En güncel kararlı sürüm **[2.4.1](https://github.com/boranseasonnew/zenithw-android/releases/tag/v2.4.1)**. Uygulama **Android 7.0 veya üzerini (API 24+)** gerektirir. Cihazına uygun APK'yı seç:
+En güncel kararlı sürüm **[3.0.0](https://github.com/boranseasonnew/zenithw-android/releases/tag/v3.0.0)**. Uygulama **Android 7.0 veya üzerini (API 24+)** gerektirir. Cihazına uygun APK'yı seç:
 
 | APK | Kullanıldığı cihazlar |
 | --- | --- |
-| [arm64-v8a](https://github.com/boranseasonnew/zenithw-android/releases/download/v2.4.1/Zenith-2.4.1-stable-arm64-v8a.apk) | Güncel Android telefon ve tabletlerin çoğu |
-| [armeabi-v7a](https://github.com/boranseasonnew/zenithw-android/releases/download/v2.4.1/Zenith-2.4.1-stable-armeabi-v7a.apk) | Eski 32 bit ARM cihazlar |
-| [x86_64](https://github.com/boranseasonnew/zenithw-android/releases/download/v2.4.1/Zenith-2.4.1-stable-x86_64.apk) | Uyumlu Intel/AMD cihazlar ve emülatörler |
+| [arm64-v8a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.0.0/Zenith-3.0.0-stable-arm64-v8a.apk) | Güncel Android telefon ve tabletlerin çoğu |
+| [armeabi-v7a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.0.0/Zenith-3.0.0-stable-armeabi-v7a.apk) | Eski 32 bit ARM cihazlar |
+| [x86_64](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.0.0/Zenith-3.0.0-stable-x86_64.apk) | Uyumlu Intel/AMD cihazlar ve emülatörler |
 
-Dosya bütünlüğünü [SHA256SUMS.txt](https://github.com/boranseasonnew/zenithw-android/releases/download/v2.4.1/SHA256SUMS.txt) ile kontrol edebilirsin. Güncelleme imzasını doğrulamaya yardımcı olan herkese açık [imza sertifikası parmak izi](release-certificate.sha256) de depoda bulunur.
+Dosya bütünlüğünü [SHA256SUMS.txt](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.0.0/SHA256SUMS.txt) ile kontrol edebilirsin. Güncelleme imzasını doğrulamaya yardımcı olan herkese açık [imza sertifikası parmak izi](release-certificate.sha256) de depoda bulunur.
 
 ## Proje durumu
 
-**2.4.1** sürümü arşivlenmiş öğelerin işlenmesini, tamamlanan indirme geçmişini ve indirme panelinin davranışını iyileştirir. Ayrıntılar [sürüm notlarında](releases/2.4.1.md). [GitHub Actions doğrulamasında](https://github.com/boranseasonnew/zenithw-android/actions/runs/40908115943) Android 13 ve Android 7 emülatör kontrolleri, lint, JVM ve Python testleri ile imzalı paket kontrolleri geçti. Bu sürüm **fiziksel bir cihazda YouTube indirmesiyle doğrulanmadı**.
+**3.0.0**, Pornhub metadata ve indirme isteklerine native tarayıcı aktarımı ekler; kayıtlı oturum değiştirilirken indirme seçeneklerini korur, iptali ve güvenli tanılama kayıtlarını iyileştirir. Ayrıntılar [İngilizce sürüm notlarında](releases/3.0.0.md) ve [gerçek Android karşılaştırmasında](docs/PORNHUB_DIAGNOSIS_2026-11-03.md). Sürüm adayının Android 13 ve Android 7 metadata, medya örneği, TLS/çerez ve iptal kontrolleri geçti; fiziksel telefondaki VPN/hesap doğrulaması beklemededir.
 
-İndirmeler yt-dlp desteğine ve kaynağın erişim koşullarına bağlıdır. Yayımlanmış 2.4.1'de tarayıcı taklidi desteği yoktur. Bu dal, bağımsız geliştirilen native tarayıcı aktarımının test adayını içerir; [gerçek Android karşılaştırması ve doğrulama sınırları](docs/PORNHUB_DIAGNOSIS_2026-11-03.md) raporda bulunur. Fiziksel telefon doğrulaması beklemededir. Yerel 16 KB bellek sayfası uyumluluğu tam olarak doğrulanmış değildir.
+İndirmeler yt-dlp desteğine ve kaynağın erişim koşullarına bağlıdır. Yerel 16 KB bellek sayfası uyumluluğu tam olarak doğrulanmış değildir; [çalışma ortamı ve sınırlarına](docs/native-curl-NOTICES.md) bakabilirsin.
 
 [F-Droid başvurusu](docs/FDROID.md) beklemededir.
 
