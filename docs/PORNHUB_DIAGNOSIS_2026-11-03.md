@@ -144,3 +144,26 @@ The tests now require a new operation-specific error while preserving the
 unchanged-engine/version checks. A focused engine rerun is selected explicitly
 for the same application source. It retains native/live/update/archive tests
 on Android13 and Android7; public release validation still defaults to full.
+
+### Android13 verification completed; API24 runner disk issue
+
+Run41720064696 passed all selected Android13 engine tests, including native
+execution/cancellation, TLS/cookie boundaries, live metadata, test media download
+and both corrected update checks. Actual metadata took6877ms total /6170ms
+extraction (8formats,1358seconds); the real10,241-byte HLS sample took2275ms.
+The ordinary baseline again failed with403 (1774ms).
+
+The Android7 emulator did not boot and no application test started: its fatal
+message required7372.80MB for userdata while only6750.77MB was available on the
+runner. The follow-up uses explicit2GiB userdata partitions and separate AVD
+names, with an Android7-only artifact verification mode because application
+source and the successful Android13 tests are unchanged. Stable publication
+always selects the full Android13 suite when tests are enabled. Signed
+candidate artifacts are integrity-checked before emulator startup so an
+infrastructure failure no longer hides the build; their test outcome must
+still be assessed separately.
+
+The10transport unit tests also passed with the exact officially verified
+nightly2026.10.29.232701 seen in the user's phone log. Static checks against the
+exact Maven0.18.1AAR found all required C++ imports resolved for all4ABIs; this
+is distinct from native execution on the x86_64 emulators.

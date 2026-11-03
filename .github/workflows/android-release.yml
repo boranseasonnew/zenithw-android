@@ -21,12 +21,13 @@ on:
         type: boolean
         default: true
       smoke_mode:
-        description: "Use engine-only only after the same application code passed full Android 13 UI tests"
+        description: "Focused artifact checks require earlier successful Android 13 tests on identical application code"
         required: true
         type: choice
         options:
           - full
           - engine-only
+          - android7-only
         default: full
       test_release_tag:
         description: "Optional prerelease tag for verified test APKs, e.g. android-2.1.3-test.1"
@@ -126,6 +127,22 @@ jobs:
           python3 tests/test_browser_transport.py -v
           python3 tests/test_native_curl_packaging.py -v
 
+      - name: Verify and prepare signed release files
+        env:
+          TAG_NAME: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          python3 scripts/prepare_release.py --version "${TAG_NAME#v}" \
+            --build-tools "$ANDROID_HOME/build-tools/36.0.0"
+
+      - name: Upload signed candidate APKs (check emulator results before use)
+        if: github.event_name == 'workflow_dispatch' && !inputs.publish_release
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-signed-apks
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Enable Android emulator acceleration
         if: github.event_name != 'workflow_dispatch' || inputs.run_tests
         run: |
@@ -134,18 +151,21 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Test updates and saved settings on Android 13
-        if: github.event_name != 'workflow_dispatch' || inputs.run_tests
+        if: (github.event_name != 'workflow_dispatch' || inputs.run_tests) && (github.event_name != 'workflow_dispatch' || inputs.publish_release || inputs.smoke_mode != 'android7-only')
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
           arch: x86_64
           target: default
           profile: pixel_2
+          avd-name: zenith-api33
+          disk-size: 2048M
+          emulator-boot-timeout: 240
           disable-animations: true
-          script: bash scripts/android_smoke.sh ${{ inputs.smoke_mode || 'full' }}
+          script: bash scripts/android_smoke.sh ${{ inputs.publish_release && 'full' || inputs.smoke_mode || 'full' }}
 
       - name: Upload Android test results and screen
-        if: always() && (github.event_name != 'workflow_dispatch' || inputs.run_tests)
+        if: always() && (github.event_name != 'workflow_dispatch' || inputs.run_tests) && (github.event_name != 'workflow_dispatch' || inputs.publish_release || inputs.smoke_mode != 'android7-only')
         uses: actions/upload-artifact@v4
         with:
           name: android-13-smoke-results
@@ -161,6 +181,9 @@ jobs:
           arch: x86_64
           target: default
           profile: pixel_2
+          avd-name: zenith-api24
+          disk-size: 2048M
+          emulator-boot-timeout: 240
           disable-animations: true
           script: bash scripts/android_smoke.sh engine-only
 
@@ -176,22 +199,6 @@ jobs:
       - name: Record manually skipped tests
         if: github.event_name == 'workflow_dispatch' && !inputs.run_tests
         run: echo 'Tests and lint were skipped by explicit manual request. APK package, version, ABI and signing-certificate checks remain required.' >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Verify and prepare signed release files
-        env:
-          TAG_NAME: ${{ inputs.release_tag || github.ref_name }}
-        run: |
-          python3 scripts/prepare_release.py --version "${TAG_NAME#v}" \
-            --build-tools "$ANDROID_HOME/build-tools/36.0.0"
-
-      - name: Upload verified APK build artifacts
-        if: github.event_name == 'workflow_dispatch' && !inputs.publish_release
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-signed-apks
-          path: release-assets/
-          if-no-files-found: error
-          retention-days: 3
 
       - name: Upload APKs and publish the GitHub Release
         if: github.event_name == 'push' || inputs.publish_release
