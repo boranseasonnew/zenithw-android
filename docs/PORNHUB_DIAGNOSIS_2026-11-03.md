@@ -108,3 +108,22 @@ TLS proxy, source403 handling, selected-cookie/User-Agent propagation, CDN
 cookie isolation, rejection of an untrusted CA and native-process cancellation.
 Its emulator result and a real-phone retry remain pending; local tests alone
 do not establish that the reported phone403 is resolved.
+
+### First native Android result
+
+Run41714479872 built all signed ABI APKs and passed lint, JVM and Python checks.
+On Android13, the same reported source failed through the normal CLI with
+HTTP403 in2654ms. The native metadata worker succeeded without personal cookies:
+8formats, a real title and1358seconds duration, in8712ms including interpreter
+startup (7767ms extraction;6network requests). This reproduces the missing
+browser-transport failure and demonstrates a successful alternative on Android.
+It does not establish a physical-phone/VPN/account result.
+
+The controlled native test completed execution, metadata, CLI fixture download,
+cookie/User-Agent checks, source403 and untrusted-CA checks. Its final process
+observer failed because the Android kernel did not expose task/children files.
+The observer now also examines same-UID processes with the exact parent PID;
+child identity, connection closure and process-exit assertions remain required.
+The actual source exposed no direct HTTPS MP4 for the small range probe, so a
+separate one-fragment HLS test download is added using the existing snapshot.
+No full real-source download or Android7 native verification is claimed yet.

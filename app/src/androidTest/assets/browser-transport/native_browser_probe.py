@@ -146,6 +146,21 @@ def descendants(pid):
             found.update(int(value) for value in (task / 'children').read_text().split())
         except (OSError, ValueError):
             pass
+    if not found:
+        # Android kernels can omit task/*/children (CONFIG_CHECKPOINT_RESTORE).
+        # Read only same-UID processes and require the exact parent TGID instead;
+        # an inaccessible/unrelated process never counts as the native child.
+        for entry in Path('/proc').iterdir():
+            if not entry.name.isdecimal():
+                continue
+            try:
+                if entry.stat().st_uid != os.getuid():
+                    continue
+                fields = (entry / 'stat').read_text().rsplit(') ', 1)[1].split()
+                if int(fields[1]) == pid:
+                    found.add(int(entry.name))
+            except (OSError, ValueError, IndexError):
+                pass
     return found
 
 

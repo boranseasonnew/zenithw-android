@@ -25,6 +25,8 @@ jobs:
           packages: platform-tools
       - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
       - run: chmod +x gradlew
+      - name: Package pinned native browser transport and notices
+        run: python3 scripts/package_native_curl.py
       - name: Build unsigned F-Droid edition and normal debug edition
         run: |
           ./gradlew --no-daemon assembleRelease -Pfdroid=true

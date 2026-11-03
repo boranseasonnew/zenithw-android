@@ -65,10 +65,11 @@ The [F-Droid submission](docs/FDROID.md) is pending.
 To build a debug APK, use **JDK 17**, **Android SDK Platform 36** and **Build Tools 36.0.0**. Configure the SDK path in Android Studio or `local.properties`, then run:
 
 ```sh
+python3 scripts/package_native_curl.py
 ./gradlew :app:assembleDebug
 ```
 
-On Windows, run `.\\gradlew.bat :app:assembleDebug`. The APK is written to `app/build/outputs/apk/debug/`. Official signed releases are built and published by [GitHub Actions](.github/workflows/android-release.yml).
+On Windows, run `python scripts/package_native_curl.py`, then `.\\gradlew.bat :app:assembleDebug`. The preparation script verifies pinned native browser executables and dependency notices; see [runtime provenance and compatibility](docs/native-curl-NOTICES.md). The APK is written to `app/build/outputs/apk/debug/`. Official signed releases are built and published by [GitHub Actions](.github/workflows/android-release.yml).
 
 ## Credits & license
 

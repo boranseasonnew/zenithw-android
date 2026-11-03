@@ -65,10 +65,11 @@ Dosya bütünlüğünü [SHA256SUMS.txt](https://github.com/boranseasonnew/zenit
 Debug APK oluşturmak için **JDK 17**, **Android SDK Platform 36** ve **Build Tools 36.0.0** gerekir. SDK yolunu Android Studio'dan veya `local.properties` dosyasından ayarlayıp şu komutu çalıştır:
 
 ```sh
+python3 scripts/package_native_curl.py
 ./gradlew :app:assembleDebug
 ```
 
-Windows'ta `.\\gradlew.bat :app:assembleDebug` komutunu kullan. APK, `app/build/outputs/apk/debug/` klasörüne yazılır. Resmî imzalı sürümler [GitHub Actions](.github/workflows/android-release.yml) tarafından derlenip yayımlanır.
+Windows'ta önce `python scripts/package_native_curl.py`, ardından `.\\gradlew.bat :app:assembleDebug` komutunu kullan. Hazırlık adımı sabitlenmiş native tarayıcı paketlerini ve lisans dosyalarını doğrular; [kaynak ve uyumluluk sınırlarına](docs/native-curl-NOTICES.md) bakabilirsin. APK, `app/build/outputs/apk/debug/` klasörüne yazılır. Resmî imzalı sürümler [GitHub Actions](.github/workflows/android-release.yml) tarafından derlenip yayımlanır.
 
 ## Katkı ve lisans
 

@@ -103,7 +103,27 @@ def run(args):
                            and item.get('ext') == 'mp4' and item.get('protocol') in (None, 'https', 'http')]
                 formats.sort(key=lambda item: (item.get('height') or 100000, item.get('tbr') or 100000))
                 if not formats:
-                    result['media_probe'] = dict(state='not_available', success=False, reason='NO_DIRECT_HTTPS_MP4')
+                    # Pornhub can expose only HLS. Exercise the normal CLI's
+                    # documented test-download mode (one HLS fragment), using
+                    # the already extracted snapshot rather than extracting twice.
+                    output = Path(args.workspace) / 'sample.%(ext)s'
+                    sampled = subprocess.run([sys.executable, args.engine, '--ignore-config',
+                        '--load-info-json', str(snapshot), '--test', '--no-progress', '--no-part',
+                        '--no-mtime', '--fixup', 'never', '--socket-timeout', '6', '--retries', '0',
+                        '--fragment-retries', '0', '-f', 'worst', '-o', str(output)],
+                        capture_output=True, timeout=18)
+                    files = [p for p in Path(args.workspace).glob('sample.*') if p.is_file() and p.suffix not in ('.ytdl', '.part')]
+                    size = sum(p.stat().st_size for p in files)
+                    if files:
+                        with files[0].open('rb') as sample_file:
+                            prefix = sample_file.read(1024)
+                    else:
+                        prefix = b''
+                    media = b'ftyp' in prefix[:32] or prefix[4:8] in (b'styp', b'moof') or (len(prefix)>188 and prefix[0]==prefix[188]==0x47)
+                    result['media_probe'] = dict(state='complete', mode='native_hls_test_download',
+                        success=sampled.returncode==0 and media, bytes_read=size, returncode=sampled.returncode,
+                        http_statuses=status(sampled.stderr.decode('utf-8', errors='replace')),
+                        elapsed_ms=round((time.monotonic()-began_media)*1000))
                 else:
                     selected = formats[0]
                     headers = dict(data.get('http_headers') or {})

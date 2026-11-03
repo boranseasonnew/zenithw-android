@@ -50,6 +50,11 @@ jobs:
         with:
           packages: platform-tools
       - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Package candidate browser transport when present
+        run: |
+          if [ -f scripts/package_native_curl.py ]; then
+            python3 scripts/package_native_curl.py
+          fi
       - run: ./gradlew --no-daemon assembleRelease assembleReleaseAndroidTest
       - name: Enable KVM
         run: |
