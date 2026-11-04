@@ -58,7 +58,7 @@ For file integrity, compare the downloaded APK with [SHA256SUMS.txt](https://git
 
 ## Project status
 
-Version **3.1.0** extends the existing download engine with queue, sharing, library and local media workflows. Physical Android 13 testing passed 28 tests including real media conversion. The first signed Actions candidate passed 60 Android 13 and 23 Android 7 checks; the final release workflow also runs the added backup-preservation regression before publication. See the [English release notes](releases/3.1.0.md) and [engineering report](docs/android-3.1.0-report.md).
+Version **3.1.0** extends the existing download engine with queue, sharing, library and local media workflows. Physical Android 13 testing passed 28 tests including real media conversion. The final signed release workflow passed **61 Android 13 tests, 23 Android 7 compatibility tests, all 32 Python checks and Android lint**. See the [English release notes](releases/3.1.0.md) and [engineering report](docs/android-3.1.0-report.md) for actual coverage and remaining limitations.
 
 Downloads depend on yt-dlp support and the source's access requirements. Full native 16 KB memory-page compatibility has not been established; see the [runtime provenance and limits](docs/native-curl-NOTICES.md).
 

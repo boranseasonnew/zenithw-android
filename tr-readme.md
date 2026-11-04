@@ -58,7 +58,7 @@ Dosya bütünlüğünü [SHA256SUMS.txt](https://github.com/boranseasonnew/zenit
 
 ## Proje durumu
 
-**3.1.0**, mevcut indirme motorunu koruyarak paylaşım, kuyruk, kütüphane ve yerel medya araçlarını genişletir. Fiziksel Android 13 cihazda gerçek medya dönüşümleri dahil 28 test geçti. İlk imzalı Actions adayında Android 13 için 60, Android 7 için 23 kontrol başarılı oldu; son yayın akışı yeni yedek/geçmiş korumasını da yeniden test eder. Ayrıntılar [İngilizce sürüm notlarında](releases/3.1.0.md) ve [teknik raporda](docs/android-3.1.0-report.md).
+**3.1.0**, mevcut indirme motorunu koruyarak paylaşım, kuyruk, kütüphane ve yerel medya araçlarını genişletir. Fiziksel Android 13 cihazda gerçek medya dönüşümleri dahil 28 test geçti. Son imzalı yayın akışında **61 Android 13 testi, 23 Android 7 uyumluluk testi, 32 Python kontrolü ve Android lint başarılı oldu**. Gerçek kapsam ve kalan sınırlar [İngilizce sürüm notlarında](releases/3.1.0.md) ve [teknik raporda](docs/android-3.1.0-report.md).
 
 İndirmeler yt-dlp desteğine ve kaynağın erişim koşullarına bağlıdır. Yerel 16 KB bellek sayfası uyumluluğu tam olarak doğrulanmış değildir; [çalışma ortamı ve sınırlarına](docs/native-curl-NOTICES.md) bakabilirsin.
 
