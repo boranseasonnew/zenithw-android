@@ -23,6 +23,10 @@
   <a href="tr-readme.md">Türkçe</a>
 </p>
 
+## 3.1.0 development candidate
+
+The feature branch adds bounded multi-link sharing, source profiles, naming rules, queue priorities/concurrency, a searchable library, local FFmpeg tools and portable settings backups. **3.0.0 remains the published stable release**; the links below intentionally keep pointing to it. See [implementation and verification](docs/android-3.1.0-report.md) before using a candidate. Native 16 KB compatibility remains unresolved.
+
 ## What is ZenithW?
 
 ZenithW is a native Android app for saving online video and audio for personal, offline access. It combines **Kotlin**, **Jetpack Compose**, **yt-dlp**, **FFmpeg** and **Aria2c** in one interface.

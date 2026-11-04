@@ -28,6 +28,7 @@ object IncomingLinks {
     }
     data class Import(val links: List<String>,val invalid: Int,val duplicates: Int)
     fun read(input: InputStream,cancelled: ()->Boolean={false}): Import {
+        val source=input.buffered(8192)
         val links=linkedMapOf<String,String>();var invalid=0;var duplicates=0;var bytes=0;var lines=0
         // Read bounded bytes per line, never BufferedReader.readLine on an untrusted giant line.
         val line=java.io.ByteArrayOutputStream()
@@ -40,7 +41,7 @@ object IncomingLinks {
         }
         while(true) {
             check(!cancelled()) { "cancelled" }
-            val byte=input.read();if(byte<0) break
+            val byte=source.read();if(byte<0) break
             require(++bytes<=MAX_BYTES) { "import_limit" }
             if(byte==10) { require(++lines<=10000);accept() }
             else { require(line.size()<8192) { "import_limit" };line.write(byte) }
@@ -102,13 +103,13 @@ object RecoveryPolicy {
         return when {
             "429" in m || "too many requests" in m -> RecoveryKind.RATE_LIMIT
             "403" in m -> RecoveryKind.FORBIDDEN
-            listOf("sign in","login required","expired session","cookies are no longer valid").any { it in m } -> RecoveryKind.SESSION
+            listOf("sign in","login required","expired session","cookies are no longer valid","http error 401").any { it in m } -> RecoveryKind.SESSION
             "requested format" in m || "no video formats" in m -> RecoveryKind.FORMAT
             listOf("timed out","timeout","connection reset","network is unreachable","temporary failure","connection aborted","unable to resolve host").any { it in m } -> RecoveryKind.NETWORK
-            "no space" in m || "enospc" in m -> RecoveryKind.STORAGE
-            "permission denied" in m || "securityexception" in m -> RecoveryKind.PERMISSION
+            "no space" in m || "enospc" in m || "storage_limit" in m -> RecoveryKind.STORAGE
+            "permission denied" in m || "securityexception" in m || "input_permission" in m || "output_permission" in m -> RecoveryKind.PERMISSION
             "unsupported url" in m || "unsupported source" in m -> RecoveryKind.UNSUPPORTED
-            "ffmpeg" in m || "conversion failed" in m -> RecoveryKind.CONVERSION
+            "ffmpeg" in m || "conversion failed" in m || "conversion_failed" in m || "encoder_unavailable" in m || "invalid_output" in m -> RecoveryKind.CONVERSION
             "python" in m || "engine" in m -> RecoveryKind.ENGINE
             else -> RecoveryKind.UNKNOWN
         }

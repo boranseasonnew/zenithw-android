@@ -275,7 +275,8 @@ class DownloadWorker(context: Context,params: WorkerParameters): CoroutineWorker
             app.store.get(id)?.takeIf { it.state==JobState.QUEUED }?.let { schedule(app,it) }
         }
         fun cancel(app: ZenithApplication,id: String) {
-            app.store.change(id) { it.copy(state=JobState.CANCELLED,detail="İptal edildi") }
+            app.store.change(id) { if(it.state in queueStates) it.copy(state=JobState.CANCELLED,detail="İptal edildi") else it }
+            if(app.store.get(id)?.state!=JobState.CANCELLED) return
             app.engine.cancel(id)
             WorkManager.getInstance(app).cancelAllWorkByTag("zenithw-job-$id")
             // Also cancel requests persisted by versions using the old unique name.

@@ -111,9 +111,6 @@ import java.util.Calendar
                         TextButton(onClick={ update(lastUsed) }) { Text(texts.getString(R.string.feature_last_preset)) }
                     }
                     TextButton(onClick={ onSaveProfile(o) }) { Text(texts.getString(R.string.feature_save_profile)) }
-                    OptionSwitch(texts.getString(R.string.feature_unmetered),value=o.unmeteredOnly) { update(o.copy(unmeteredOnly=it)) }
-                    OptionSwitch(texts.getString(R.string.feature_merge_clips),value=o.mergeClips) { update(o.copy(mergeClips=it)) }
-                    OptionSwitch(texts.getString(R.string.feature_charging),value=o.chargingOnly) { update(o.copy(chargingOnly=it)) }
                 }
                 if(preview.duration>0 && !preview.isPlaylist && o.mode!=MediaMode.SUBTITLES) item {
                     ExpandableSection(texts.getString(R.string.feature_trim),texts.getString(R.string.feature_keyframes)) {
@@ -125,6 +122,7 @@ import java.util.Calendar
                             TextButton(onClick={ update(o.copy(clipRanges=o.clipRanges.filterIndexed { i,_ -> i!=index })) }) { Text("${index+1} · ${mediaDuration(clip.start.toLong())} – ${mediaDuration(clip.end.toLong())} ×") }
                         }
                         OptionSwitch(texts.getString(R.string.feature_exact_cuts),value=o.exactCuts) { update(o.copy(exactCuts=it)) }
+                        OptionSwitch(texts.getString(R.string.feature_merge_clips),value=o.mergeClips) { update(o.copy(mergeClips=it)) }
                     }
                 }
                 if(preview.chapters.isNotEmpty() && !preview.isPlaylist) item {
@@ -248,6 +246,8 @@ import java.util.Calendar
                         Choices(listOf("auto" to texts.getString(R.string.automatic),"ipv4" to "IPv4","ipv6" to "IPv6"),o.networkMode) { update(o.copy(networkMode=it)) }
                         CompactField(texts.getString(R.string.proxy),o.proxy,{ update(o.copy(proxy=it)) })
                         CompactField(texts.getString(R.string.user_agent),o.userAgent,{ update(o.copy(userAgent=it)) })
+                        OptionSwitch(texts.getString(R.string.feature_unmetered),value=o.unmeteredOnly) { update(o.copy(unmeteredOnly=it)) }
+                        OptionSwitch(texts.getString(R.string.feature_charging),value=o.chargingOnly) { update(o.copy(chargingOnly=it)) }
                         OptionSwitch(texts.getString(R.string.unmetered),texts.getString(R.string.unmetered_hint),o.wifiOnly) { update(o.copy(wifiOnly=it)) }
                     }
                 }

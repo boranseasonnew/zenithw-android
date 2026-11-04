@@ -328,9 +328,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
             if(match!=null) { duplicateCandidates=candidates;edit { it.copy(duplicate=match) };return }
         }
         edit { it.copy(submitting=true) }
-        fun key(job: DownloadJob)=listOf(job.url,job.options.mode.name,job.options.height,job.options.container,
-            job.options.audioFormat,job.options.selectedFormat,job.options.cookieId,job.options.playlist,
-            job.options.customArguments,job.options.clipStart,job.options.clipEnd,job.options.filenameOverride).joinToString("|")
+        fun key(job: DownloadJob)=duplicateKey(job)+"|"+job.options.cookieId.orEmpty()
         viewModelScope.launch {
             try {
                 val added=withContext(Dispatchers.IO) {
@@ -367,7 +365,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     fun retry(job: DownloadJob) {
         val replacement=job.copy(id=UUID.randomUUID().toString(),
             options=if(job.options.customArguments.isBlank()) job.options.copy(downloadArchive=false) else job.options,
-            state=JobState.QUEUED,progress=0f,
+            state=JobState.QUEUED,progress=0f,retryCount=0,failureKind="",
             detail="Sırada",phase="queued",progressKnown=false,etaSeconds=-1,bytesDownloaded=0,totalBytes=0,createdAt=System.currentTimeMillis(),files=emptyList(),notes=emptyList())
         enqueueBatch(listOf(replacement),stayTerminal=job.options.customArguments.isNotBlank())
     }

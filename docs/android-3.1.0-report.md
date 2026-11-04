@@ -1,0 +1,104 @@
+# Android 3.1.0 implementation and verification
+
+Base: 3.0.0 (`758a7c0`). Development branch: `feature/android-3.1.0`.
+Version: 3.1.0 / 3001000. This report distinguishes implementation from verification.
+
+## Implementation
+
+| Area | Implementation | Verification at candidate preparation |
+| --- | --- | --- |
+| Sharing | SEND/SEND_MULTIPLE text links, bounded extraction, duplicate delivery filtering, immediate configuration, quick modes, optional one-tap preference | Model and input tests passed on physical Android 13; source-app return UX remains partial |
+| Queue | Existing WorkManager extended with unique requests, priorities, order, concurrency 1–5/default 2, charging/Wi-Fi/unmetered conditions and bounded network retries | Unique scheduling, durable queued pause and constraints passed on phone; full concurrent/network-switch/reboot stress remains partial |
+| Trimmer | Source duration slider, multiple ranges, manual existing timestamp input, separate outputs, optional compatible merge and accurate cuts; local VideoView range preview | Clip validation passed; native video suite required before publication |
+| Library | Search, list/grid, platform/date/type/resolution/status filters, sorting, favorites/collections, multi-select, share/export, missing-file checks and distinct entry/file deletion | Data persistence and original-file preservation tested; large-library/provider interaction coverage remains partial |
+| Converter | Local SAF files, MP4, MP4/MKV remux, audio extraction, MP3/M4A/WAV/FLAC, muting, presets/bitrate/sample rate, bounded batches, progress and cancellation | Real audio conversion passed on phone; native video suite required before publication |
+| Smart Mode | Optional local source profiles, conservative available-height selection and manual overrides | Source profile and authentication preservation tests passed; automatic storage-based format selection is not implemented |
+| Backup | Settings/profile schema 2, schema 1 migration, pre-parse depth/UTF-8/size validation, optional matching favorite/collection metadata | Valid/malicious schema tests passed; arbitrary queue/media migration and sensitive session export intentionally excluded |
+| Naming | Safe variable compilation, live preview, existing yt-dlp naming behavior and a selected output subfolder | Traversal/invalid-variable tests passed; automatic multi-level folder-variable expansion is not implemented |
+| Recovery | Failure categories, actionable localized explanation, bounded retry for transient errors and existing private logs | Classifier and private transport diagnostics passed; dedicated diagnostic-file export remains partial |
+| Duplicates | Source identity plus output settings/format/quality/clip identity, open/skip/another-copy choices | Format/quality/clip distinction tested on phone; missing files are surfaced and may need another copy |
+| Chapters | Bounded actual source chapter metadata and selectable ranges; no generated chapters | Projection/privacy and chapter validation tests passed |
+| TXT import | Streaming bounded reader, 50 accepted links, validation/duplicate counts and confirmation | Malformed/oversized/cancelled input tests passed; no removal of the 50-row constraint |
+| GIF/WebP | Runtime-gated encoders, clip/rate/dimension/loop controls and bounded processing | Native suite required; a WebP output-verification demuxer mismatch was found and corrected |
+| Subtitles | SRT/VTT, local import, track attachment, rendering when available, offset and existing source language selection | Native suite required; no unsupported encoder is advertised |
+| Storage Guard | Available workspace storage, existing download-size estimate, reviewed aged private leftovers and owned conversion cache, active-work protection | Active/unknown download protection tested on phone; kill/reboot cleanup/provider stress remains partial |
+
+PASS means a specific check passed, not that every possible device/source workflow
+was exercised. The implementation is not a blanket production-readiness claim.
+
+## Existing components reused
+
+`ZenithViewModel`, `DownloadEngine`, persistent metadata runtime/cache, yt-dlp
+section downloads, Android FFmpeg/Aria2 packages, WorkManager, LocalStore,
+CookieVault, JobArtwork, SAF/MediaStore/FileProvider and existing themes/locales.
+No Seal source was copied, and no additional cloud or account system was added.
+
+## Architecture and storage
+
+* No parallel download engine or second history database was introduced.
+* Queue scheduling uses unique per-job work and a process-wide claim gate.
+* New JSON fields have defaults for older records; IDs, URI lists and history are
+  retained. Missing/non-finite legacy progress is now read as zero.
+* Queue order/priority, paused state, favorites, collections, retry count and
+  output conditions persist through the existing store.
+* Native media work uses a separate, serial WorkManager lane and private temporary
+  workspaces. Native arguments are argv lists; file/format protocols are limited.
+* Backups do not contain cookie secrets, keys, proxy credentials, custom commands
+  or device URI grants. Restoring never automatically starts another queue.
+
+## Validation recorded during development
+
+Physical device: TECNO Spark 20 Pro / KJ6, Android 13, arm64, 4096-byte pages.
+Tests use `space.zenithw.app.preview`; the user's stable app and data are untouched.
+
+* 27 physical-device tests passed in 79.198 seconds: FeatureReleaseTest (9),
+  MetadataOptimizationTest (12), DownloadRegressionTest (5), BrowserTransportTest (1).
+* 32 Python tests passed, including metadata-worker, browser transport, pinned ELF
+  packaging, five-language feature-resource coverage and private chapter projection.
+* 41 new independent Kotlin policy assertions passed, alongside the existing
+  download, bulk-link, inspection, command, diagnostics and preview policy checks.
+* Preview ABI APKs and instrumentation APK compiled. Lint passed on an earlier
+  candidate and on the diagnostic update. The first lint error was fixed in code;
+  no lint check was disabled. A transient lint/compiler error occurred when a new
+  test source was added during analysis; subsequent complete compilation/lint passed.
+* Real audio conversions preserved the input bytes. Additional direct native
+  probes passed MP4→MKV, MKV→MP4, muting, copy trim, H.264 conversion, GIF/WebP,
+  subtitle conversion/attachment/rendering using short synthetic media.
+* The combined media test exposed missing `webp_pipe` in the output-probe allowlist.
+  The narrow demuxer correction is included; the combined suite must pass again.
+
+Final release workflow and last physical media result are appended after completion.
+No before/after speed improvement is claimed from compilation or these counts.
+
+## Compatibility and remaining limits
+
+Android 7/API 24 remains configured. Stable, Preview and F-Droid package IDs and
+release signing configuration are preserved. Local testing uses a local Preview
+key only; stable signing remains in the existing GitHub Actions secret.
+
+**BLOCKED: full native 16 KB compatibility.** Verified pinned curl artifacts have
+4096-byte ELF load alignment. No binary/hash patch or ZIP-alignment workaround
+was substituted. Rebuilding the dependency chain from reviewed upstream source,
+checking every packaged ELF and running on a 16 KB device/emulator remain necessary.
+The attached phone has 4 KB pages and cannot verify that requirement.
+
+Reference: [Android native page-size requirements](https://developer.android.com/guide/practices/page-sizes).
+Local FFmpeg inputs use explicit [format and protocol allowlists](https://ffmpeg.org/ffmpeg-all.html).
+
+Remaining device-specific checks include low-storage volumes, third-party SAF
+providers, 200-item queue load, five active transfers, process death/reboot during
+publication, large libraries, metered/Wi-Fi transitions and real authenticated
+sources. Source anti-bot restrictions are not claimed universally solved.
+
+## Files and artifacts
+
+Core policies/workers: `FeaturePolicy.kt`, `Models.kt`, `LocalStore.kt`,
+`DownloadWorker.kt`, `LocalToolWorker.kt`, `LocalMediaTools.kt`, `SettingsBackup.kt`,
+`StorageGuard.kt`, `LibraryFiles.kt`, `SmartProfiles.kt` and metadata projection.
+UI: MainActivity, ZenithViewModel, DownloadSheet, LibraryScreen, ToolsScreen,
+WorkspaceSheets, TerminalWorkspace and ZenithUi. New resources cover all five locales.
+
+Local Preview artifacts are under `app/build/outputs/apk/debug/` (three ABIs),
+instrumentation under `app/build/outputs/apk/androidTest/debug/`, and lint under
+`app/build/reports/lint-results-debug.html`. Published stable assets must come
+from the existing signing/ABI/certificate-verifying GitHub Actions workflow.

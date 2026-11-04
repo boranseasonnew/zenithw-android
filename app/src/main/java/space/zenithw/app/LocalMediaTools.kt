@@ -14,7 +14,7 @@ import kotlin.coroutines.coroutineContext
 
 /** Local SAF files only. Every native invocation uses argv (never a shell). */
 class LocalMediaTools(private val context: Context) {
-    private val inputPolicy=listOf("-protocol_whitelist","file,pipe","-format_whitelist","mov,matroska,webm,mp3,aac,wav,flac,ogg,srt,webvtt,gif,webp,mpegts,avi,asf,flv")
+    private val inputPolicy=listOf("-protocol_whitelist","file,pipe","-format_whitelist","mov,matroska,webm,mp3,aac,wav,flac,ogg,srt,webvtt,gif,webp,webp_pipe,mpegts,avi,asf,flv")
     private val native=File(context.applicationInfo.nativeLibraryDir)
     data class Capabilities(val encoders: Set<String>,val filters: Set<String>) {
         fun supports(mode: String)=when(mode) {
@@ -211,7 +211,12 @@ class LocalMediaTools(private val context: Context) {
             }
             reader.join(3000);check(!reader.isAlive)
             failure.get()?.let { throw IllegalStateException("native_output",it) }
-            check(exit==0) { "conversion_failed" }
+            check(exit==0) {
+                "conversion_failed: "+content.toString().replace(Regex("(?i)(?:https?|content|file)://[^\\s]+"),"[link]")
+                    .replace(context.cacheDir.absolutePath,"[temporary]")
+                    .replace(Regex("(?i)(authorization|cookie|password|token)(\\s*[:=]\\s*)[^\\r\\n]+"),"$1=[hidden]")
+                    .takeLast(800)
+            }
             content.toString()
         } finally { process.destroy();process.inputStream.close();reader.interrupt() }
     }

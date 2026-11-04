@@ -126,6 +126,7 @@ jobs:
           python3 tests/test_metadata_worker.py -v
           python3 tests/test_browser_transport.py -v
           python3 tests/test_native_curl_packaging.py -v
+          python3 tests/test_feature_resources.py -v
 
       - name: Verify and prepare signed release files
         env:

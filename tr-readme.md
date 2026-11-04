@@ -23,6 +23,10 @@
   <a href="README.md">English</a>
 </p>
 
+## 3.1.0 geliştirme adayı
+
+Geliştirme dalında çoklu bağlantı paylaşımı, kaynak profilleri, dosya adı kuralları, kuyruk önceliği/eşzamanlılık, aranabilir kütüphane, yerel FFmpeg araçları ve taşınabilir ayar yedekleri bulunuyor. **Yayınlanan kararlı sürüm hâlâ 3.0.0**; aşağıdaki indirme bağlantıları bu nedenle değiştirilmedi. Adayın doğrulama durumunu [teknik rapordan](docs/android-3.1.0-report.md) kontrol et. Tam 16 KB uyumluluğu henüz çözülmedi.
+
 ## ZenithW nedir?
 
 ZenithW, çevrim içi video ve sesleri kişisel çevrim dışı erişim için kaydetmeye yarayan yerel bir Android uygulamasıdır. **Kotlin**, **Jetpack Compose**, **yt-dlp**, **FFmpeg** ve **Aria2c** teknolojilerini tek bir arayüzde bir araya getirir.
