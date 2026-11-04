@@ -228,7 +228,7 @@ import kotlinx.coroutines.withContext
     restore?.let { preview -> AlertDialog(onDismissRequest={ restore=null },title={ Text(texts.getString(R.string.feature_restore)) },
         text={ Text(texts.getString(R.string.feature_restore_hint)+"\n${preview.profiles}") },confirmButton={ TextButton(onClick={
             scope.launch { runCatching { withContext(Dispatchers.IO) { SettingsBackup(context,model.app.store).restore(preview) } }
-                .onSuccess { model.reloadPreferences() }.onFailure { model.showMessage(texts.getString(R.string.feature_backup_invalid)) };restore=null }
+                .onSuccess { model.reloadPreferences();smart=model.app.store.smartEnabled }.onFailure { model.showMessage(texts.getString(R.string.feature_backup_invalid)) };restore=null }
         }) { Text(texts.getString(R.string.feature_restore)) } },dismissButton={ TextButton(onClick={ restore=null }) { Text(texts.getString(R.string.cancel_download)) } }) }
     candidates?.let { reviewed -> AlertDialog(onDismissRequest={ candidates=null },title={ Text(texts.getString(R.string.feature_storage)) },
         text={ Text(texts.getString(R.string.feature_cleanup_warning)+"\n${reviewed.size} · ${mediaSize(reviewed.sumOf { it.bytes })}") },

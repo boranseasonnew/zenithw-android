@@ -20,6 +20,10 @@ fun main() {
     verify(runCatching { IncomingLinks.extract("x".repeat(IncomingLinks.MAX_BYTES+1)) }.isFailure)
     verify(FilenamePolicy.compile(FilenamePolicy.DEFAULT)=="%(title).150B [%(id)s].%(ext)s")
     verify(FilenamePolicy.preview("{platform} - {title}.{ext}")=="YouTube - Video.mp4")
+    verify(runCatching { FilenamePolicy.validateNative(FilenamePolicy.compile(FilenamePolicy.DEFAULT)) }.isSuccess)
+    verify(runCatching { FilenamePolicy.validateNative("%(title)s.%(ext)s") }.isSuccess)
+    verify(runCatching { FilenamePolicy.validateNative("%(http_headers.Cookie)s.%(ext)s") }.isFailure)
+    verify(runCatching { FilenamePolicy.validateNative("%(http_headers.Authorization)s.%(ext)s") }.isFailure)
     listOf("../{title}.{ext}","{title}\\{id}.{ext}","{token}.{ext}","%(title)s.mp4","{title}","{title}:x.{ext}").forEach {
         verify(runCatching { FilenamePolicy.compile(it) }.isFailure)
     }

@@ -23,9 +23,9 @@
   <a href="tr-readme.md">Türkçe</a>
 </p>
 
-## 3.1.0 development candidate
+## New in 3.1.0
 
-The feature branch adds bounded multi-link sharing, source profiles, naming rules, queue priorities/concurrency, a searchable library, local FFmpeg tools and portable settings backups. **3.0.0 remains the published stable release**; the links below intentionally keep pointing to it. See [implementation and verification](docs/android-3.1.0-report.md) before using a candidate. Native 16 KB compatibility remains unresolved.
+Multi-link sharing, source-specific profiles, safer naming templates, queue priorities and concurrent downloads, a searchable media library, local conversion/trimming, chapters, GIF/WebP and subtitle tools, portable settings backups and reviewed storage cleanup. See the [implementation and actual verification](docs/android-3.1.0-report.md) for coverage and limitations. Full native 16 KB page support remains unresolved.
 
 ## What is ZenithW?
 
@@ -46,19 +46,19 @@ The interface is available in **English, Turkish, German, French and Russian**. 
 
 ## Get the app
 
-The latest stable release is **[3.0.0](https://github.com/boranseasonnew/zenithw-android/releases/tag/v3.0.0)** and requires **Android 7.0 or later (API 24+)**. Download the APK that matches your device:
+The latest stable release is **[3.1.0](https://github.com/boranseasonnew/zenithw-android/releases/tag/v3.1.0)** and requires **Android 7.0 or later (API 24+)**. Download the APK that matches your device:
 
 | APK | Typical devices |
 | --- | --- |
-| [arm64-v8a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.0.0/Zenith-3.0.0-stable-arm64-v8a.apk) | Most modern Android phones and tablets |
-| [armeabi-v7a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.0.0/Zenith-3.0.0-stable-armeabi-v7a.apk) | Older 32-bit ARM devices |
-| [x86_64](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.0.0/Zenith-3.0.0-stable-x86_64.apk) | Compatible Intel/AMD devices and emulators |
+| [arm64-v8a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.0/Zenith-3.1.0-stable-arm64-v8a.apk) | Most modern Android phones and tablets |
+| [armeabi-v7a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.0/Zenith-3.1.0-stable-armeabi-v7a.apk) | Older 32-bit ARM devices |
+| [x86_64](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.0/Zenith-3.1.0-stable-x86_64.apk) | Compatible Intel/AMD devices and emulators |
 
-For file integrity, compare the downloaded APK with [SHA256SUMS.txt](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.0.0/SHA256SUMS.txt). The public [signing-certificate fingerprint](release-certificate.sha256) helps verify update compatibility.
+For file integrity, compare the downloaded APK with [SHA256SUMS.txt](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.0/SHA256SUMS.txt). The public [signing-certificate fingerprint](release-certificate.sha256) helps verify update compatibility.
 
 ## Project status
 
-Version **3.0.0** adds native browser-compatible requests for Pornhub metadata and downloads, preserves configuration when changing saved sessions, and improves cancellation and safe diagnostics. See the [English release notes](releases/3.0.0.md) and [actual Android comparison](docs/PORNHUB_DIAGNOSIS_2026-11-03.md). Android 13 and Android 7 metadata, media-sample, TLS/cookie and cancellation checks passed for the release candidate; physical-phone VPN/account verification remains pending.
+Version **3.1.0** extends the existing download engine with queue, sharing, library and local media workflows. Physical Android 13 testing passed 28 tests including real media conversion. The first signed Actions candidate passed 60 Android 13 and 23 Android 7 checks; the final release workflow also runs the added backup-preservation regression before publication. See the [English release notes](releases/3.1.0.md) and [engineering report](docs/android-3.1.0-report.md).
 
 Downloads depend on yt-dlp support and the source's access requirements. Full native 16 KB memory-page compatibility has not been established; see the [runtime provenance and limits](docs/native-curl-NOTICES.md).
 

@@ -23,9 +23,9 @@
   <a href="README.md">English</a>
 </p>
 
-## 3.1.0 geliştirme adayı
+## 3.1.0 ile gelenler
 
-Geliştirme dalında çoklu bağlantı paylaşımı, kaynak profilleri, dosya adı kuralları, kuyruk önceliği/eşzamanlılık, aranabilir kütüphane, yerel FFmpeg araçları ve taşınabilir ayar yedekleri bulunuyor. **Yayınlanan kararlı sürüm hâlâ 3.0.0**; aşağıdaki indirme bağlantıları bu nedenle değiştirilmedi. Adayın doğrulama durumunu [teknik rapordan](docs/android-3.1.0-report.md) kontrol et. Tam 16 KB uyumluluğu henüz çözülmedi.
+Çoklu paylaşım, kaynak profilleri, güvenli dosya adı şablonları, öncelikli/eşzamanlı kuyruk, aranabilir kütüphane, yerel dönüştürme/kırpma, bölüm seçimi, GIF/WebP ve altyazı araçları, ayar yedeği ve onaylı depolama temizliği. Gerçek test kapsamı ve sınırlar [teknik raporda](docs/android-3.1.0-report.md) yer alır. Tam native 16 KB sayfa desteği henüz çözülmedi.
 
 ## ZenithW nedir?
 
@@ -46,19 +46,19 @@ Arayüz **Türkçe, İngilizce, Almanca, Fransızca ve Rusça** dillerinde kulla
 
 ## Uygulamayı indir
 
-En güncel kararlı sürüm **[3.0.0](https://github.com/boranseasonnew/zenithw-android/releases/tag/v3.0.0)**. Uygulama **Android 7.0 veya üzerini (API 24+)** gerektirir. Cihazına uygun APK'yı seç:
+En güncel kararlı sürüm **[3.1.0](https://github.com/boranseasonnew/zenithw-android/releases/tag/v3.1.0)**. Uygulama **Android 7.0 veya üzerini (API 24+)** gerektirir. Cihazına uygun APK'yı seç:
 
 | APK | Kullanıldığı cihazlar |
 | --- | --- |
-| [arm64-v8a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.0.0/Zenith-3.0.0-stable-arm64-v8a.apk) | Güncel Android telefon ve tabletlerin çoğu |
-| [armeabi-v7a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.0.0/Zenith-3.0.0-stable-armeabi-v7a.apk) | Eski 32 bit ARM cihazlar |
-| [x86_64](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.0.0/Zenith-3.0.0-stable-x86_64.apk) | Uyumlu Intel/AMD cihazlar ve emülatörler |
+| [arm64-v8a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.0/Zenith-3.1.0-stable-arm64-v8a.apk) | Güncel Android telefon ve tabletlerin çoğu |
+| [armeabi-v7a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.0/Zenith-3.1.0-stable-armeabi-v7a.apk) | Eski 32 bit ARM cihazlar |
+| [x86_64](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.0/Zenith-3.1.0-stable-x86_64.apk) | Uyumlu Intel/AMD cihazlar ve emülatörler |
 
-Dosya bütünlüğünü [SHA256SUMS.txt](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.0.0/SHA256SUMS.txt) ile kontrol edebilirsin. Güncelleme imzasını doğrulamaya yardımcı olan herkese açık [imza sertifikası parmak izi](release-certificate.sha256) de depoda bulunur.
+Dosya bütünlüğünü [SHA256SUMS.txt](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.0/SHA256SUMS.txt) ile kontrol edebilirsin. Güncelleme imzasını doğrulamaya yardımcı olan herkese açık [imza sertifikası parmak izi](release-certificate.sha256) de depoda bulunur.
 
 ## Proje durumu
 
-**3.0.0**, Pornhub metadata ve indirme isteklerine native tarayıcı aktarımı ekler; kayıtlı oturum değiştirilirken indirme seçeneklerini korur, iptali ve güvenli tanılama kayıtlarını iyileştirir. Ayrıntılar [İngilizce sürüm notlarında](releases/3.0.0.md) ve [gerçek Android karşılaştırmasında](docs/PORNHUB_DIAGNOSIS_2026-11-03.md). Sürüm adayının Android 13 ve Android 7 metadata, medya örneği, TLS/çerez ve iptal kontrolleri geçti; fiziksel telefondaki VPN/hesap doğrulaması beklemededir.
+**3.1.0**, mevcut indirme motorunu koruyarak paylaşım, kuyruk, kütüphane ve yerel medya araçlarını genişletir. Fiziksel Android 13 cihazda gerçek medya dönüşümleri dahil 28 test geçti. İlk imzalı Actions adayında Android 13 için 60, Android 7 için 23 kontrol başarılı oldu; son yayın akışı yeni yedek/geçmiş korumasını da yeniden test eder. Ayrıntılar [İngilizce sürüm notlarında](releases/3.1.0.md) ve [teknik raporda](docs/android-3.1.0-report.md).
 
 İndirmeler yt-dlp desteğine ve kaynağın erişim koşullarına bağlıdır. Yerel 16 KB bellek sayfası uyumluluğu tam olarak doğrulanmış değildir; [çalışma ortamı ve sınırlarına](docs/native-curl-NOTICES.md) bakabilirsin.
 

@@ -55,7 +55,7 @@ class SettingsBackup(private val context: Context,private val store: LocalStore)
         require(o==portableOptions(o)) { "backup_sensitive" }
         require(o.mode in MediaMode.entries && o.container in setOf("mp4","mkv","webm"))
         require(o.audioFormat in setOf("mp3","m4a","opus","wav","flac"))
-        require(o.filenameTemplate.length<=250 && o.filenameTemplate.none { it.isISOControl() || it in "/\\" } && !o.filenameTemplate.contains(".."))
+        FilenamePolicy.validateNative(o.filenameTemplate)
         FilenamePolicy.folder(o.outputFolder)
         return o
     }
@@ -66,7 +66,7 @@ class SettingsBackup(private val context: Context,private val store: LocalStore)
         val editor=p.edit().putString("themeMode",root.getString("theme")).putString("language",root.getString("language"))
             .putBoolean("dynamicColors",root.getBoolean("dynamicColors")).putBoolean("configureBeforeDownload",root.getBoolean("configure"))
             .putBoolean("rememberDownloadChoices",root.getBoolean("remember")).putBoolean("showMediaPreview",root.getBoolean("preview"))
-            .putBoolean("keepHistory",root.getBoolean("history")).putBoolean("smartEnabled",root.getBoolean("smart"))
+            .putBoolean("smartEnabled",root.getBoolean("smart"))
             .putInt("concurrentDownloads",root.getInt("concurrency")).putString("defaults",root.getJSONObject("defaults").toString())
         val profiles=root.getJSONArray("profiles")
         for(i in 0 until profiles.length()) {

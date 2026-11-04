@@ -47,6 +47,27 @@ class FeatureReleaseTest {
         rejected(JSONObject(saved).put("profiles",JSONArray().put(JSONObject().put("host","../escape").put("options",DownloadOptions().json()))))
         assertTrue(runCatching { backup.validate(ByteArray(512*1024+1)) }.isFailure)
     }
+    @Test fun restorePreservesHistoryAndAppliesMatchingFavorites() {
+        val name="feature-backup-"+java.util.UUID.randomUUID()
+        val context=object: android.content.ContextWrapper(app) {
+            override fun getSharedPreferences(ignored: String,mode: Int)=super.getSharedPreferences(name,mode)
+        }
+        try {
+            val store=LocalStore(context);store.keepHistory=true
+            val job=DownloadJob(url="https://example.org/restore-fixture",title="Kept history",state=JobState.COMPLETED)
+            store.put(job)
+            val backup=SettingsBackup(context,store)
+            val root=JSONObject(backup.export(true)).put("history",false).put("smart",true)
+            root.getJSONArray("library").getJSONObject(0).put("favorite",true).put("collection","Restored")
+            backup.restore(backup.validate(root.toString().toByteArray()))
+            val reloaded=LocalStore(context)
+            assertTrue(reloaded.keepHistory)
+            assertTrue(reloaded.smartEnabled)
+            assertEquals("Kept history",reloaded.get(job.id)!!.title)
+            assertTrue(reloaded.get(job.id)!!.favorite)
+            assertEquals("Restored",reloaded.get(job.id)!!.collection)
+        } finally { context.getSharedPreferences(name,0).edit().clear().commit() }
+    }
     @Test fun chapterMetadataComesFromSource() {
         val json=JSONObject().put("title","Fixture").put("chapters",JSONArray()
             .put(JSONObject().put("title","Intro").put("start_time",0).put("end_time",10))

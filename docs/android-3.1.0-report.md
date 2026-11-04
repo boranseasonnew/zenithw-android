@@ -44,7 +44,7 @@ No Seal source was copied, and no additional cloud or account system was added.
 * Native media work uses a separate, serial WorkManager lane and private temporary
   workspaces. Native arguments are argv lists; file/format protocols are limited.
 * Backups do not contain cookie secrets, keys, proxy credentials, custom commands
-  or device URI grants. Restoring never automatically starts another queue.
+  or device URI grants. Restoring never automatically starts another queue. The current device history-retention preference is preserved to avoid removing history as a side effect.
 
 ## Validation recorded during development
 
@@ -55,7 +55,7 @@ Tests use `space.zenithw.app.preview`; the user's stable app and data are untouc
   MetadataOptimizationTest (12), DownloadRegressionTest (5), BrowserTransportTest (1).
 * 32 Python tests passed, including metadata-worker, browser transport, pinned ELF
   packaging, five-language feature-resource coverage and private chapter projection.
-* 41 new independent Kotlin policy assertions passed, alongside the existing
+* 45 new independent Kotlin policy assertions passed, alongside the existing
   download, bulk-link, inspection, command, diagnostics and preview policy checks.
 * Preview ABI APKs and instrumentation APK compiled. Lint passed on an earlier
   candidate and on the diagnostic update. The first lint error was fixed in code;
@@ -65,9 +65,20 @@ Tests use `space.zenithw.app.preview`; the user's stable app and data are untouc
   probes passed MP4→MKV, MKV→MP4, muting, copy trim, H.264 conversion, GIF/WebP,
   subtitle conversion/attachment/rendering using short synthetic media.
 * The combined media test exposed missing `webp_pipe` in the output-probe allowlist.
-  The narrow demuxer correction is included; the combined suite must pass again.
+  The narrow demuxer correction passed the complete physical media suite in 20.864 seconds, including remux, two trim modes, encoding, animation, subtitle conversion/attachment/burning, compatible merging and cancellation.
 
-Final release workflow and last physical media result are appended after completion.
+### Signed candidate and final publication gate
+
+[Signed candidate Actions run 41852742303](https://github.com/boranseasonnew/zenithw-android/actions/runs/41852742303) completed successfully on commit `db54abc`:
+
+* Signed arm64-v8a, armeabi-v7a and x86_64 APKs built and passed certificate/version/ABI checks.
+* Android lint, JVM policies and all 32 Python checks passed.
+* 60 Android 13 smoke/regression tests and 23 Android 7 compatibility tests passed.
+* The full native media workflow passed on both the physical phone and Android 13 CI.
+
+The final safety follow-up preserves current history-retention preferences during restore, refreshes the Smart Mode control, and rejects imported filename references to private HTTP headers. Its new restore regression is included in the final release workflow. Stable publication remains gated on that workflow, with tests enabled.
+
+The attached phone disconnected after the completed media suite. The additional full metadata benchmark could not run after the ADB disconnect; no new panel/title/format latency or before/after improvement is claimed.
 No before/after speed improvement is claimed from compilation or these counts.
 
 ## Compatibility and remaining limits

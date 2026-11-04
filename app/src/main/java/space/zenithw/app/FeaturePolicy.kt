@@ -90,6 +90,13 @@ object FilenamePolicy {
             "date" to "20261104","id" to "abc123","resolution" to "1920x1080","ext" to "mp4","platform" to "YouTube")
         return Regex("\\{([a-z]+)}").replace(template) { sample.getValue(it.groupValues[1]) }
     }
+    /** Imported backups may interpolate only public naming fields, never headers/cookies. */
+    fun validateNative(template: String) {
+        require(template.length in 1..250 && template.none { it.isISOControl() || it in "/\\:*?\"<>|" } && !template.contains(".."))
+        val fields=Regex("%\\((title|uploader|channel|upload_date|id|resolution|ext|extractor_key)\\)(?:\\.[0-9]{1,3})?[sB]")
+        val remaining=fields.replace(template,"").replace("%%","")
+        require('%' !in remaining && template.endsWith(".%(ext)s"))
+    }
     fun folder(value: String): String {
         require(value.length<=80 && value !in setOf(".","..") && value.none { it.isISOControl() || it in "/\\:*?\"<>|%" })
         return value.trim().trimEnd('.')
