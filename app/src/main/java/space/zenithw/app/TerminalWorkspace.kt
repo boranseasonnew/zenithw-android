@@ -38,7 +38,10 @@ fun TerminalWorkspace(model: ZenithViewModel, screen: ScreenState, onQueuedDownl
         keyboard?.hide()
         tab = index
     }
+    val txtPicker=androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri -> uri?.let(model::importLinks) }
     Column(Modifier.fillMaxSize()) {
+        if(tab==0) TextButton(onClick={ txtPicker.launch(arrayOf("text/plain","application/octet-stream")) }) { Text(texts.getString(R.string.feature_import_txt)) }
+
         SecondaryTabRow(selectedTabIndex = tab, containerColor = Ink, contentColor = Silver) {
             listOf(R.string.terminal_batch, R.string.terminal_commands, R.string.terminal_logs).forEachIndexed { index, title ->
                 Tab(selected = tab == index, onClick = { selectTab(index) }, text = { Text(texts.getString(title)) })

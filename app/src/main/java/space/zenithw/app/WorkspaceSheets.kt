@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun WorkspaceHeader(page: Int,active: Int,onHome: ()->Unit,onLibrary: (Boolean)->Unit,
-    onSettings: ()->Unit,onBulk: ()->Unit) {
+    onSettings: ()->Unit,onBulk: ()->Unit,onTools: ()->Unit={}) {
     val texts=LocalAppContext.current
     Surface(color=Ink) {
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal=16.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -43,6 +43,7 @@ fun WorkspaceHeader(page: Int,active: Int,onHome: ()->Unit,onLibrary: (Boolean)-
             IconButton(onClick=onBulk) {
                 Icon(Icons.Outlined.Terminal,texts.getString(R.string.terminal_workspace),tint=if(page==4) Silver else Muted)
             }
+            IconButton(onClick=onTools) { Icon(Icons.Outlined.Build,texts.getString(R.string.feature_tools),tint=if(page==5) Silver else Muted) }
             IconButton(onClick=onSettings) { Icon(Icons.Outlined.Settings,texts.getString(R.string.settings),tint=if(page==2) Silver else Muted) }
         }
     }

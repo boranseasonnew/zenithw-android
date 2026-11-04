@@ -37,11 +37,12 @@ import java.util.Calendar
     onDefaults: (DownloadOptions)->Unit,onDismiss: ()->Unit,onDownload: (DownloadOptions)->Unit,
     onPlaylistSelect: (DownloadOptions)->Unit,submitting: Boolean=false,
     analyzing: Boolean=false,analysisError: String?=null,onRefreshInfo: (Boolean)->Unit={},onCancelAnalysis: ()->Unit={},inspectSlow: Boolean=false,
-    onRendered: (String)->Unit={}) {
+    onRendered: (String)->Unit={},onSaveProfile: (DownloadOptions)->Unit={},smartSuggested: Boolean=false,lastUsed: DownloadOptions=defaults) {
     var raw by rememberSaveable(preview.url) { mutableStateOf(defaults.json().toString()) }
     var showFormats by rememberSaveable(preview.url) { mutableStateOf(false) }
     val o=remember(raw) { DownloadOptions.from(JSONObject(raw)) }
-    fun update(value: DownloadOptions) { raw=value.json().toString(); onDefaults(value) }
+    var suggestionActive by rememberSaveable(preview.url) { mutableStateOf(smartSuggested) }
+    fun update(value: DownloadOptions) { suggestionActive=false;raw=value.json().toString(); onDefaults(value) }
     val texts=LocalAppContext.current
     val context=texts
     val plan=DownloadPolicy.thumbnailPlan(o.mode.name,o.container,o.audioFormat,o.embedThumbnail,o.downloadThumbnail,o.thumbnailFormat)
@@ -102,6 +103,40 @@ import java.util.Calendar
             HorizontalDivider(color=Hairline)
             LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(horizontal=24.dp,vertical=16.dp),
                 verticalArrangement=Arrangement.spacedBy(16.dp)) {
+                item {
+                    if(suggestionActive) Text(texts.getString(R.string.feature_suggested),style=MaterialTheme.typography.bodySmall,color=Muted)
+                    FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                        TextButton(onClick={ update(o.copy(mode=MediaMode.VIDEO)) }) { Text(texts.getString(R.string.feature_quick_video)) }
+                        TextButton(onClick={ update(o.copy(mode=MediaMode.AUDIO)) }) { Text(texts.getString(R.string.feature_quick_audio)) }
+                        TextButton(onClick={ update(lastUsed) }) { Text(texts.getString(R.string.feature_last_preset)) }
+                    }
+                    TextButton(onClick={ onSaveProfile(o) }) { Text(texts.getString(R.string.feature_save_profile)) }
+                    OptionSwitch(texts.getString(R.string.feature_unmetered),value=o.unmeteredOnly) { update(o.copy(unmeteredOnly=it)) }
+                    OptionSwitch(texts.getString(R.string.feature_merge_clips),value=o.mergeClips) { update(o.copy(mergeClips=it)) }
+                    OptionSwitch(texts.getString(R.string.feature_charging),value=o.chargingOnly) { update(o.copy(chargingOnly=it)) }
+                }
+                if(preview.duration>0 && !preview.isPlaylist && o.mode!=MediaMode.SUBTITLES) item {
+                    ExpandableSection(texts.getString(R.string.feature_trim),texts.getString(R.string.feature_keyframes)) {
+                        var range by remember(preview.url,preview.duration) { mutableStateOf(0f..preview.duration.toFloat()) }
+                        RangeSlider(value=range,onValueChange={ range=it },valueRange=0f..preview.duration.toFloat())
+                        Text("${mediaDuration(range.start.toLong())} – ${mediaDuration(range.endInclusive.toLong())}")
+                        TextButton(onClick={ if(o.clipRanges.size<20 && range.endInclusive>range.start) update(o.copy(clipRanges=o.clipRanges+ClipRange(range.start.toDouble(),range.endInclusive.toDouble()),clipStart="",clipEnd="")) }) { Text(texts.getString(R.string.bulk_add_row)) }
+                        o.clipRanges.forEachIndexed { index,clip ->
+                            TextButton(onClick={ update(o.copy(clipRanges=o.clipRanges.filterIndexed { i,_ -> i!=index })) }) { Text("${index+1} · ${mediaDuration(clip.start.toLong())} – ${mediaDuration(clip.end.toLong())} ×") }
+                        }
+                        OptionSwitch(texts.getString(R.string.feature_exact_cuts),value=o.exactCuts) { update(o.copy(exactCuts=it)) }
+                    }
+                }
+                if(preview.chapters.isNotEmpty() && !preview.isPlaylist) item {
+                    ExpandableSection(texts.getString(R.string.feature_chapters),preview.chapters.size.toString()) {
+                        preview.chapters.forEach { chapter ->
+                            val clip=ClipRange(chapter.start,chapter.end)
+                            OptionSwitch(chapter.title,"${mediaDuration(chapter.start.toLong())} – ${mediaDuration(chapter.end.toLong())}",clip in o.clipRanges) { selected ->
+                                if(!selected || o.clipRanges.size<20) update(o.copy(clipStart="",clipEnd="",clipRanges=if(selected) (o.clipRanges+clip).distinct() else o.clipRanges-clip))
+                            }
+                        }
+                    }
+                }
                 if(preview.isPlaylist) item {
                     OutlinedButton(onClick={ onPlaylistSelect(o) },modifier=Modifier.fillMaxWidth()) {
                         Icon(Icons.Outlined.PlaylistPlay,null);Spacer(Modifier.width(10.dp));Text(texts.getString(R.string.playlist_open))

@@ -22,7 +22,7 @@ class MainActivity: ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(statusBarStyle=SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle=SystemBarStyle.dark(android.graphics.Color.TRANSPARENT))
-        receive(intent)
+        if(savedInstanceState==null) receive(intent)
         setContent {
             val screen by model.screen.collectAsStateWithLifecycle()
             ZenithTheme(mode=screen.themeMode,dynamicColors=screen.dynamicColors) {
@@ -40,7 +40,18 @@ class MainActivity: ComponentActivity() {
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); receive(intent) }
     override fun onResume() { super.onResume(); model.refreshProfiles() }
     private fun receive(intent: Intent?) {
-        if(intent?.action==Intent.ACTION_SEND && intent.type=="text/plain") intent.getStringExtra(Intent.EXTRA_TEXT)?.let(model::shareIntent)
+        try {
+        if(intent?.action in setOf(Intent.ACTION_SEND,Intent.ACTION_SEND_MULTIPLE) && intent?.type=="text/plain") {
+            val values=mutableListOf<String>()
+            intent.getStringExtra(Intent.EXTRA_TEXT)?.takeIf { it.length<=IncomingLinks.MAX_BYTES }?.let(values::add)
+            if(intent.action==Intent.ACTION_SEND_MULTIPLE) {
+                intent.getCharSequenceArrayListExtra(Intent.EXTRA_TEXT)?.take(51)?.forEach {
+                    if(it.length<=8192) values.add(it.toString())
+                }
+            }
+            if(values.sumOf { it.length }<=IncomingLinks.MAX_BYTES) model.shareIntent(values.joinToString("\n"))
+        }
         if(intent?.getBooleanExtra("showQueue",false)==true) model.library(false)
+        } catch(e: Exception) { model.showMessage(AppLanguage.context(this).getString(R.string.check_link)) }
     }
 }

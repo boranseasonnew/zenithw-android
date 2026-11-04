@@ -83,7 +83,7 @@ private val CardShape=RoundedCornerShape(26.dp)
     }
     Scaffold(containerColor=Ink,snackbarHost={ SnackbarHost(snackbar) },topBar={
         WorkspaceHeader(screen.tab,jobs.count { it.state in setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING) },
-            { navigate(0) },{ finishInput();model.library(it) },{ navigate(2) },{ navigate(4) })
+            { navigate(0) },{ finishInput();model.library(it) },{ navigate(2) },{ navigate(4) },{ navigate(5) })
     }) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).navigationBarsPadding().imePadding()) {
             AnimatedContent(screen.tab,transitionSpec={
@@ -101,11 +101,12 @@ private val CardShape=RoundedCornerShape(26.dp)
                             0 -> HomeScreen(screen,jobs,model::inputUrl,model::analyze,{ cookies=true },model::cancel,model::retry) { job ->
                                 runCatching { openFiles(context,job.files,false) }.onFailure { model.showMessage(texts.getString(R.string.no_opener)) }
                             }
-                            1 -> DownloadsScreen(jobs,model::cancel,model::retry,screen.showHistory) { job,share ->
+                            1 -> LibraryScreen(model,jobs,screen.showHistory) { job,share ->
                                 runCatching { openFiles(context,job.files,share) }.onFailure { model.showMessage(texts.getString(R.string.no_opener)) }
                             }
                             3 -> AboutScreen { navigate(2) }
                             4 -> TerminalWorkspace(model,screen,onQueuedDownload)
+                            5 -> ToolsScreen(model)
                             else -> SettingsHub(model,screen,engine,{ cookies=true })
                         }
                     }
@@ -116,9 +117,24 @@ private val CardShape=RoundedCornerShape(26.dp)
     if(screen.playlistEntries.isNotEmpty()) PlaylistSelectionSheet(screen.playlistEntries,model::dismissPlaylist,submitting=screen.submitting) { indices -> onQueuedDownload();model.enqueuePlaylist(indices) }
     val panelId=screen.analysisId
     key(panelId) { screen.preview?.let { DownloadSheet(it,screen.profiles.firstOrNull { p -> p.id==screen.cookieId }?.host,
-        model.app.store.defaultOptions,model::downloadChoices,{ model.dismissPreview(panelId) },onDownload,model::loadPlaylist,submitting=screen.submitting,
+        smartSuggestion(model.app.store,it,model.app.store.defaultOptions),model::downloadChoices,{ model.dismissPreview(panelId) },onDownload,model::loadPlaylist,submitting=screen.submitting,
         analyzing=screen.analyzing,analysisError=screen.analysisError,onRefreshInfo=model::refreshInfo,onCancelAnalysis=model::cancelAnalysis,
-        inspectSlow=screen.inspectSlow,onRendered={ event -> model.analysisRendered(panelId,event) }) } }
+        inspectSlow=screen.inspectSlow,onRendered={ event -> model.analysisRendered(panelId,event) },
+        onSaveProfile={ options -> model.app.store.saveSourceProfile(it.url,options) },smartSuggested=model.app.store.smartEnabled && model.app.store.sourceProfile(it.url)!=null,lastUsed=model.app.store.defaultOptions) } }
+    screen.duplicate?.let { existing ->
+        AlertDialog(onDismissRequest={ model.resolveDuplicate(false) },title={ Text(texts.getString(R.string.feature_duplicate)) },
+            text={ Text(existing.title) },confirmButton={ Column {
+                TextButton(onClick={ runCatching { openFiles(context,existing.files,false) }.onFailure { model.showMessage(texts.getString(R.string.feature_file_error)) } }) { Text(texts.getString(R.string.open)) }
+                TextButton(onClick={ model.resolveDuplicate(true) }) { Text(texts.getString(R.string.feature_another_copy)) }
+            } },dismissButton={ TextButton(onClick={ model.resolveDuplicate(false) }) { Text(texts.getString(R.string.feature_skip)) } })
+    }
+    screen.importPreview?.let { imported ->
+        AlertDialog(onDismissRequest={ model.acceptImport(false) },title={ Text(texts.getString(R.string.feature_import_txt)) },
+            text={ Column { Text(texts.getString(R.string.feature_import_preview));Text("${imported.links.size} / ${imported.invalid} / ${imported.duplicates}")
+                Text(imported.links.take(5).joinToString("\n") { android.net.Uri.parse(it).host.orEmpty() }) } },
+            confirmButton={ TextButton(onClick={ model.acceptImport(true) }) { Text(texts.getString(R.string.feature_accept)) } },
+            dismissButton={ TextButton(onClick={ model.acceptImport(false) }) { Text(texts.getString(R.string.cancel_download)) } })
+    }
     if(cookies) ProfileSheet(screen.profiles,screen.cookieId,{ cookies=false },
         { model.cookie(it); cookies=false },model::removeProfile,
         { cookies=false; newCookie=true },
@@ -288,7 +304,7 @@ private val CardShape=RoundedCornerShape(26.dp)
     OutlinedTextField(value,onChange,label={ Text(label) },modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp),singleLine=true,
         keyboardOptions=KeyboardOptions(keyboardType=if(numeric) KeyboardType.Number else KeyboardType.Text))
 }
-private fun openFiles(context: android.content.Context,files: List<String>,share: Boolean) {
+internal fun openFiles(context: android.content.Context,files: List<String>,share: Boolean) {
     require(files.isNotEmpty())
     val texts=AppLanguage.context(context)
     val uris=files.map(Uri::parse)

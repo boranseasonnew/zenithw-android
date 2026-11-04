@@ -27,6 +27,7 @@ data class ScreenState(val tab: Int=0,val url: String="",val analyzing: Boolean=
     val themeMode: String="system",val dynamicColors: Boolean=false,val configureBeforeDownload: Boolean=true,
     val rememberDownloadChoices: Boolean=true,val showMediaPreview: Boolean=true,val keepHistory: Boolean=true,
     val updateIntervalHours: Int=24,val outputDirectory: String="",val separateMediaFolders: Boolean=false,
+    val fromShare: Boolean=false,val duplicate: DownloadJob?=null, val importPreview: IncomingLinks.Import?=null,
     val homeJobId: String?=null,val analysisState: AnalysisState=AnalysisState.Idle,val analysisId: String="")
 class ZenithViewModel(application: Application): AndroidViewModel(application) {
     val app=application as ZenithApplication
@@ -41,6 +42,10 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     val jobs=app.store.jobs
     val logs=app.store.logs
     val engine=app.engine.status
+    var toolSource: String?=null
+    private var lastShare=""
+    private var lastShareAt=0L
+    private var duplicateCandidates: List<DownloadJob> = emptyList()
     private var inspection: Job?=null
     private val enqueueGate=Mutex()
     @Volatile private var generation=0L
@@ -64,7 +69,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     fun url(url: String) {
         if(url==mutableScreen.value.url) return
         if(url!=mutableScreen.value.url) cancelInspection()
-        edit { it.copy(url=url,homeJobId=null,message=null,analyzing=false,preview=null,playlistEntries=emptyList(),playlistLoading=false,analysisState=AnalysisState.Idle) }
+        edit { it.copy(url=url,fromShare=false,homeJobId=null,message=null,analyzing=false,preview=null,playlistEntries=emptyList(),playlistLoading=false,analysisState=AnalysisState.Idle) }
     }
     /** A complete pasted URL opens immediately; ordinary character edits stay editable. */
     fun inputUrl(value: String) {
@@ -122,9 +127,67 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     }
     fun removeProfile(id: String) { app.vault.remove(id); refreshProfiles() }
     fun shareIntent(text: String) {
-        url(runCatching { normalizeUrl(text) }.getOrDefault(text))
-        tab(0)
-        if(runCatching { normalizeUrl(text) }.isSuccess) analyze()
+        val urls=runCatching { IncomingLinks.extract(text) }.getOrElse { showMessage(text(R.string.options_invalid));return }
+        if(urls.isEmpty()) { showMessage(text(R.string.check_link));return }
+        val fingerprint=SourceIdentity.fingerprint(urls)
+        val now=android.os.SystemClock.elapsedRealtime()
+        if(fingerprint==lastShare && now-lastShareAt<3000) return
+        lastShare=fingerprint;lastShareAt=now
+        if(urls.size>1) {
+            cancelInspection()
+            edit { it.copy(tab=4,preview=null,bulkLinks=urls.map { link -> BulkLinkInput(url=link) },fromShare=true) }
+        } else {
+            url(urls.first());tab(0);edit { it.copy(fromShare=true) };analyze()
+        }
+    }
+    fun importLinks(uri: Uri) {
+        inspection?.cancel()
+        inspection=viewModelScope.launch {
+            try {
+                val imported=withContext(Dispatchers.IO) {
+                    val task=coroutineContext[Job]
+                    app.contentResolver.openInputStream(uri)?.use { IncomingLinks.read(it) { task?.isActive==false } } ?: error("input")
+                }
+                edit { it.copy(importPreview=imported) }
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) { showMessage(text(R.string.bulk_limit)) }
+        }
+    }
+    fun acceptImport(accept: Boolean) {
+        val imported=mutableScreen.value.importPreview ?: return
+        edit { it.copy(importPreview=null,bulkLinks=if(accept) imported.links.map { link -> BulkLinkInput(url=link) }.ifEmpty { listOf(BulkLinkInput()) } else it.bulkLinks) }
+    }
+    fun resolveDuplicate(anotherCopy: Boolean) {
+        val candidates=duplicateCandidates;duplicateCandidates=emptyList()
+        edit { it.copy(duplicate=null) }
+        if(anotherCopy) enqueueBatch(candidates,allowDuplicate=true)
+    }
+    fun queueConcurrency(value: Int) { app.store.concurrentDownloads=value;viewModelScope.launch(Dispatchers.IO) { DownloadWorker.resumeQueue(app) } }
+    fun pauseQueued(id: String) { viewModelScope.launch(Dispatchers.IO) { DownloadWorker.pauseQueued(app,id) } }
+    fun resumeQueued(id: String) { viewModelScope.launch(Dispatchers.IO) { DownloadWorker.resumeQueued(app,id) } }
+    fun priority(id: String,value: Int) { viewModelScope.launch(Dispatchers.IO) { app.store.change(id) { it.copy(priority=value.coerceIn(-1,1)) } } }
+    fun reorderQueue(ids: List<String>) { viewModelScope.launch(Dispatchers.IO) { app.store.reorder(ids) } }
+    fun favorite(id: String) { viewModelScope.launch(Dispatchers.IO) { app.store.change(id) { it.copy(favorite=!it.favorite) } } }
+    fun collection(id: String,value: String) { viewModelScope.launch(Dispatchers.IO) { app.store.change(id) { it.copy(collection=value.take(80)) } } }
+    fun deleteEntries(ids: Set<String>,physical: Boolean) {
+        viewModelScope.launch {
+            val failed=withContext(Dispatchers.IO) {
+                var failures=0
+                app.store.jobs.value.filter { it.id in ids && it.state !in setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING,JobState.PAUSED) }.forEach { job ->
+                    var removed=true
+                    if(physical) job.files.forEach { value ->
+                        val uri=Uri.parse(value)
+                        try {
+                            if(android.provider.DocumentsContract.isDocumentUri(app,uri)) removed=android.provider.DocumentsContract.deleteDocument(app.contentResolver,uri) && removed
+                            else removed=(app.contentResolver.delete(uri,null,null)>0) && removed
+                        } catch(e: Exception) { removed=false }
+                    }
+                    if(removed) app.store.removeEntry(job.id) else failures++
+                }
+                failures
+            }
+            if(failed>0) showMessage(text(R.string.feature_file_error))
+        }
     }
     private fun text(id: Int,vararg args: Any)=AppLanguage.context(getApplication()).getString(id,*args)
     fun analyze() {
@@ -141,7 +204,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
             analysisState=AnalysisState.Preparing,analysisId=trace.id) }
         trace.mark("panel_state")
         app.store.log("INSPECT configuration opened before metadata")
-        if(!state.configureBeforeDownload) { enqueue(state.defaults);return }
+        if(if(state.fromShare) app.store.oneTapShare else !state.configureBeforeDownload) { enqueue(state.defaults);return }
         if(state.showMediaPreview) startInspection(false,true)
     }
     fun refreshInfo(slow: Boolean=false)=startInspection(slow,false)
@@ -167,7 +230,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
             catch(e: Exception) { if(request==generation) {
                 extractionFailureLines(e.message ?: e.javaClass.simpleName).forEach { app.store.log("INSPECT failed: $it") }
                 trace.mark("error")
-                edit { it.copy(analysisError=text(R.string.media_error),analysisState=AnalysisState.Error) }
+                edit { it.copy(analysisError=recoveryMessage(AppLanguage.context(app),RecoveryPolicy.classify(e.message.orEmpty())),analysisState=AnalysisState.Error) }
             } }
             finally { if(request==generation) edit { it.copy(analyzing=false) } }
         }
@@ -213,6 +276,8 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         return enqueueBulk(raw,options)
     }
     private fun validOptions(options: DownloadOptions,duration: Int=0): Boolean = try {
+        require(options.clipRanges.size<=20)
+        options.clipRanges.forEach { it.validate(duration.toDouble()) }
         InspectionPolicy.section(options.clipStart,options.clipEnd,duration)
         if(options.filenameOverride.isNotBlank()) InspectionPolicy.literalFilename(options.filenameOverride)
         if(options.customArguments.isNotBlank()) parseCustomArguments(options.customArguments)
@@ -249,27 +314,37 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         if(entries.isEmpty()) return
         enqueueBatch(entries.map { DownloadJob(url=it.url,title=it.title,options=options) })
     }
-    private fun enqueueBatch(candidates: List<DownloadJob>,clearBulk: Boolean=false,stayTerminal: Boolean=false) {
+    private fun enqueueBatch(candidates: List<DownloadJob>,clearBulk: Boolean=false,stayTerminal: Boolean=false,allowDuplicate: Boolean=false) {
         if(mutableScreen.value.submitting) return
         val expectedGeneration=generation
         val expectedUrl=mutableScreen.value.url
         val expectedTab=mutableScreen.value.tab
         val submittedLinks=mutableScreen.value.bulkLinks
         val active=setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING)
+        if(!allowDuplicate) {
+            val match=candidates.firstNotNullOfOrNull { candidate -> app.store.jobs.value.firstOrNull {
+                it.state==JobState.COMPLETED && it.files.isNotEmpty() && duplicateKey(it)==duplicateKey(candidate)
+            } }
+            if(match!=null) { duplicateCandidates=candidates;edit { it.copy(duplicate=match) };return }
+        }
         edit { it.copy(submitting=true) }
         fun key(job: DownloadJob)=listOf(job.url,job.options.mode.name,job.options.height,job.options.container,
             job.options.audioFormat,job.options.selectedFormat,job.options.cookieId,job.options.playlist,
             job.options.customArguments,job.options.clipStart,job.options.clipEnd,job.options.filenameOverride).joinToString("|")
         viewModelScope.launch {
             try {
-                val added=withContext(Dispatchers.IO) { enqueueGate.withLock {
-                    val current=app.store.jobs.value.filter { it.state in active }
-                    val seen=current.map(::key).toMutableSet()
-                    val selected=candidates.filter { seen.add(key(it)) }
-                    require(current.size+selected.size<=200) { "capacity" }
-                    selected.forEachIndexed { index,job -> DownloadWorker.enqueue(app,job.copy(createdAt=System.currentTimeMillis()+index)) }
-                    selected
-                } }
+                val added=withContext(Dispatchers.IO) {
+                    enqueueGate.withLock {
+                        val current=app.store.jobs.value.filter { it.state in active }
+                        val seen=current.map(::key).toMutableSet()
+                        val selected=candidates.filter { seen.add(key(it)) }
+                        require(current.size+selected.size<=200) { "capacity" }
+                        selected.forEachIndexed { index,job ->
+                            DownloadWorker.enqueue(app,job.copy(createdAt=System.currentTimeMillis()+index))
+                        }
+                        selected
+                    }
+                }
                 val count=added.size
                 if(count==0) {
                     val sameInteraction=expectedGeneration==generation && mutableScreen.value.url==expectedUrl && mutableScreen.value.tab==expectedTab
@@ -288,13 +363,18 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
             finally { edit { it.copy(submitting=false) } }
         }
     }
-    fun cancel(id: String)=DownloadWorker.cancel(app,id)
+    fun cancel(id: String) { viewModelScope.launch(Dispatchers.IO) { DownloadWorker.cancel(app,id) } }
     fun retry(job: DownloadJob) {
         val replacement=job.copy(id=UUID.randomUUID().toString(),
             options=if(job.options.customArguments.isBlank()) job.options.copy(downloadArchive=false) else job.options,
             state=JobState.QUEUED,progress=0f,
             detail="Sırada",phase="queued",progressKnown=false,etaSeconds=-1,bytesDownloaded=0,totalBytes=0,createdAt=System.currentTimeMillis(),files=emptyList(),notes=emptyList())
         enqueueBatch(listOf(replacement),stayTerminal=job.options.customArguments.isNotBlank())
+    }
+    fun reloadPreferences() {
+        edit { it.copy(defaults=app.store.defaultOptions,themeMode=app.store.themeMode,language=app.store.language,
+            dynamicColors=app.store.dynamicColors,configureBeforeDownload=app.store.configureBeforeDownload,
+            rememberDownloadChoices=app.store.rememberDownloadChoices,showMediaPreview=app.store.showMediaPreview,keepHistory=app.store.keepHistory) }
     }
     fun automatic(value: Boolean) { app.store.autoUpdate=value; edit { it.copy(autoUpdate=value) } }
     fun language(value: String) { app.store.language=value; edit { it.copy(language=app.store.language) } }
