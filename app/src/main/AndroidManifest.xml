@@ -19,10 +19,12 @@
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND"/>
+                <action android:name="android.intent.action.SEND_MULTIPLE"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:mimeType="text/plain"/>
             </intent-filter>
         </activity>
+        <receiver android:name=".DownloadActionReceiver" android:exported="false"/>
         <activity android:name=".CookieBrowserActivity" android:exported="false"/>
         <service android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync" tools:node="merge"/>

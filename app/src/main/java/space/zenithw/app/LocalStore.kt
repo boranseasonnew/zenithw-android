@@ -77,8 +77,35 @@ class LocalStore(context: Context) {
         }.getOrDefault(DownloadOptions(embedThumbnail=true))
         set(value) {
             preferences.edit().putString("defaults",value.copy(cookieId=null,scheduledAt=0,selectedFormat="",
-                filenameOverride="",clipStart="",clipEnd="",customArguments="").json().toString()).apply()
+                filenameOverride="",clipStart="",clipEnd="",clipRanges=emptyList(),exactCuts=false,mergeClips=false,customArguments="").json().toString()).apply()
         }
+    var concurrentDownloads: Int
+        get()=preferences.getInt("concurrentDownloads",2).coerceIn(1,5)
+        set(value) { preferences.edit().putInt("concurrentDownloads",value.coerceIn(1,5)).apply() }
+    var oneTapShare: Boolean
+        get()=preferences.getBoolean("oneTapShare",false)
+        set(value) { preferences.edit().putBoolean("oneTapShare",value).apply() }
+    var smartEnabled: Boolean
+        get()=preferences.getBoolean("smartEnabled",false)
+        set(value) { preferences.edit().putBoolean("smartEnabled",value).apply() }
+    fun sourceProfile(url: String): DownloadOptions?=runCatching {
+        preferences.getString("profile:"+SourceIdentity.platform(url),null)?.let { DownloadOptions.from(JSONObject(it)) }
+    }.getOrNull()
+    fun saveSourceProfile(url: String,options: DownloadOptions) {
+        val clean=portableOptions(options)
+        val hosts=preferences.all.keys.filter { it.startsWith("profile:") }
+        require(hosts.size<100 || "profile:"+SourceIdentity.platform(url) in hosts)
+        preferences.edit().putString("profile:"+SourceIdentity.platform(url),clean.json().toString()).apply()
+    }
+    @Synchronized fun removeEntry(id: String) {
+        val next=mutableJobs.value.filterNot { it.id==id }
+        persistJobs(next,true);mutableJobs.value=next
+    }
+    @Synchronized fun reorder(ids: List<String>) {
+        val order=ids.withIndex().associate { it.value to it.index.toLong() }
+        val next=mutableJobs.value.map { job -> order[job.id]?.let { job.copy(queueOrder=it) } ?: job }
+        persistJobs(next,true);mutableJobs.value=next
+    }
     private val mutableLogs=MutableStateFlow<List<String>>(emptyList())
     val logs=mutableLogs.asStateFlow()
     private val mutableTaskLogs=MutableStateFlow<Map<String,List<String>>>(emptyMap())
@@ -102,14 +129,15 @@ class LocalStore(context: Context) {
     private fun loadJobs(): List<DownloadJob> = runCatching {
         val array=JSONArray(preferences.getString("jobs","[]"))
         (0 until array.length()).mapNotNull { runCatching { DownloadJob.from(array.getJSONObject(it)) }.getOrNull() }
-            .filter { preferences.getBoolean("keepHistory",true) || it.state in setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING) }
+            .filter { preferences.getBoolean("keepHistory",true) || it.state in setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING,JobState.PAUSED) }
     }.getOrDefault(emptyList())
     private var lastProgressSave=0L
     @Synchronized fun put(job: DownloadJob) {
         val list=(mutableJobs.value.filterNot { it.id==job.id } + job).sortedByDescending { it.createdAt }
         val before=mutableJobs.value.firstOrNull { it.id==job.id }
         val durable=before==null || before.state!=job.state || before.files!=job.files || before.notes!=job.notes || before.title!=job.title ||
-            before.thumbnail!=job.thumbnail || before.durationSeconds!=job.durationSeconds
+            before.thumbnail!=job.thumbnail || before.durationSeconds!=job.durationSeconds || before.options!=job.options ||
+            before.priority!=job.priority || before.queueOrder!=job.queueOrder || before.favorite!=job.favorite || before.collection!=job.collection || before.retryCount!=job.retryCount
         val now=android.os.SystemClock.elapsedRealtime()
         // Publish UI samples frequently; persist progress at most once a second.
         // Queue changes, completed files and terminal states remain durable.
@@ -120,7 +148,7 @@ class LocalStore(context: Context) {
         mutableJobs.value=list
     }
     private fun persistJobs(jobs: List<DownloadJob>,synchronous: Boolean) {
-        val durableJobs=if(keepHistory)jobs else jobs.filter { it.state in setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING) }
+        val durableJobs=if(keepHistory)jobs else jobs.filter { it.state in setOf(JobState.QUEUED,JobState.RUNNING,JobState.SAVING,JobState.PAUSED) }
         val edit=preferences.edit().putString("jobs",JSONArray(durableJobs.map { it.json() }).toString())
         if(synchronous) edit.commit() else edit.apply()
     }

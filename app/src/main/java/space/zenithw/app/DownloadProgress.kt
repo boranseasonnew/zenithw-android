@@ -46,7 +46,7 @@ class DownloadProgress {
             // This estimates transfer only. Merging, cover work and saving have no ETA.
             val eta=if(totalBytes>downloaded && speed.isFinite() && speed>0)
                 kotlin.math.ceil((totalBytes-downloaded)/speed).toLong().coerceAtMost(604800) else -1L
-            return Sample(percent,eta,"ZenithWTransfer:$downloaded:$totalBytes")
+            return Sample(percent,eta,"ZenithWTransfer:$downloaded:$totalBytes:${if(speed.isFinite() && speed>0) speed.toLong() else 0}")
         }
         if(Regex("^\\[(?:Merger|VideoRemuxer|VideoConvertor|ExtractAudio|Metadata|ModifyChapters|EmbedThumbnail|ThumbnailsConvertor|EmbedSubtitle|Fixup[^]]*)]").containsMatchIn(line))
             return Sample(-1f,-1,line)

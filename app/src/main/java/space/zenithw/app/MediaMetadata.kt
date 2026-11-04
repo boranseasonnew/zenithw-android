@@ -51,8 +51,14 @@ fun mediaPreview(json: JSONObject,url: String,isPlaylist: Boolean=false): MediaP
     val languages=(listOf("subtitles","automatic_captions").flatMap { key ->
         json.optJSONObject(key)?.keys()?.asSequence()?.filter { it!="live_chat" }?.toList().orEmpty()
     }).distinct().sorted()
+    val chapters=json.optJSONArray("chapters")?.let { a -> (0 until minOf(a.length(),500)).mapNotNull { i ->
+        val c=a.optJSONObject(i) ?: return@mapNotNull null
+        val start=c.optDouble("start_time",Double.NaN);val end=c.optDouble("end_time",Double.NaN)
+        if(!start.isFinite() || !end.isFinite() || start<0 || end<=start) null
+        else MediaChapter(c.optString("title").filterNot(Char::isISOControl).take(200),start,end)
+    } }.orEmpty()
     return MediaPreview(url,json.optString("title").takeUnless { it.isBlank() || it=="null" }?.filterNot(Char::isISOControl)?.take(500) ?: url,
         json.optString("uploader").takeUnless { it=="null" }.orEmpty(),
         mediaThumbnail(json),json.optDouble("duration",0.0).takeIf { it.isFinite() && it>0 }?.toInt() ?: 0,
-        formats.map { it.height }.filter { it>0 }.distinct(),isPlaylist,true,formats,languages)
+        formats.map { it.height }.filter { it>0 }.distinct(),isPlaylist,true,formats,languages,chapters)
 }

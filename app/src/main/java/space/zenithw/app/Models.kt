@@ -6,11 +6,13 @@ import org.json.JSONObject
 import java.util.UUID
 
 enum class MediaMode(val label: String) { VIDEO("Video"), AUDIO("Ses"), SUBTITLES("Altyazı") }
-enum class JobState { QUEUED, RUNNING, SAVING, COMPLETED, FAILED, CANCELLED, SKIPPED }
+enum class JobState { QUEUED, RUNNING, SAVING, COMPLETED, FAILED, CANCELLED, SKIPPED, PAUSED }
 data class MediaPreview(val url: String, val title: String, val uploader: String = "",
     val thumbnail: String? = null, val duration: Int = 0, val heights: List<Int> = emptyList(),
     val isPlaylist: Boolean = false, val metadataReady: Boolean = true,
-    val formats: List<MediaFormat> = emptyList(), val subtitleLanguages: List<String> = emptyList())
+    val formats: List<MediaFormat> = emptyList(), val subtitleLanguages: List<String> = emptyList(), val chapters: List<MediaChapter> = emptyList())
+
+data class MediaChapter(val title: String, val start: Double, val end: Double)
 
 data class MediaFormat(val id: String, val extension: String, val height: Int=0, val width: Int=0,
     val fps: Double=0.0, val videoCodec: String="", val audioCodec: String="",
@@ -35,7 +37,10 @@ data class DownloadOptions(
     val playlistItems: String = "",
     val cookieId: String? = null,
     val wifiOnly: Boolean = false,
+    val unmeteredOnly: Boolean = false,
     val scheduledAt: Long = 0,
+    val chargingOnly: Boolean = false,
+    val outputFolder: String = "",
     val embedMetadata: Boolean = true,
     val embedChapters: Boolean = true,
     val embedUploader: Boolean = true,
@@ -70,6 +75,9 @@ data class DownloadOptions(
     val maxFilesizeMb: Int = 0,
     val clipStart: String = "",
     val clipEnd: String = "",
+    val clipRanges: List<ClipRange> = emptyList(),
+    val exactCuts: Boolean = false,
+    val mergeClips: Boolean = false,
     val customArguments: String = "",
     val filenameOverride: String = ""
 ) {
@@ -79,7 +87,7 @@ data class DownloadOptions(
         put("subtitles",subtitles); put("autoSubtitles",autoSubtitles); put("embedSubtitles",embedSubtitles)
         put("subtitleLanguages",subtitleLanguages); put("subtitleFormat",subtitleFormat)
         put("playlist",playlist); put("playlistItems",playlistItems); put("cookieId",cookieId)
-        put("wifiOnly",wifiOnly); put("scheduledAt",scheduledAt); put("embedMetadata",embedMetadata)
+        put("chargingOnly",chargingOnly); put("outputFolder",outputFolder); put("unmeteredOnly",unmeteredOnly); put("wifiOnly",wifiOnly); put("scheduledAt",scheduledAt); put("embedMetadata",embedMetadata)
         put("embedChapters",embedChapters); put("embedUploader",embedUploader)
         put("embedThumbnail",embedThumbnail); put("downloadThumbnail",downloadThumbnail)
         put("thumbnailFormat",thumbnailFormat); put("sponsorBlock",sponsorBlock)
@@ -100,6 +108,7 @@ data class DownloadOptions(
         put("filenameTemplate",filenameTemplate); put("selectedFormat",selectedFormat)
         put("restrictFilenames",restrictFilenames); put("formatSort",formatSort)
         put("maxFilesizeMb",maxFilesizeMb); put("clipStart",clipStart); put("clipEnd",clipEnd)
+        put("clipRanges",JSONArray(clipRanges.map { JSONObject().put("start",it.start).put("end",it.end) })); put("exactCuts",exactCuts); put("mergeClips",mergeClips);
         put("customArguments",customArguments); put("filenameOverride",filenameOverride)
     }
     companion object {
@@ -112,7 +121,8 @@ data class DownloadOptions(
             subtitleLanguages=o.optString("subtitleLanguages","tr.*,en.*"),
             subtitleFormat=o.optString("subtitleFormat","srt"), playlist=o.optBoolean("playlist"),
             playlistItems=o.optString("playlistItems"), cookieId=o.optString("cookieId").takeIf { it.isNotBlank() && it != "null" },
-            wifiOnly=o.optBoolean("wifiOnly"), scheduledAt=o.optLong("scheduledAt"),
+            chargingOnly=o.optBoolean("chargingOnly"), outputFolder=FilenamePolicy.folder(o.optString("outputFolder")),
+            unmeteredOnly=o.optBoolean("unmeteredOnly"), wifiOnly=o.optBoolean("wifiOnly"), scheduledAt=o.optLong("scheduledAt"),
             embedMetadata=o.optBoolean("embedMetadata",true), embedChapters=o.optBoolean("embedChapters",true),
             embedUploader=o.optBoolean("embedUploader",true), embedThumbnail=o.optBoolean("embedThumbnail"),
             downloadThumbnail=o.optBoolean("downloadThumbnail"), thumbnailFormat=o.optString("thumbnailFormat","jpg"),
@@ -138,6 +148,7 @@ data class DownloadOptions(
             restrictFilenames=o.optBoolean("restrictFilenames"),formatSort=o.optString("formatSort"),
             maxFilesizeMb=o.optInt("maxFilesizeMb").coerceIn(0,102400),
             clipStart=o.optString("clipStart"),clipEnd=o.optString("clipEnd"),
+            clipRanges=o.optJSONArray("clipRanges")?.let { a -> require(a.length()<=20);(0 until a.length()).map { i -> val c=a.getJSONObject(i);ClipRange(c.getDouble("start"),c.getDouble("end")).validate() } }.orEmpty(), exactCuts=o.optBoolean("exactCuts"),mergeClips=o.optBoolean("mergeClips"),
             customArguments=o.optString("customArguments"),filenameOverride=o.optString("filenameOverride")
         )
     }
@@ -149,7 +160,9 @@ data class DownloadJob(
     val detail: String = "Sırada", val createdAt: Long = System.currentTimeMillis(),
     val files: List<String> = emptyList(), val notes: List<String> = emptyList(),
     val phase: String = "queued", val progressKnown: Boolean = false, val etaSeconds: Long = -1,
-    val bytesDownloaded: Long = 0, val totalBytes: Long = 0, val durationSeconds: Int = 0
+    val bytesDownloaded: Long = 0, val totalBytes: Long = 0, val durationSeconds: Int = 0,
+    val priority: Int = 0, val queueOrder: Long = createdAt, val favorite: Boolean = false,
+    val collection: String = "", val speedBytes: Long = 0, val retryCount: Int = 0, val failureKind: String = ""
 ) {
     fun json() = JSONObject().apply {
         put("id",id); put("url",url); put("title",title); put("thumbnail",thumbnail)
@@ -157,7 +170,8 @@ data class DownloadJob(
         put("detail",detail); put("createdAt",createdAt); put("files",JSONArray(files)); put("notes",JSONArray(notes))
         put("phase",phase); put("progressKnown",progressKnown); put("etaSeconds",etaSeconds)
         put("bytesDownloaded",bytesDownloaded); put("totalBytes",totalBytes)
-        put("durationSeconds",durationSeconds)
+        put("priority",priority); put("queueOrder",queueOrder); put("favorite",favorite); put("collection",collection)
+        put("failureKind",failureKind); put("speedBytes",speedBytes); put("retryCount",retryCount); put("durationSeconds",durationSeconds)
     }
     companion object {
         fun from(o: JSONObject) = DownloadJob(
@@ -165,12 +179,15 @@ data class DownloadJob(
             thumbnail=o.optString("thumbnail").takeIf { it.startsWith("https://") },
             options=DownloadOptions.from(o.getJSONObject("options")),
             state=runCatching { JobState.valueOf(o.optString("state")) }.getOrDefault(JobState.FAILED),
-            progress=o.optDouble("progress").toFloat().coerceIn(0f,100f),
+            progress=(o.optDouble("progress",0.0).takeIf { it.isFinite() } ?: 0.0).toFloat().coerceIn(0f,100f),
             detail=o.optString("detail"),createdAt=o.optLong("createdAt"),
             files=o.optJSONArray("files")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
             notes=o.optJSONArray("notes")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
             phase=o.optString("phase","queued"), progressKnown=o.optBoolean("progressKnown",o.optDouble("progress",0.0)>0),
             etaSeconds=o.optLong("etaSeconds",-1),bytesDownloaded=o.optLong("bytesDownloaded",0),totalBytes=o.optLong("totalBytes",0),
+            priority=o.optInt("priority").coerceIn(-1,1), queueOrder=o.optLong("queueOrder",o.optLong("createdAt")),
+            favorite=o.optBoolean("favorite"), collection=o.optString("collection").take(80),
+            failureKind=o.optString("failureKind"), speedBytes=o.optLong("speedBytes").coerceAtLeast(0), retryCount=o.optInt("retryCount").coerceIn(0,3),
             durationSeconds=o.optInt("durationSeconds",0).coerceAtLeast(0)
         )
     }
@@ -179,6 +196,7 @@ fun normalizeUrl(input: String): String {
     val value=input.trim()
     val extracted=Regex("https?://[^\\s<>]+").find(value)?.value ?: value
     val normalized=if (!extracted.contains("://")) "https://$extracted" else extracted
+    require(IncomingLinks.valid(normalized)!=null) { "Geçerli bir site adresi gir." }
     val uri=Uri.parse(normalized)
     require(uri.scheme == "https" || uri.scheme == "http") { "Geçerli bir paylaşım bağlantısı gir." }
     require(!uri.host.isNullOrBlank() && uri.host!!.contains('.') && uri.userInfo == null) { "Geçerli bir site adresi gir." }

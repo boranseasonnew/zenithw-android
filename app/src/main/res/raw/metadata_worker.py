@@ -66,6 +66,8 @@ def compact(info):
                          for f in info.get('formats', [])]
     for key in ('subtitles', 'automatic_captions'):
         result[key] = {language: [] for language in info.get(key, {})}
+    result['chapters'] = [{k: chapter.get(k) for k in ('title', 'start_time', 'end_time')}
+                          for chapter in info.get('chapters', [])[:500] if isinstance(chapter, dict)]
     if 'entries' in info:
         result['entries'] = [compact(entry) for entry in info.get('entries', []) if entry is not None]
     # Flat playlist entries need their source URL, but format URLs never cross this protocol.

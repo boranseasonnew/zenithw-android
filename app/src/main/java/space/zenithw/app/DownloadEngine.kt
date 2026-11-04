@@ -364,6 +364,11 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
             if(DownloadPolicy.archiveSkipped(response.out+"\n"+response.err) &&
                 directory.listFiles().orEmpty().none { it.isFile && DownloadPolicy.isPublicOutput(it.name) })
                 return@withEngine DownloadOutcome(notes.distinct(),archiveSkipped=true)
+            if(job.options.mergeClips && job.options.clipRanges.size>1 && job.options.customArguments.isBlank()) {
+                try { LocalMediaTools(context).mergeClips(directory,job.options.mode) }
+                catch(cancelled: CancellationException) { throw cancelled }
+                catch(e: Exception) { notes.add(AppLanguage.context(context).getString(R.string.feature_merge_failed)) }
+            }
             // EmbedThumbnail can finish without embedding when the source has no usable image.
             DownloadPolicy.thumbnailWarning(response.out+"\n"+response.err)?.let { notes.add(it) }
             if(job.options.customArguments.isBlank() && job.options.embedThumbnail && job.options.mode!=MediaMode.SUBTITLES) {
@@ -380,13 +385,18 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         require(!o.filenameTemplate.contains('/') && !o.filenameTemplate.contains('\\') && !o.filenameTemplate.contains(".."))
         val r=baseRequest(if(snapshot==null) job.url else null)
         snapshot?.let { r.addOption("--load-info-json",it.absolutePath) }
-        val name=if(o.filenameOverride.isNotBlank()) InspectionPolicy.literalFilename(o.filenameOverride)
+        val nameBase=if(o.filenameOverride.isNotBlank()) InspectionPolicy.literalFilename(o.filenameOverride)
             else o.filenameTemplate.ifBlank { "%(title).150B [%(id)s].%(ext)s" }
+        val name=if(o.clipRanges.isNotEmpty()) nameBase.replace(".%(ext)s"," - %(section_number)03d.%(ext)s") else nameBase
         r.addOption("-o",File(directory,name).absolutePath)
         if(o.restrictFilenames) r.addOption("--restrict-filenames")
         if(o.formatSort.isNotBlank()) { require(o.formatSort.matches(Regex("[a-zA-Z0-9_:+.,~/-]+")));r.addOption("--format-sort",o.formatSort) }
         if(o.maxFilesizeMb>0) r.addOption("--max-filesize","${o.maxFilesizeMb}M")
-        InspectionPolicy.section(o.clipStart,o.clipEnd)?.let { r.addOption("--download-sections",it) }
+        if(o.clipRanges.isNotEmpty()) {
+            require(o.clipRanges.size<=20 && o.mode!=MediaMode.SUBTITLES && !o.playlist)
+            o.clipRanges.forEach { it.validate();r.addOption("--download-sections","*${it.start}-${it.end}") }
+        } else InspectionPolicy.section(o.clipStart,o.clipEnd)?.let { r.addOption("--download-sections",it) }
+        if(o.exactCuts) r.addOption("--force-keyframes-at-cuts")
         r.addOption("--newline"); r.addOption("--no-mtime")
         r.addOption("--progress");r.addOption("--progress-delta","0.2");r.addOption("--no-simulate")
         r.addOption("--output-na-placeholder","null")
