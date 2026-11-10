@@ -10,6 +10,7 @@ internal class MetadataFixture(
     private val delayMillis: Long = 0,
     private val media: ByteArray? = null,
     private val mediaStatus: () -> String = { "200 OK" },
+    private val beforeRespond: (String) -> Unit = {},
 ): java.io.Closeable {
     private val server=ServerSocket(0,20,InetAddress.getByName("127.0.0.1"))
     val requests=AtomicInteger()
@@ -29,6 +30,7 @@ internal class MetadataFixture(
                         requests.incrementAndGet()
                         val path=request.split(' ').getOrElse(1) { "/" }
                         paths.computeIfAbsent(path) { AtomicInteger() }.incrementAndGet()
+                        beforeRespond(path)
                         if(delayMillis>0) Thread.sleep(delayMillis)
                         val type: String
                         val body=when {

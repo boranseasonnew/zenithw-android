@@ -7,6 +7,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.AfterClass
@@ -192,28 +193,28 @@ class DownloadRecoveryTest {
     @Test fun aFreeSlotWakesCapacityWaitWithoutWaitingForFailureBackoff() = runBlocking {
         val oldConcurrency = app.store.concurrentDownloads
         val releaseTransfer = CountDownLatch(1)
-        val mediaRequests = AtomicInteger()
         app.store.concurrentDownloads = 1
         try {
-            mediaFixture(mediaStatus = {
-                mediaRequests.incrementAndGet()
-                releaseTransfer.await(60, TimeUnit.SECONDS)
-                "200 OK"
+            mediaFixture(beforeRespond = { path ->
+                // Hold the source before it can finish. The queue test needs a
+                // claimed slot and does not depend on yt-dlp reaching media GET.
+                if (path == "/captioned") releaseTransfer.await(60, TimeUnit.SECONDS)
             }).use { source ->
                 val video = options.copy(subtitles = false)
-                val active = DownloadJob(url = source.origin + "/captioned", title = "Active fixture", options = video.copy(timeout = 45))
+                val active = DownloadJob(url = source.origin + "/captioned", title = "Active fixture", options = video.copy(timeout = 45),
+                    priority = 1, queueOrder = Long.MIN_VALUE)
                 val queued = DownloadJob(url = source.origin + "/captioned-queued", title = "Waiting fixture",
-                    options = video.copy(cookieId = UUID.randomUUID().toString()))
+                    options = video.copy(cookieId = UUID.randomUUID().toString()), priority = 1, queueOrder = Long.MIN_VALUE + 1)
                 try {
                     DownloadWorker.enqueue(app, active)
-                    withTimeout(25000) { while (mediaRequests.get() == 0) delay(50) }
+                    awaitFixtureJob(active.id, 25000, "claiming the first slot") { it.state == JobState.RUNNING }
                     DownloadWorker.enqueue(app, queued)
-                    withTimeout(15000) { while (app.store.get(queued.id)?.phase != "queue_wait") delay(50) }
+                    awaitFixtureJob(queued.id, 15000, "recording capacity wait") { it.phase == "queue_wait" }
                     assertEquals(0, app.store.get(queued.id)?.retryCount)
                     DownloadWorker.cancel(app, active.id)
                     releaseTransfer.countDown()
                     // The original WorkManager request was backed off for 30s.
-                    withTimeout(15000) { while (app.store.get(queued.id)?.state != JobState.FAILED) delay(50) }
+                    awaitFixtureJob(queued.id, 15000, "waking the next job") { it.state == JobState.FAILED }
                     assertEquals("SESSION", app.store.get(queued.id)?.failureKind)
                     assertEquals(0, app.store.get(queued.id)?.retryCount)
                     assertEquals(0, source.requestsFor("/captioned-queued"))
@@ -251,10 +252,31 @@ class DownloadRecoveryTest {
         }
     }
 
-    private fun mediaFixture(delayMillis: Long = 0, mediaStatus: () -> String = { "200 OK" }) = MetadataFixture(
+    private suspend fun awaitFixtureJob(jobId: String, timeoutMs: Long, step: String, reached: (DownloadJob) -> Boolean) {
+        val pending = setOf(JobState.QUEUED, JobState.RUNNING, JobState.SAVING)
+        val observed = withTimeoutOrNull(timeoutMs) {
+            var job = app.store.get(jobId)
+            while (job == null || (!reached(job) && job.state in pending)) {
+                delay(50)
+                job = app.store.get(jobId)
+            }
+            job
+        }
+        if (observed == null || !reached(observed)) {
+            val current = app.store.get(jobId)
+            val pendingCounts = app.store.jobs.value.filter { it.state in pending }.groupingBy { it.state }.eachCount()
+            val taskLog = app.store.taskLogs.value[jobId].orEmpty().takeLast(15).joinToString("\n")
+            throw AssertionError("Failed while $step. State=${current?.state}, phase=${current?.phase}, " +
+                "failure=${current?.failureKind}, retries=${current?.retryCount}, pending=$pendingCounts\n$taskLog")
+        }
+    }
+
+    private fun mediaFixture(delayMillis: Long = 0, mediaStatus: () -> String = { "200 OK" },
+                             beforeRespond: (String) -> Unit = {}) = MetadataFixture(
         delayMillis = delayMillis,
         media = instrumentation.context.assets.open("download-fixture.mp4").use { it.readBytes() },
         mediaStatus = mediaStatus,
+        beforeRespond = beforeRespond,
     )
 
     private suspend fun download(url: String, options: DownloadOptions, output: File): DownloadOutcome =
