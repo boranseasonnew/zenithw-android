@@ -31,10 +31,11 @@ fun WorkspaceHeader(page: Int,active: Int,onHome: ()->Unit,onLibrary: (Boolean)-
     Surface(color=Ink) {
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal=16.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
             if(page!=0) IconButton(onClick=onHome) { Icon(Icons.Outlined.ArrowBack,texts.getString(R.string.workspace_home)) }
-            Column(Modifier.weight(1f).padding(start=if(page==0) 8.dp else 0.dp)) {
-                Text("Zenith",style=MaterialTheme.typography.titleLarge)
-                if(page!=0) Text(BuildConfig.VERSION_NAME,color=Muted,style=MaterialTheme.typography.labelSmall)
-            }
+            if(page==0) {
+                Text("Zenith",style=MaterialTheme.typography.titleLarge,maxLines=1,
+                    overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier=Modifier.weight(1f).padding(start=8.dp))
+            } else Spacer(Modifier.weight(1f))
             IconButton(onClick={ onLibrary(false) }) {
                 BadgedBox(badge={ if(active>0) Badge(containerColor=Silver,contentColor=Ink) { Text(active.toString()) } }) {
                     Icon(Icons.Outlined.FolderOpen,texts.getString(R.string.workspace_library))
