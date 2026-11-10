@@ -1,0 +1,1 @@
+3.1.1 hotfix. Compact download options and one-handed home controls. Download engine settings are now first. Downloads reuse valid previews, recover from expired links, and can save media when optional subtitles fail. Clearer session and retry errors. Expanded About in all five languages.

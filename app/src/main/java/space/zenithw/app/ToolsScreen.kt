@@ -214,7 +214,7 @@ import kotlinx.coroutines.withContext
         item {
             ExpandableSection(texts.getString(R.string.feature_backup),texts.getString(R.string.feature_backup_hint)) {
                 OptionSwitch(texts.getString(R.string.feature_backup_library),value=backupLibrary) { backupLibrary=it }
-                TextButton(onClick={ backupOutput.launch("zenith-settings-3.1.0.json") }) { Text(texts.getString(R.string.feature_export)) }
+                TextButton(onClick={ backupOutput.launch("zenith-settings-${BuildConfig.VERSION_NAME.substringBefore('-')}.json") }) { Text(texts.getString(R.string.feature_export)) }
                 TextButton(onClick={ backupInput.launch(arrayOf("application/json","text/plain","application/octet-stream")) }) { Text(texts.getString(R.string.feature_restore)) }
             }
         }

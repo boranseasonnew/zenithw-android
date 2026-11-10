@@ -39,5 +39,13 @@ fun main() {
     expect(p.thumbnailWarning("[EmbedThumbnail] There aren't any thumbnails to embed")!=null)
     expect(p.thumbnailWarning("[EmbedThumbnail] Embedding thumbnail in file")==null)
     expect(p.failureDetail("ERROR: Unable to embed using ffprobe & ffmpeg").startsWith("Kapak gömülemedi"))
+    expect(!p.isExpectedOutput("cover.jpg", "SUBTITLES", false))
+    expect(p.isExpectedOutput("video.en.vtt", "SUBTITLES", false))
+    expect(!p.isExpectedOutput("video.en.vtt.part", "SUBTITLES", false))
+    expect(p.isExpectedOutput("video.mp4", "VIDEO", false))
+    expect(!p.isExpectedOutput("video.en.vtt", "VIDEO", false))
+    expect(p.subtitleWarning("[info] There are no subtitles for the requested languages") != null)
+    expect(p.subtitleWarning("WARNING: Unable to download video subtitles for 'en': HTTP Error 429")?.contains("HTTP 429") == true)
+    expect(p.failureDetail(RecoveryFailure(RecoveryKind.SUBTITLE, 429)).startsWith("HTTP 429"))
     println("$count focused policy checks passed")
 }

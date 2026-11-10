@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_sheet_advanced">Gelişmiş seçenekler</string>
+    <string name="download_sheet_custom">Özel</string>
+    <string name="download_sheet_audio_quality">Ses kalitesi</string>
+    <string name="download_sheet_subtitle_format">Altyazı biçimi</string>
+    <string name="download_sheet_cover">Kapak</string>
+    <string name="download_sheet_metadata">Metadata</string>
+    <string name="download_sheet_stop_analysis">Analizi durdur</string>
+</resources>

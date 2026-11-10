@@ -60,9 +60,10 @@ class DownloadRegressionTest {
         val directory=File(app.cacheDir,"session-regression-${UUID.randomUUID()}").apply { mkdirs() }
         try {
             val method=DownloadEngine::class.java.getDeclaredMethod("request",DownloadJob::class.java,
-                File::class.java,File::class.java,java.lang.Boolean.TYPE,File::class.java).apply { isAccessible=true }
+                File::class.java,File::class.java,java.lang.Boolean.TYPE,File::class.java,
+                java.lang.Boolean.TYPE,File::class.java).apply { isAccessible=true }
             fun request(agent: String="")=method.invoke(app.engine,DownloadJob(url="https://example.org/video",title="Fixture",
-                options=DownloadOptions(cookieId=profile.id,userAgent=agent)),directory,null,false,null) as YoutubeDLRequest
+                options=DownloadOptions(cookieId=profile.id,userAgent=agent)),directory,null,false,null,true,null) as YoutubeDLRequest
             assertEquals("Fixture browser/1.0",request().getOption("--user-agent"))
             assertEquals("Explicit agent",request("Explicit agent").getOption("--user-agent"))
             val args=request().buildCommand()

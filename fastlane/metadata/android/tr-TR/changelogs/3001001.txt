@@ -1,0 +1,1 @@
+3.1.1 düzeltme sürümü. Kompakt indirme seçenekleri ve tek elle kullanılan ana ekran. İndirme motoru ayarların başında. Geçerli önizleme yeniden kullanılır, süresi dolan bağlantı yenilenir ve isteğe bağlı altyazı başarısız olsa da medya kaydedilebilir. Hakkında bölümü beş dilde genişletildi.

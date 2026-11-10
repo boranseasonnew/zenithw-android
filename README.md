@@ -46,19 +46,21 @@ The interface is available in **English, Turkish, German, French and Russian**. 
 
 ## Get the app
 
-The latest stable release is **[3.1.0](https://github.com/boranseasonnew/zenithw-android/releases/tag/v3.1.0)** and requires **Android 7.0 or later (API 24+)**. Download the APK that matches your device:
+The latest stable release is **[3.1.1](https://github.com/boranseasonnew/zenithw-android/releases/tag/v3.1.1)** and requires **Android 7.0 or later (API 24+)**. Download the APK that matches your device:
 
 | APK | Typical devices |
 | --- | --- |
-| [arm64-v8a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.0/Zenith-3.1.0-stable-arm64-v8a.apk) | Most modern Android phones and tablets |
-| [armeabi-v7a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.0/Zenith-3.1.0-stable-armeabi-v7a.apk) | Older 32-bit ARM devices |
-| [x86_64](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.0/Zenith-3.1.0-stable-x86_64.apk) | Compatible Intel/AMD devices and emulators |
+| [arm64-v8a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.1/Zenith-3.1.1-stable-arm64-v8a.apk) | Most modern Android phones and tablets |
+| [armeabi-v7a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.1/Zenith-3.1.1-stable-armeabi-v7a.apk) | Older 32-bit ARM devices |
+| [x86_64](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.1/Zenith-3.1.1-stable-x86_64.apk) | Compatible Intel/AMD devices and emulators |
 
-For file integrity, compare the downloaded APK with [SHA256SUMS.txt](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.0/SHA256SUMS.txt). The public [signing-certificate fingerprint](release-certificate.sha256) helps verify update compatibility.
+For file integrity, compare the downloaded APK with [SHA256SUMS.txt](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.1/SHA256SUMS.txt). The public [signing-certificate fingerprint](release-certificate.sha256) helps verify update compatibility.
 
 ## Project status
 
 Version **3.1.0** extends the existing download engine with queue, sharing, library and local media workflows. Physical Android 13 testing passed 28 tests including real media conversion. The final signed release workflow passed **61 Android 13 tests, 23 Android 7 compatibility tests, all 32 Python checks and Android lint**. See the [English release notes](releases/3.1.0.md) and [engineering report](docs/android-3.1.0-report.md) for actual coverage and remaining limitations.
+
+The **3.1.1 hotfix** improves download recovery, brings the engine to the top of Settings, and puts the home actions within one-handed reach. See the [3.1.1 release notes](releases/3.1.1.md).
 
 Downloads depend on yt-dlp support and the source's access requirements. Full native 16 KB memory-page compatibility has not been established; see the [runtime provenance and limits](docs/native-curl-NOTICES.md).
 

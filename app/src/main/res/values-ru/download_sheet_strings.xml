@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_sheet_advanced">Дополнительные параметры</string>
+    <string name="download_sheet_custom">Вручную</string>
+    <string name="download_sheet_audio_quality">Качество аудио</string>
+    <string name="download_sheet_subtitle_format">Формат субтитров</string>
+    <string name="download_sheet_cover">Обложка</string>
+    <string name="download_sheet_metadata">Метаданные</string>
+    <string name="download_sheet_stop_analysis">Остановить анализ</string>
+</resources>

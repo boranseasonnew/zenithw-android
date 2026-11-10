@@ -158,6 +158,8 @@ class LocalStore(context: Context) {
     fun get(id: String)=mutableJobs.value.find { it.id==id }
 }
 
+internal class CookieSessionException(cause: Throwable? = null) : IllegalStateException("SESSION_UNAVAILABLE", cause)
+
 class CookieVault(private val context: Context) {
     private val preferences=context.getSharedPreferences("zenithw_cookie_vault",Context.MODE_PRIVATE)
     private val alias="zenithw_v2_cookie_key"
@@ -214,22 +216,66 @@ class CookieVault(private val context: Context) {
         require(userAgent.length<=1024 && userAgent.none(Char::isISOControl))
         val cipher=Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE,key()) }
         val encrypted=cipher.doFinal(text.toByteArray(Charsets.UTF_8))
-        val updated=System.currentTimeMillis()
+        val updated=maxOf(System.currentTimeMillis(), revision(id) + 1)
         val data=JSONObject().put("id",id).put("host",host).put("count",count)
             .put("updated",updated).put("iv",Base64.encodeToString(cipher.iv,Base64.NO_WRAP))
             .put("payload",Base64.encodeToString(encrypted,Base64.NO_WRAP)).put("userAgent",userAgent)
         require(preferences.edit().putString(id,data.toString()).commit())
         return CookieProfile(id,host,count,updated)
     }
-    fun temporaryFile(id: String?, directory: File): File? {
-        if(id==null) return null
-        val raw=preferences.getString(id,null) ?: error("Seçili oturum bulunamadı; yeniden bağlan.")
-        val data=JSONObject(raw)
-        val cipher=Cipher.getInstance("AES/GCM/NoPadding").apply {
-            init(Cipher.DECRYPT_MODE,key(),GCMParameterSpec(128,Base64.decode(data.getString("iv"),Base64.NO_WRAP)))
+    internal data class SessionIdentity(val revision: Long, val userAgent: String)
+
+    internal fun exists(id: String?) = id == null || preferences.contains(id)
+
+    private fun record(id: String): JSONObject = try {
+        val raw = preferences.getString(id, null) ?: throw CookieSessionException()
+        JSONObject(raw).also {
+            if (it.optString("id") != id || it.optString("iv").isBlank() || it.optString("payload").isBlank()) {
+                throw CookieSessionException()
+            }
         }
-        val bytes=cipher.doFinal(Base64.decode(data.getString("payload"),Base64.NO_WRAP))
-        return File(directory,"session.txt").apply { writeBytes(bytes) }
+    } catch (error: CookieSessionException) {
+        throw error
+    } catch (error: Exception) {
+        throw CookieSessionException(error)
+    }
+
+    internal fun identity(id: String?): SessionIdentity? = id?.let {
+        val data = record(it)
+        val agent = data.optString("userAgent").takeIf { value ->
+            value.length <= 1024 && value.none(Char::isISOControl)
+        }.orEmpty()
+        SessionIdentity(data.optLong("updated"), agent)
+    }
+
+    @Synchronized internal fun requireAvailable(id: String?) {
+        if (id != null) decrypt(record(id)).fill(0)
+    }
+
+    private fun decrypt(data: JSONObject): ByteArray = try {
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
+            init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, Base64.decode(data.getString("iv"), Base64.NO_WRAP)))
+        }
+        cipher.doFinal(Base64.decode(data.getString("payload"), Base64.NO_WRAP))
+    } catch (error: Exception) {
+        throw CookieSessionException(error)
+    }
+
+    @Synchronized fun temporaryFile(id: String?, directory: File): File? {
+        if(id==null) return null
+        val destination = File(directory, "session.txt")
+        try {
+            val bytes = decrypt(record(id))
+            try {
+                destination.writeBytes(bytes)
+            } finally {
+                bytes.fill(0)
+            }
+            return destination
+        } catch (error: Exception) {
+            destination.delete()
+            throw error
+        }
     }
     fun userAgent(id: String?): String = id?.let { preferences.getString(it,null) }?.let {
         runCatching { JSONObject(it).optString("userAgent").takeIf { ua -> ua.length<=1024 && ua.none(Char::isISOControl) } }.getOrNull()
@@ -237,5 +283,5 @@ class CookieVault(private val context: Context) {
     fun revision(id: String?): Long = id?.let { preferences.getString(it,null) }?.let {
         runCatching { JSONObject(it).optLong("updated") }.getOrNull()
     } ?: 0L
-    fun remove(id: String) { preferences.edit().remove(id).apply() }
+    @Synchronized fun remove(id: String): Boolean = preferences.edit().remove(id).commit()
 }

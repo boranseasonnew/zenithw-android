@@ -46,13 +46,15 @@ class ReleaseSmokeTest {
     }
 
     private val instrumentation get()=InstrumentationRegistry.getInstrumentation()
-    private fun nodes(): List<android.view.accessibility.AccessibilityNodeInfo> {
+    private fun nodes(
+        root: android.view.accessibility.AccessibilityNodeInfo? = instrumentation.uiAutomation.rootInActiveWindow,
+    ): List<android.view.accessibility.AccessibilityNodeInfo> {
         val result=mutableListOf<android.view.accessibility.AccessibilityNodeInfo>()
         fun visit(node: android.view.accessibility.AccessibilityNodeInfo) {
             result.add(node)
             for(index in 0 until node.childCount) node.getChild(index)?.let(::visit)
         }
-        instrumentation.uiAutomation.rootInActiveWindow?.let(::visit)
+        root?.let(::visit)
         return result
     }
     private fun waitForLabel(label: String): android.view.accessibility.AccessibilityNodeInfo {
@@ -145,7 +147,7 @@ class ReleaseSmokeTest {
 
     private fun scrollToLabel(label: String) {
         repeat(35) {
-            if(nodes().any { it.text?.toString()==label && it.isVisibleToUser })return
+            if(nodes().any { matchesLabel(it,label) && it.isVisibleToUser })return
             // A page-sized accessibility scroll can jump over a partially clipped row.
             // Move one category at a time with the same small swipe a person uses.
             val metrics=app.resources.displayMetrics
@@ -199,6 +201,30 @@ class ReleaseSmokeTest {
         assertEquals("https://example.org",normalizeUrl("example.org"))
         assertEquals("https://example.org/login",normalizeUrl("https://example.org/login"))
         instrumentation.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+    }
+
+    @Test fun hotfixHomeSettingsAndAbout() {
+        val previousLanguage=app.store.language
+        try {
+            app.store.language="tr"
+            app.startActivity(android.content.Intent(app,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
+            val paste=settledBounds("Yapıştır")
+            val download=settledBounds("İndir")
+            val field=settledBounds("Video bağlantısı")
+            assertTrue("Paste and download belong to the lower-right action row", paste.centerX()>field.centerX() && download.left>=paste.right && paste.top>=field.bottom)
+            assertTrue("The download icon has a spoken label", waitForLabel("İndir").contentDescription?.toString()=="İndir")
+            captureUi("hotfix-home")
+            openSettingsRoot()
+            assertTrue("The engine must be the first settings category", settledBounds("İndirme motoru").top<settledBounds("Hakkında ve sürüm").top)
+            captureUi("hotfix-settings")
+            clickLabel("İndirme motoru");waitForLabel("Şimdi güncelle")
+            captureUi("hotfix-engine")
+            instrumentation.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+            clickLabel("Hakkında ve sürüm");scrollToLabel("ZenithW ne için var?")
+            assertTrue(waitForLabel("ZenithW ne için var?").isVisibleToUser)
+            captureUi("hotfix-about")
+            assertEquals(5,listOf("tr","en","de","fr","ru").map { AppLanguage.context(app,it).getString(R.string.about_mission_purpose) }.toSet().size)
+        } finally { app.store.language=previousLanguage }
     }
 
     @Test fun updateChannels()=runBlocking {
@@ -343,12 +369,13 @@ class ReleaseSmokeTest {
         val previousConfigure=app.store.configureBeforeDownload
         val previousTheme=app.store.themeMode
         val previousOptions=app.store.defaultOptions
+        val previousLanguage=app.store.language
         try {
             app.store.language="tr"
             app.store.showMediaPreview=false;app.store.configureBeforeDownload=true;app.store.themeMode="dark"
             // Save/restore coverage intentionally leaves AUDIO selected. Start
             // this independent UI test in VIDEO so it exercises a real mode change.
-            app.store.defaultOptions=previousOptions.copy(mode=MediaMode.VIDEO)
+            app.store.defaultOptions=previousOptions.copy(mode=MediaMode.VIDEO, height=0, container="mp4", scheduledAt=0)
             app.startActivity(android.content.Intent(app,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
             waitForLabel("İndir")
             val field=nodes().first { it.className?.toString()=="android.widget.EditText" }
@@ -356,11 +383,28 @@ class ReleaseSmokeTest {
                 android.os.Bundle().apply { putCharSequence(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,"https://example.org/video") }))
             // A complete pasted URL now opens configuration without a second tap.
             waitForLabel("İndirmeyi ayarla")
-            waitForLabel("İndirmeyi başlat")
+            for (label in listOf("Video", "Ses", "Altyazı", "Kalite", "Dosya biçimi", "İptal", "İndir")) {
+                assertTrue("Initial download control is visible: $label", waitForLabel(label).isVisibleToUser)
+            }
+            assertFalse(nodes().any { it.text?.toString() == "Özel yt-dlp seçenekleri" && it.isVisibleToUser })
             captureUi("configure-before-metadata")
+            clickLabel("Kalite");clickLabel("720p");waitForLabel("720p")
+            clickLabel("Dosya biçimi");clickLabel("MKV");waitForLabel("MKV")
             clickLabel("Ses");waitForLabel("Ses biçimi")
             captureUi("audio-configuration")
-            clickLabel("Pencereyi kapat")
+            clickLabel("Altyazı");waitForLabel("Altyazı biçimi")
+            assertFalse(nodes().any { it.text?.toString() == "Ses biçimi" && it.isVisibleToUser })
+            captureUi("subtitle-configuration")
+            clickLabel("Gelişmiş seçenekler")
+            scrollToLabel("Dosya adı · isteğe bağlı")
+            assertTrue(waitForLabel("İndir").isVisibleToUser)
+            assertTrue(waitForLabel("İptal").isVisibleToUser)
+            captureUi("advanced-configuration")
+            if (InstrumentationRegistry.getArguments().getString("checkDownloadSheetIme") == "true") {
+                checkDownloadSheetKeyboard("Dosya adı · isteğe bağlı")
+            }
+            clickLabel("İptal")
+            if (InstrumentationRegistry.getArguments().getString("onlyDownloadSheet") == "true") return
             clickLabel("Toplu indirme ve komutlar")
             clickLabel("Komutlar");waitForLabel("yt-dlp seçenekleri")
             captureUi("command-templates")
@@ -373,6 +417,71 @@ class ReleaseSmokeTest {
         } finally {
             app.store.showMediaPreview=previousPreview;app.store.configureBeforeDownload=previousConfigure
             app.store.themeMode=previousTheme;app.store.defaultOptions=previousOptions
+            app.store.language=previousLanguage
+        }
+    }
+
+    private fun checkDownloadSheetKeyboard(editorLabel: String) {
+        val automation = instrumentation.uiAutomation
+        val service = automation.serviceInfo
+        val previousFlags = service.flags
+        service.flags = previousFlags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+        automation.serviceInfo = service
+        val inputMethod = android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD
+        val application = android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION
+        try {
+            val editor = nodes().firstOrNull {
+                matchesLabel(it, editorLabel) && it.isEditable && it.isVisibleToUser
+            } ?: waitForLabel(editorLabel)
+            val bounds = android.graphics.Rect().also(editor::getBoundsInScreen)
+            assertFalse("The filename field must have a visible touch area", bounds.isEmpty)
+            val downTime = android.os.SystemClock.uptimeMillis()
+            for (action in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_UP)) {
+                val event = android.view.MotionEvent.obtain(
+                    downTime, android.os.SystemClock.uptimeMillis(), action,
+                    bounds.exactCenterX(), bounds.exactCenterY(), 0,
+                )
+                try {
+                    event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+                    assertTrue(automation.injectInputEvent(event, true))
+                } finally {
+                    event.recycle()
+                }
+            }
+            val deadline = android.os.SystemClock.uptimeMillis() + 8_000
+            val labels = listOf("İptal", "İndir")
+            var settled = 0
+            while (android.os.SystemClock.uptimeMillis() < deadline) {
+                val windows = automation.windows
+                val keyboard = windows.firstOrNull { it.type == inputMethod }
+                val keyboardBounds = keyboard?.let { android.graphics.Rect().also(it::getBoundsInScreen) }
+                val controls = windows.filter { it.type == application }.firstNotNullOfOrNull { window ->
+                    val windowNodes = nodes(window.root)
+                    val buttons = labels.mapNotNull { label ->
+                        val labelNode = windowNodes.firstOrNull { matchesLabel(it, label) && it.isVisibleToUser }
+                        generateSequence(labelNode) { it.parent }.firstOrNull { it.isClickable && it.isVisibleToUser }
+                    }
+                    buttons.takeIf { it.size == labels.size }
+                }
+                val clear = keyboardBounds != null && !keyboardBounds.isEmpty && controls != null && controls.all {
+                    val control = android.graphics.Rect().also(it::getBoundsInScreen)
+                    !control.isEmpty && !android.graphics.Rect.intersects(control, keyboardBounds)
+                }
+                settled = if (clear) settled + 1 else 0
+                if (settled >= 3) {
+                    captureUi("advanced-keyboard")
+                    return
+                }
+                android.os.SystemClock.sleep(100)
+            }
+            captureUi("advanced-keyboard-missing-footer")
+            error("The open keyboard obscured the download footer, or no IME window was detected")
+        } finally {
+            if (automation.windows.any { it.type == inputMethod }) {
+                instrumentation.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+            }
+            service.flags = previousFlags
+            automation.serviceInfo = service
         }
     }
 }

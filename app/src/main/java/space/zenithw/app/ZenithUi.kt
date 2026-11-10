@@ -153,32 +153,80 @@ private val CardShape=RoundedCornerShape(26.dp)
     val keyboard=LocalSoftwareKeyboardController.current
     fun analyze() { keyboard?.hide();onAnalyze() }
     val current=homeDownloadJob(jobs,screen.homeJobId)
-    Column(Modifier.fillMaxSize().padding(horizontal=24.dp,vertical=24.dp)) {
-        LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(18.dp,Alignment.CenterVertically)) {
-        current?.let { job -> item(key=job.id) { HomeDownloadCard(job,{ onCancel(job.id) },{ onRetry(job) },{ onOpen(job) }) } }
-        item(key="link") {
-        OutlinedTextField(screen.url,onUrl,placeholder={ Text("https://…",color=Muted) },
+    Column(Modifier.fillMaxSize().padding(horizontal=20.dp,vertical=12.dp)) {
+        LazyColumn(
+            modifier=Modifier.weight(1f),
+            verticalArrangement=Arrangement.spacedBy(16.dp,Alignment.Bottom),
+            contentPadding=PaddingValues(bottom=12.dp),
+        ) {
+            current?.let { job ->
+                item(key=job.id) {
+                    HomeDownloadCard(job,{ onCancel(job.id) },{ onRetry(job) },{ onOpen(job) })
+                }
+            }
+        }
+        OutlinedTextField(
+            value=screen.url,
+            onValueChange=onUrl,
+            placeholder={ Text("https://…",color=Muted) },
             label={ Text(texts.getString(R.string.seal_video_link)) },
-            modifier=Modifier.fillMaxWidth(),singleLine=true,shape=RoundedCornerShape(20.dp),
+            modifier=Modifier.fillMaxWidth(),
+            singleLine=true,
+            shape=RoundedCornerShape(16.dp),
             leadingIcon={ Icon(Icons.Outlined.Link,null,tint=Muted) },
             keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Uri,imeAction=ImeAction.Go),
             keyboardActions=KeyboardActions(onGo={ if(screen.url.isNotBlank() && !screen.playlistLoading) analyze() }),
-            trailingIcon={ Row {
-                IconButton(onClick=onCookies) { Icon(Icons.Outlined.Lock,texts.getString(R.string.connect_session),tint=if(screen.cookieId!=null) Silver else Muted) }
-                if(screen.url.isNotEmpty()) IconButton(onClick={ onUrl("") }) { Icon(Icons.Outlined.Close,texts.getString(R.string.clear_link)) }
-            } })
-        }
-        }
-        Row(Modifier.fillMaxWidth().padding(top=32.dp),horizontalArrangement=Arrangement.spacedBy(12.dp),verticalAlignment=Alignment.CenterVertically) {
-            OutlinedButton(onClick={ clipboard.getText()?.text?.takeIf(String::isNotBlank)?.let(onUrl) },
-                modifier=Modifier.heightIn(min=56.dp),shape=RoundedCornerShape(18.dp)) {
-                Icon(Icons.Outlined.ContentPaste,null,Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp));Text(texts.getString(R.string.paste))
+            colors=OutlinedTextFieldDefaults.colors(
+                focusedContainerColor=Panel,
+                unfocusedContainerColor=Panel,
+                focusedBorderColor=Silver,
+                unfocusedBorderColor=Hairline,
+            ),
+            trailingIcon={
+                if(screen.url.isNotEmpty()) {
+                    IconButton(onClick={ onUrl("") }) {
+                        Icon(Icons.Outlined.Close,texts.getString(R.string.clear_link))
+                    }
+                }
+            },
+        )
+        Row(
+            modifier=Modifier.fillMaxWidth().padding(top=8.dp),
+            horizontalArrangement=Arrangement.spacedBy(8.dp,Alignment.End),
+            verticalAlignment=Alignment.CenterVertically,
+        ) {
+            IconButton(onClick=onCookies,modifier=Modifier.size(48.dp)) {
+                Icon(
+                    Icons.Outlined.Lock,
+                    texts.getString(R.string.connect_session),
+                    tint=if(screen.cookieId!=null) Silver else Muted,
+                )
             }
-            Button(onClick=::analyze,enabled=screen.url.isNotBlank() && !screen.playlistLoading,
-                modifier=Modifier.weight(1f).heightIn(min=56.dp),shape=RoundedCornerShape(18.dp)) {
-                Icon(Icons.Outlined.FileDownload,null,Modifier.size(21.dp))
-                Spacer(Modifier.width(9.dp));Text(texts.getString(R.string.download))
+            OutlinedButton(
+                onClick={ clipboard.getText()?.text?.takeIf(String::isNotBlank)?.let(onUrl) },
+                modifier=Modifier.weight(1f,fill=false).heightIn(min=48.dp),
+                shape=RoundedCornerShape(14.dp),
+                border=BorderStroke(1.dp,Hairline),
+                colors=ButtonDefaults.outlinedButtonColors(containerColor=PanelRaised,contentColor=Silver),
+                contentPadding=PaddingValues(horizontal=12.dp,vertical=8.dp),
+            ) {
+                Icon(Icons.Outlined.ContentPaste,null,Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(texts.getString(R.string.paste),maxLines=1,overflow=TextOverflow.Ellipsis)
+            }
+            FilledIconButton(
+                onClick=::analyze,
+                enabled=screen.url.isNotBlank() && !screen.playlistLoading,
+                modifier=Modifier.size(48.dp),
+                shape=RoundedCornerShape(14.dp),
+                colors=IconButtonDefaults.filledIconButtonColors(
+                    containerColor=PanelRaised,
+                    contentColor=Silver,
+                    disabledContainerColor=Panel,
+                    disabledContentColor=Muted.copy(alpha=.65f),
+                ),
+            ) {
+                Icon(Icons.Outlined.FileDownload,texts.getString(R.string.download),Modifier.size(24.dp))
             }
         }
     }

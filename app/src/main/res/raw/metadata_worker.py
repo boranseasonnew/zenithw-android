@@ -13,6 +13,7 @@ import threading
 import ssl
 import importlib.util
 from pathlib import Path
+from urllib.parse import parse_qsl, urlsplit
 
 wire = sys.stdout.buffer
 wire_lock = threading.Lock()
@@ -76,12 +77,46 @@ def compact(info):
     return result
 
 
+def snapshot_expiry(info):
+    """Return the earliest explicit expiry on a cached media or caption link."""
+    candidates = [info]
+    formats = info.get('formats')
+    if isinstance(formats, (list, tuple)):
+        candidates.extend(formats)
+    for key in ('subtitles', 'automatic_captions'):
+        captions = info.get(key)
+        if isinstance(captions, dict):
+            for tracks in captions.values():
+                if isinstance(tracks, (list, tuple)):
+                    candidates.extend(tracks)
+    expiries = []
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        for field in ('url', 'manifest_url', 'fragment_base_url'):
+            value = candidate.get(field)
+            if not isinstance(value, str):
+                continue
+            try:
+                pairs = parse_qsl(urlsplit(value).query, max_num_fields=256)
+            except ValueError:
+                continue
+            for key, raw in pairs:
+                if key.lower() in ('expire', 'expires', 'exp', 'expiration') and re.fullmatch(r'[0-9]{10}|[0-9]{13}', raw):
+                    seconds = int(raw) // (1000 if len(raw) == 13 else 1)
+                    expiries.append(seconds)
+    return min(expiries, default=0)
+
+
 class RequestLogger:
     def __init__(self):
         self.impersonation_unavailable = False
 
     def debug(self, message):
-        pass
+        # Observe yt-dlp's phase marker without emitting the raw text or modifying
+        # the extractor/solver. Kotlin records the time from metadata_start.
+        if re.fullmatch(r'\[youtube\] \[jsc:[\w-]+\] Solving JS challenges using (?:quickjs|node|deno|bun)', str(message), re.I):
+            emit('js_challenge')
 
     info = error = debug
 
@@ -174,7 +209,9 @@ while True:
         sanitized = ydl.sanitize_info(info)
         # Retain the full info dictionary only in the app-private snapshot used by
         # --load-info-json. The small UI message avoids per-character huge JSON reads.
-        if 'entries' not in sanitized:
+        link_expiry = 0
+        if ('entries' not in sanitized and not sanitized.get('is_live')
+                and sanitized.get('live_status') not in ('is_live', 'is_upcoming', 'post_live')):
             destination = Path(request['snapshot'])
             destination.unlink(missing_ok=True)
             staged = destination.with_suffix('.partial')
@@ -190,6 +227,7 @@ while True:
                         output.write(chunk)
                 if complete:
                     staged.replace(destination)
+                    link_expiry = snapshot_expiry(sanitized)
             finally:
                 staged.unlink(missing_ok=True)
         if not reusable:
@@ -197,6 +235,7 @@ while True:
             ydl.close()
             ydl = None
         emit('result', info=compact(sanitized), extract_ms=extract_ms,
+             link_expiry_seconds=link_expiry,
              serialize_ms=round((time.monotonic()-serialization)*1000),
              network_count=network_count, network_headers_ms=network_headers_ms)
     except Exception as error:

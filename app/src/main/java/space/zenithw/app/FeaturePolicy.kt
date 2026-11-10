@@ -103,25 +103,57 @@ object FilenamePolicy {
     }
 }
 
-enum class RecoveryKind { FORBIDDEN, RATE_LIMIT, SESSION, FORMAT, NETWORK, STORAGE, PERMISSION, UNSUPPORTED, CONVERSION, ENGINE, UNKNOWN }
+enum class RecoveryKind { FORBIDDEN, RATE_LIMIT, SESSION, FORMAT, SUBTITLE, NETWORK, STORAGE, PERMISSION, UNSUPPORTED, CONVERSION, ENGINE, UNKNOWN }
+
+data class RecoveryFailure(val kind: RecoveryKind, val httpStatus: Int? = null) {
+    val code: String get() = httpStatus?.let { "HTTP_$it" } ?: kind.name
+}
+
 object RecoveryPolicy {
-    fun classify(message: String): RecoveryKind {
-        val m=message.lowercase()
-        return when {
-            "429" in m || "too many requests" in m -> RecoveryKind.RATE_LIMIT
-            "403" in m -> RecoveryKind.FORBIDDEN
-            listOf("sign in","login required","expired session","cookies are no longer valid","http error 401").any { it in m } -> RecoveryKind.SESSION
-            "requested format" in m || "no video formats" in m -> RecoveryKind.FORMAT
-            listOf("timed out","timeout","connection reset","network is unreachable","temporary failure","connection aborted","unable to resolve host").any { it in m } -> RecoveryKind.NETWORK
+    private val statusPattern = Regex("(?i)\\b(?:HTTP(?:\\s+(?:Error|status(?: code)?))?\\s*[:=_]?\\s*|status(?:code)?\\s*=\\s*)([1-5][0-9]{2})\\b")
+
+    fun failure(message: String): RecoveryFailure {
+        // yt-dlp may include earlier warnings or retry attempts. The terminal
+        // error line owns the final classification and its HTTP status.
+        val lines = message.lines().map(String::trim)
+        val lastError = lines.indexOfLast {
+            it.startsWith("ERROR:", ignoreCase = true) || it.startsWith("ERROR ", ignoreCase = true)
+        }
+        // The native downloader can put the HTTP status on the continuation
+        // after an empty ERROR header. Earlier retry warnings are unrelated.
+        val terminal = if (lastError < 0) message else lines.drop(lastError)
+            .takeWhile { !it.startsWith("WARNING:", ignoreCase = true) }.joinToString("\n")
+        val m = terminal.lowercase()
+        val status = statusPattern.findAll(m).lastOrNull()?.groupValues?.get(1)?.toIntOrNull()
+        val kind = when {
+            listOf("session_unavailable", "auth_required", "seçili oturum bulunamadı", "sign in", "login required", "expired session", "cookies are no longer valid").any { it in m } -> RecoveryKind.SESSION
             "no space" in m || "enospc" in m || "storage_limit" in m -> RecoveryKind.STORAGE
             "permission denied" in m || "securityexception" in m || "input_permission" in m || "output_permission" in m -> RecoveryKind.PERMISSION
-            "unsupported url" in m || "unsupported source" in m -> RecoveryKind.UNSUPPORTED
+            isSubtitleFailure(m) -> RecoveryKind.SUBTITLE
+            status == 401 -> RecoveryKind.SESSION
+            status == 429 || "too many requests" in m -> RecoveryKind.RATE_LIMIT
+            status == 403 || status == 410 -> RecoveryKind.FORBIDDEN
+            "requested format" in m || "no video formats" in m || "no_formats" in m -> RecoveryKind.FORMAT
+            status in setOf(408, 500, 502, 503, 504) || listOf("timed out", "timeout", "connection reset", "network is unreachable", "temporary failure", "connection aborted", "unable to resolve host", "remote end closed connection", "incomplete read").any { it in m } -> RecoveryKind.NETWORK
+            "unsupported url" in m || "unsupported source" in m || "unsupported_url" in m -> RecoveryKind.UNSUPPORTED
             "ffmpeg" in m || "conversion failed" in m || "conversion_failed" in m || "encoder_unavailable" in m || "invalid_output" in m -> RecoveryKind.CONVERSION
             "python" in m || "engine" in m -> RecoveryKind.ENGINE
             else -> RecoveryKind.UNKNOWN
         }
+        return RecoveryFailure(kind, status)
     }
+
+    internal fun isSubtitleFailure(lowercaseMessage: String): Boolean =
+        listOf("unable to download video subtitles", "cannot write video subtitles", "subtitle_conversion_failed", "no_subtitle_output", "unable to embed subtitles", "unable to convert subtitles").any { it in lowercaseMessage }
+
+    fun classify(message: String): RecoveryKind = failure(message).kind
     fun retryable(kind: RecoveryKind)=kind in setOf(RecoveryKind.NETWORK,RecoveryKind.RATE_LIMIT)
+
+    fun downloadRetryLimit(kind: RecoveryKind): Int = when (kind) {
+        RecoveryKind.NETWORK -> 2
+        RecoveryKind.RATE_LIMIT -> 1
+        else -> 0
+    }
 }
 
 data class ClipRange(val start: Double,val end: Double) {

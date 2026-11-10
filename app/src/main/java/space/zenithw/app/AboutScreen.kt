@@ -16,9 +16,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.PrivacyTip
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +34,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
@@ -53,13 +60,14 @@ fun AboutScreen(onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, context.getString(R.string.about_back)) }
-            Text(context.getString(R.string.about_title), style = MaterialTheme.typography.headlineMedium)
+            Text(context.getString(R.string.about_title), style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.weight(1f).semantics { heading() })
         }
         Surface(color = Panel, shape = RoundedCornerShape(26.dp)) {
             Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
                     Image(painterResource(R.drawable.zenithw), null, Modifier.size(66.dp))
-                    Column {
+                    Column(Modifier.weight(1f)) {
                         Text("ZenithW", style = MaterialTheme.typography.headlineMedium)
                         Text(context.getString(R.string.about_version, BuildConfig.VERSION_NAME), color = Muted, style = MaterialTheme.typography.bodyMedium)
                     }
@@ -113,6 +121,26 @@ fun AboutScreen(onBack: () -> Unit) {
                 }
             }
         }
+        AboutCard(Icons.Outlined.Public, context.getString(R.string.about_mission_title)) {
+            Text(context.getString(R.string.about_mission_purpose), color = Muted, style = MaterialTheme.typography.bodyMedium)
+            Text(context.getString(R.string.about_mission_values), color = Muted, style = MaterialTheme.typography.bodyMedium)
+        }
+        AboutCard(Icons.Outlined.Download, context.getString(R.string.about_downloads_title)) {
+            Text(context.getString(R.string.about_downloads_formats), color = Muted, style = MaterialTheme.typography.bodyMedium)
+            Text(context.getString(R.string.about_downloads_content), color = Muted, style = MaterialTheme.typography.bodyMedium)
+        }
+        AboutCard(Icons.Outlined.FolderOpen, context.getString(R.string.about_library_title)) {
+            Text(context.getString(R.string.about_library_queue), color = Muted, style = MaterialTheme.typography.bodyMedium)
+            Text(context.getString(R.string.about_library_history), color = Muted, style = MaterialTheme.typography.bodyMedium)
+        }
+        AboutCard(Icons.Outlined.Movie, context.getString(R.string.about_tools_title)) {
+            Text(context.getString(R.string.about_tools_features), color = Muted, style = MaterialTheme.typography.bodyMedium)
+            Text(context.getString(R.string.about_tools_processing), color = Muted, style = MaterialTheme.typography.bodyMedium)
+        }
+        AboutCard(Icons.Outlined.Lock, context.getString(R.string.about_sessions_title)) {
+            Text(context.getString(R.string.about_sessions_storage), color = Muted, style = MaterialTheme.typography.bodyMedium)
+            Text(context.getString(R.string.about_sessions_control), color = Muted, style = MaterialTheme.typography.bodyMedium)
+        }
         AboutCard(Icons.Outlined.PrivacyTip, context.getString(R.string.about_privacy_title)) {
             Text(context.getString(R.string.about_privacy), color = Muted, style = MaterialTheme.typography.bodyMedium)
             Text(context.getString(R.string.about_connections), color = Muted, style = MaterialTheme.typography.bodyMedium)
@@ -123,6 +151,10 @@ fun AboutScreen(onBack: () -> Unit) {
             OutlinedButton(onClick = { open("https://github.com/boranseasonnew/zenithw-android") }, shape = RoundedCornerShape(14.dp)) {
                 Text(context.getString(R.string.about_source)); Spacer(Modifier.width(8.dp)); Icon(Icons.Outlined.OpenInNew, null, Modifier.size(16.dp))
             }
+        }
+        AboutCard(Icons.Outlined.HelpOutline, context.getString(R.string.about_limits_title)) {
+            Text(context.getString(R.string.about_limits_sources), color = Muted, style = MaterialTheme.typography.bodyMedium)
+            Text(context.getString(R.string.about_limits_responsibility), color = Muted, style = MaterialTheme.typography.bodyMedium)
         }
         AboutCard(Icons.Outlined.FavoriteBorder, context.getString(R.string.about_support_title)) {
             Text(context.getString(R.string.about_support), color = Muted, style = MaterialTheme.typography.bodyMedium)
@@ -143,7 +175,8 @@ private fun AboutCard(icon: ImageVector, title: String, content: @Composable Col
         Column(Modifier.fillMaxWidth().padding(21.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Icon(icon, null, tint = Silver, modifier = Modifier.size(21.dp))
-                Text(title, style = MaterialTheme.typography.titleMedium)
+                Text(title, style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f).semantics { heading() })
             }
             content()
         }

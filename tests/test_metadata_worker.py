@@ -6,6 +6,7 @@ import ast
 import json
 import os
 from pathlib import Path
+import re
 import struct
 import subprocess
 import sys
@@ -13,6 +14,7 @@ import tempfile
 import threading
 import time
 import unittest
+from urllib.parse import parse_qsl, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / 'app/src/main/res/raw/metadata_worker.py'
@@ -134,6 +136,31 @@ class MetadataWorkerTests(unittest.TestCase):
                                capture_output=True, text=True, timeout=20)
         self.assertEqual(0, check.returncode, check.stderr)
         self.assertIn('formats', json.loads(check.stdout))
+
+    def test_snapshot_expiry_uses_the_earliest_media_or_caption_link(self):
+        source = ast.parse(SCRIPT.read_text(encoding='utf-8'))
+        function = next(node for node in source.body if isinstance(node, ast.FunctionDef) and node.name == 'snapshot_expiry')
+        scope = {'parse_qsl': parse_qsl, 'urlsplit': urlsplit, 're': re}
+        exec(compile(ast.Module(body=[function], type_ignores=[]), str(SCRIPT), 'exec'), scope)
+        expiry = scope['snapshot_expiry']
+        self.assertEqual(0, expiry({'formats': [{'url': 'https://cdn.example/v?exp=invalid'}]}))
+        self.assertEqual(1780001000, expiry({
+            'formats': [{'url': 'https://cdn.example/v?expire=1780003000',
+                         'manifest_url': 'https://cdn.example/m?exp=1780002000000'}],
+            'subtitles': {'en': [{'url': 'https://cdn.example/s?expires=1780001000'}]},
+            'automatic_captions': {'invalid': None},
+        }))
+
+    def test_challenge_marker_reports_only_the_phase(self):
+        source = ast.parse(SCRIPT.read_text(encoding='utf-8'))
+        logger_class = next(node for node in source.body if isinstance(node, ast.ClassDef) and node.name == 'RequestLogger')
+        events = []
+        scope = {'emit': events.append, 're': re}
+        exec(compile(ast.Module(body=[logger_class], type_ignores=[]), str(SCRIPT), 'exec'), scope)
+        logger = scope['RequestLogger']()
+        logger.debug('[youtube] [jsc:quickjs] Solving JS challenges using QuickJS')
+        logger.debug('Signed URL https://example.test/?token=private')
+        self.assertEqual(['js_challenge'], events)
 
     def test_runtime_capabilities_are_reported_without_private_request_data(self):
         self.assertRegex(self.worker.ready['python_version'], r'^\d+\.\d+\.\d+')

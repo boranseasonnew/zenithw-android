@@ -25,6 +25,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
 data class EngineStatus(val ready: Boolean=false, val updating: Boolean=false,
@@ -38,10 +39,27 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
     private val basicPreview=BasicPreviewFetcher()
     private var activeProcesses=0
     private var idle=CompletableDeferred<Unit>().apply { complete(Unit) }
-    private data class CachedPreview(val created: Long,val preview: MediaPreview,val json: String?)
+    private data class PreviewRequest(
+        val url: String,
+        val cookieId: String?,
+        val options: MetadataSnapshotPolicy.ExtractionOptions,
+    )
+    private data class PreviewCacheKey(
+        val request: PreviewRequest,
+        val sessionRevision: Long,
+        val sessionUserAgent: String,
+        val engineVersion: String,
+    )
+    private data class CachedPreview(
+        val created: Long,
+        val preview: MediaPreview,
+        val json: String?,
+        val linkExpirySeconds: Long,
+    )
     private data class CachedCollection(val created: Long,val entries: List<PlaylistEntry>)
-    private val previews=linkedMapOf<String,CachedPreview>()
-    private val collections=linkedMapOf<String,CachedCollection>()
+    private val previews=linkedMapOf<PreviewCacheKey,CachedPreview>()
+    private val collections=linkedMapOf<PreviewCacheKey,CachedCollection>()
+    private val activeInspections = ConcurrentHashMap<PreviewRequest, CompletableDeferred<Unit>>()
     private var initialized=false
     private val mutableStatus=MutableStateFlow(EngineStatus())
     val status=mutableStatus.asStateFlow()
@@ -62,13 +80,59 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
             wait.await()
         }
     }
-    private fun cacheKey(url: String,cookieId: String?,options: DownloadOptions)=listOf(normalizeUrl(url),cookieId.orEmpty(),
-        options.proxy,options.networkMode,options.userAgent,vault.userAgent(cookieId),vault.revision(cookieId),options.autoSubtitles,options.subtitleLanguages,
-        store.lastEngineVersion).joinToString("\u0000")
-    private fun cached(url: String,cookieId: String?,options: DownloadOptions): CachedPreview?=synchronized(previews) {
-        previews[cacheKey(url,cookieId,options)]?.takeIf { android.os.SystemClock.elapsedRealtime()-it.created<90000 }
+    private fun previewRequest(url: String, cookieId: String?, options: DownloadOptions) =
+        PreviewRequest(normalizeUrl(url), cookieId, MetadataSnapshotPolicy.extractionOptions(options))
+
+    private fun cacheKey(request: PreviewRequest): PreviewCacheKey {
+        val session = vault.identity(request.cookieId)
+        return PreviewCacheKey(request, session?.revision ?: 0L, session?.userAgent.orEmpty(), store.lastEngineVersion)
     }
-    private fun forget(url: String,cookieId: String?,options: DownloadOptions) { synchronized(previews) { previews.remove(cacheKey(url,cookieId,options)) } }
+
+    private fun cached(key: PreviewCacheKey): CachedPreview? = synchronized(previews) {
+        previews[key]?.takeIf {
+            android.os.SystemClock.elapsedRealtime() - it.created < MetadataSnapshotPolicy.PREVIEW_TTL_MS
+        }
+    }
+
+    private fun reusableSnapshot(request: PreviewRequest): String? = cached(cacheKey(request))?.let { entry ->
+        val age = android.os.SystemClock.elapsedRealtime() - entry.created
+        entry.json?.takeIf {
+            MetadataSnapshotPolicy.fresh(age, entry.linkExpirySeconds, System.currentTimeMillis() / 1000)
+        }
+    }
+
+    private suspend fun cachedDownloadSnapshot(job: DownloadJob): String? {
+        if (job.options.playlist || job.options.customArguments.isNotBlank()) return null
+        val request = previewRequest(job.url, job.options.cookieId, job.options)
+        val trace = AnalysisTrace(store, jobId = job.id)
+        var snapshot = reusableSnapshot(request)
+        if (snapshot == null) {
+            activeInspections[request]?.let { pending ->
+                trace.mark("metadata_wait")
+                withTimeoutOrNull(InspectionPolicy.totalTimeoutMillis(slow = true)) { pending.await() }
+                snapshot = reusableSnapshot(request)
+            }
+        }
+        trace.mark(if (snapshot == null) "cache_miss" else "cache_hit")
+        return snapshot
+    }
+
+    private fun forgetDownloadSnapshot(job: DownloadJob) {
+        val request = previewRequest(job.url, job.options.cookieId, job.options)
+        synchronized(previews) {
+            // Keep the harmless display data; only the rejected transfer URLs are stale.
+            previews.entries.filter { it.key.request == request }.forEach { entry ->
+                entry.setValue(entry.value.copy(json = null))
+            }
+        }
+    }
+
+    internal fun invalidateSessionSnapshots(cookieId: String) {
+        synchronized(previews) {
+            previews.keys.removeAll { it.request.cookieId == cookieId }
+            collections.keys.removeAll { it.request.cookieId == cookieId }
+        }
+    }
     private fun init() {
         if(initialized) return
         YoutubeDL.getInstance().init(context)
@@ -208,16 +272,34 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         store.log("ENGINE metadata Python=${event.optString("python_version","unknown")} TLS=${event.optString("openssl_version","unknown")}")
     }
     suspend fun inspect(url: String,cookieId: String?,options: DownloadOptions=store.defaultOptions,slow: Boolean=false,
-        onUpdate: (AnalysisState,MediaPreview?)->Unit={ _,_ -> },trace: AnalysisTrace?=null): MediaPreview=withContext(Dispatchers.IO) {
-        val normalized=normalizeUrl(url)
+        onUpdate: (AnalysisState,MediaPreview?)->Unit={ _,_ -> },trace: AnalysisTrace?=null): MediaPreview {
+        val request = previewRequest(url, cookieId, options)
+        val pending = CompletableDeferred<Unit>()
+        val registered = activeInspections.putIfAbsent(request, pending) == null
+        return try {
+            withContext(Dispatchers.IO) { inspectPreview(request, options, slow, onUpdate, trace) }
+        } finally {
+            if (registered) {
+                pending.complete(Unit)
+                activeInspections.remove(request, pending)
+            }
+        }
+    }
+
+    private suspend fun inspectPreview(request: PreviewRequest, options: DownloadOptions, slow: Boolean,
+        onUpdate: (AnalysisState, MediaPreview?) -> Unit, trace: AnalysisTrace?): MediaPreview {
+        val normalized = request.url
+        val cookieId = request.cookieId
         val timing=trace ?: AnalysisTrace(store)
+        timing.mark("metadata_start")
         // Serialize access and recheck the cache after waiting: duplicate callers
         // cannot start a second extractor for a completed/in-flight request.
-        inspectionGate.withLock {
-            cached(normalized,cookieId,options)?.let {
-                timing.mark("cache_hit");timing.preview(it.preview);timing.mark("metadata_total");onUpdate(AnalysisState.Ready,it.preview)
-                return@withContext it.preview
+        return inspectionGate.withLock {
+            cached(cacheKey(request))?.let {
+                timing.mark("cache_hit");timing.preview(it.preview);timing.mark("metadata_ready");timing.mark("metadata_total");onUpdate(AnalysisState.Ready,it.preview)
+                return@withLock it.preview
             }
+            timing.mark("cache_miss")
             coroutineScope {
                 val basicReady=AtomicBoolean(false)
                 val hint=launch {
@@ -229,15 +311,15 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                 }
                 try { withEngine {
                     timing.mark("engine_ready");onUpdate(if(basicReady.get()) AnalysisState.FetchingFormats else AnalysisState.FetchingMetadata,null)
-                    val identity=cacheKey(normalized,cookieId,options)
+                    val identity=cacheKey(request)
                     val directory=File(context.cacheDir,"inspect-${java.util.UUID.randomUUID()}").apply { mkdirs() }
                     try {
                         val listLink=PreviewPolicy.isPlaylistOnly(normalized)
-                        val request=metadataRequest(cookieId,options,directory,slow,listLink,1)
+                        val command=metadataRequest(cookieId,options,directory,slow,listLink,1)
                         store.log("INSPECT session=${if(cookieId==null) "none" else "selected"}")
                         val snapshot=File(directory,"source-info.json")
                         val result=try { withTimeout(InspectionPolicy.totalTimeoutMillis(slow)) {
-                            metadataRuntime.execute(request,normalized,snapshot) { event ->
+                            metadataRuntime.execute(command,normalized,snapshot) { event ->
                                 when(event.optString("event")) {
                                     "runtime_process" -> { timing.sample("python_spawn",event.optLong("spawn_ms"));if(event.optBoolean("reused")) timing.sample("python_import",0) }
                                     "runtime_ready" -> metadataRuntimeReady(event,timing)
@@ -246,6 +328,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                                         store.log("INSPECT handlers=${event.optJSONArray("handlers") ?: "[]"}")
                                     }
                                     "network" -> timing.sample("http_headers",event.optLong("headers_ms"))
+                                    "js_challenge" -> timing.mark("js_challenge")
                                     "error" -> timing.sample("extraction_error",event.optLong("elapsed_ms"))
                                 }
                             }
@@ -256,15 +339,15 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                         val preview=mediaPreview(json,normalized,listLink || json.has("entries") || PreviewPolicy.isCollection(normalized))
                         timing.sample("extraction",result.optLong("extract_ms"))
                         timing.sample("serialization",result.optLong("serialize_ms"))
-                        timing.preview(preview);timing.mark("metadata_total")
+                        timing.preview(preview);timing.mark("metadata_ready");timing.mark("metadata_total")
                         store.log("INSPECT requests=${result.optInt("network_count")} headers_ms=${result.optLong("network_headers_ms")} metadata_worker=true")
                         synchronized(previews) {
                             while(previews.size>=8) previews.remove(previews.keys.first())
-                            if(identity==cacheKey(normalized,cookieId,options)) {
+                            if(identity==cacheKey(request)) {
                                 val serialized=snapshot.takeIf { !json.has("entries") && it.isFile && it.length()<=4*1024*1024 }?.readText()
                                 while(previews.isNotEmpty() && previews.values.sumOf { it.json?.length ?: 0 }+(serialized?.length ?: 0)>8*1024*1024)
                                     previews.remove(previews.keys.first())
-                                previews[identity]=CachedPreview(android.os.SystemClock.elapsedRealtime(),preview,serialized)
+                                previews[identity]=CachedPreview(android.os.SystemClock.elapsedRealtime(),preview,serialized,result.optLong("link_expiry_seconds"))
                             }
                         }
                         onUpdate(AnalysisState.Ready,preview)
@@ -276,12 +359,13 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
     }
     suspend fun playlist(url: String,cookieId: String?,options: DownloadOptions=store.defaultOptions): List<PlaylistEntry> = withContext(Dispatchers.IO) {
         inspectionGate.withLock {
-            val key=cacheKey(url,cookieId,options)
+            val selection = previewRequest(url, cookieId, options)
+            val key=cacheKey(selection)
             synchronized(previews) { collections[key]?.takeIf { android.os.SystemClock.elapsedRealtime()-it.created<90000 } }?.let {
                 return@withContext it.entries
             }
             withEngine {
-                val identity=cacheKey(url,cookieId,options)
+                val identity=cacheKey(selection)
                 val directory=File(context.cacheDir,"playlist-${java.util.UUID.randomUUID()}").apply { mkdirs() }
                 try {
                     val request=metadataRequest(cookieId,options,directory,true,true,200)
@@ -291,7 +375,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                     coroutineContext.ensureActive()
                     val entries=playlistEntries(response.getJSONObject("info"),url)
                     synchronized(previews) {
-                        if(identity==cacheKey(url,cookieId,options)) {
+                        if(identity==cacheKey(selection)) {
                             while(collections.size>=8) collections.remove(collections.keys.first())
                             collections[identity]=CachedCollection(android.os.SystemClock.elapsedRealtime(),entries)
                         }
@@ -310,7 +394,11 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         val plan=DownloadPolicy.thumbnailPlan(job.options.mode.name,job.options.container,
             job.options.audioFormat,job.options.embedThumbnail,job.options.downloadThumbnail,job.options.thumbnailFormat)
         if(job.options.customArguments.isBlank()) plan.note?.let { notes.add(it) }
-        val cookie=vault.temporaryFile(job.options.cookieId,directory)
+        val options = job.options
+        val session = vault.identity(options.cookieId)
+        val cookie = vault.temporaryFile(options.cookieId, directory)
+        val managed = options.customArguments.isBlank()
+        val optionalSubtitles = managed && options.mode != MediaMode.SUBTITLES && (options.subtitles || options.autoSubtitles)
         try {
             var useAria=job.options.useAria2 && job.options.mode!=MediaMode.SUBTITLES
             if(useAria) {
@@ -324,22 +412,115 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                     notes.add("Aria2c hazırlanamadı; normal indirme motoru kullanıldı.")
                 }
             }
-            var metadata=if(!job.options.playlist && job.options.customArguments.isBlank()) cached(job.url,job.options.cookieId,job.options)?.json else null
+            var metadata = if (managed && !options.playlist) cachedDownloadSnapshot(job) else null
+            val fallbackMarker = File(directory, ".subtitle-fallback")
+            val priorSubtitleStatus = fallbackMarker.takeIf { optionalSubtitles && it.isFile && it.length() in 1L..16L }
+                ?.readText()?.toIntOrNull()
+            var withSubtitles = priorSubtitleStatus == null
+            priorSubtitleStatus?.let { status ->
+                notes.add(0, DownloadPolicy.subtitleWarning(RecoveryFailure(RecoveryKind.SUBTITLE, status.takeIf { it in 100..599 })))
+            }
             suspend fun execute(aria: Boolean): com.yausername.youtubedl_android.YoutubeDLResponse {
-                val tracker=DownloadProgress()
-                progress(0f,-1,"ZenithWPreparing")
-                val snapshot=metadata?.let { File(directory,".source-info.json").apply { writeText(it) } }
-                return try { runInterruptible(Dispatchers.IO) {
-                    YoutubeDL.getInstance().execute(request(job,directory,cookie,aria,snapshot),
-                        processId=job.id,redirectErrorStream=false,callback={ _,_,line ->
-                            if(line.startsWith("ZenithWMetadata:")) runCatching {
-                                val data=JSONObject(line.removePrefix("ZenithWMetadata:"))
-                                store.change(job.id) { downloadMetadata(it,data) }
-                            }
-                            else store.log(line,job.id)
-                            tracker.accept(line)?.let { progress(it.percent,it.eta,it.line) }
-                        })
-                } } finally { snapshot?.delete() }
+                if (vault.identity(options.cookieId)?.revision != session?.revision) throw CookieSessionException()
+                val tracker = DownloadProgress()
+                val attemptStarted = android.os.SystemClock.elapsedRealtime()
+                var subtitleStarted: Long? = null
+                var subtitleProcessing = false
+                var transferReady = false
+                var mediaStarted = false
+                var jsChallenge = false
+                fun stage(name: String, detail: String = "") {
+                    val elapsed = android.os.SystemClock.elapsedRealtime() - attemptStarted
+                    store.log("$name elapsed_ms=$elapsed$detail", job.id)
+                }
+                val snapshot = metadata?.let { File(directory, ".source-info.json") }
+                val captured = if (snapshot == null && optionalSubtitles && withSubtitles && !options.playlist)
+                    File(directory, ".source-capture.json") else null
+                try {
+                    captured?.delete()
+                    if (snapshot != null) {
+                        // yt-dlp otherwise re-extracts automatically on every DownloadError.
+                        // Restore the page URL on each per-format copy in the video stage.
+                        val info = JSONObject(requireNotNull(metadata))
+                        val page = info.optString("webpage_url")
+                        if (page.isNotBlank()) info.put("zenith_page", page)
+                        info.remove("webpage_url")
+                        snapshot.writeText(info.toString())
+                    }
+                    stage("metadata_start", if (snapshot == null) " source=extract" else " source=cache")
+                    return runInterruptible(Dispatchers.IO) {
+                        YoutubeDL.getInstance().execute(request(job, directory, cookie, aria, snapshot, withSubtitles, captured),
+                            processId = job.id, redirectErrorStream = false, callback = { _, _, line ->
+                                if (!jsChallenge && (line.contains("[jsc:") || line.contains("[jsc]"))) {
+                                    jsChallenge = true
+                                    stage("js_challenge")
+                                }
+                                if (line == "ZenithWMetadataReady") stage("metadata_ready")
+                                if (line.startsWith("[info] Writing video subtitles to:")) {
+                                    if (subtitleStarted == null) subtitleStarted = android.os.SystemClock.elapsedRealtime()
+                                    stage("subtitle_fetch", " state=start")
+                                }
+                                if (line.startsWith("ZENITHW_PROCESS\t")) {
+                                    runCatching {
+                                        val postprocessor = JSONObject(line.substringAfter('\t'))
+                                        subtitleProcessing = postprocessor.optString("status") != "finished" &&
+                                            postprocessor.optString("postprocessor") in setOf("EmbedSubtitle", "SubtitlesConvertor")
+                                    }
+                                }
+                                if (line.startsWith("ZenithWMetadata:")) {
+                                    transferReady = true
+                                    subtitleStarted?.let { startedAt ->
+                                        stage("subtitle_fetch", " state=ready duration_ms=${android.os.SystemClock.elapsedRealtime() - startedAt}")
+                                    }
+                                    subtitleStarted = null
+                                    runCatching {
+                                        val data = JSONObject(line.removePrefix("ZenithWMetadata:"))
+                                        store.change(job.id) { downloadMetadata(it, data) }
+                                    }
+                                } else {
+                                    if (!mediaStarted && transferReady &&
+                                        (line.startsWith("[download] Destination:") || line.startsWith("ZENITHW_PROGRESS\t"))) {
+                                        mediaStarted = true
+                                        stage("media_transfer_start")
+                                    }
+                                    if (line != "ZenithWMetadataReady") store.log(line, job.id)
+                                }
+                                tracker.accept(line)?.let { progress(it.percent, it.eta, it.line) }
+                            })
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    coroutineContext.ensureActive()
+                    val message = error.message.orEmpty()
+                    val failure = RecoveryPolicy.failure(message)
+                    // A downloader may report only a raw HTTP or network error
+                    // while the callback has already identified the subtitle stage.
+                    val subtitleTransportError = failure.httpStatus == 401 || failure.kind in setOf(RecoveryKind.FORBIDDEN, RecoveryKind.RATE_LIMIT, RecoveryKind.NETWORK, RecoveryKind.UNKNOWN)
+                    val subtitleFailure = subtitleStarted != null && subtitleTransportError ||
+                        subtitleProcessing && failure.kind in setOf(RecoveryKind.CONVERSION, RecoveryKind.UNKNOWN)
+                    val classified = if (subtitleFailure)
+                        failure.copy(kind = RecoveryKind.SUBTITLE) else failure
+                    subtitleStarted?.let { startedAt ->
+                        stage("subtitle_fetch", " state=failed duration_ms=${android.os.SystemClock.elapsedRealtime() - startedAt} code=${classified.code}")
+                    }
+                    if (classified.kind == RecoveryKind.SUBTITLE && captured != null) {
+                        // Cold requests capture the resolved source before writing
+                        // subtitles, so fallback can keep the same extraction.
+                        metadata = runCatching {
+                            if (captured.length() !in 1L..(4L * 1024 * 1024)) return@runCatching null
+                            val source = JSONObject(captured.readText())
+                            val hasMedia = source.optString("url").startsWith("http") || (source.optJSONArray("formats")?.length() ?: 0) > 0
+                            source.takeIf { hasMedia && it.optString("_type", "video") == "video" && !it.has("entries") }
+                                ?.toString()
+                        }.getOrNull()
+                        if (metadata != null) stage("cache_hit", " source=current_attempt")
+                    }
+                    throw DownloadFailureException(classified, message, error)
+                } finally {
+                    snapshot?.delete()
+                    captured?.delete()
+                }
             }
             var refreshed=false
             var response: com.yausername.youtubedl_android.YoutubeDLResponse
@@ -348,22 +529,43 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                 catch(cancelled: CancellationException) { throw cancelled }
                 catch(e: Exception) {
                     coroutineContext.ensureActive()
-                    YoutubeDL.getInstance().destroyProcessById(job.id)
-                    if(metadata!=null && !refreshed && Regex("(?i)(?:HTTP Error|HTTP status|status=)\\s*(403|410)\\b").containsMatchIn(e.message.orEmpty())) {
-                        metadata=null;forget(job.url,job.options.cookieId,job.options);refreshed=true
+                    cancel(job.id)
+                    val failure = (e as? DownloadFailureException)?.failure ?: RecoveryPolicy.failure(e.message.orEmpty())
+                    if (optionalSubtitles && withSubtitles && failure.kind == RecoveryKind.SUBTITLE) {
+                        withSubtitles = false
+                        fallbackMarker.writeText((failure.httpStatus ?: 0).toString())
+                        notes.add(0, DownloadPolicy.subtitleWarning(failure))
+                        store.log("retry_reason kind=SUBTITLE code=${failure.code} strategy=media_only", job.id)
+                        progress(-1f, -1, "ZenithWSubtitleFallback")
+                        continue
+                    }
+                    if (metadata != null && !refreshed && failure.kind == RecoveryKind.FORBIDDEN && failure.httpStatus in setOf(403, 410)) {
+                        metadata = null
+                        forgetDownloadSnapshot(job)
+                        refreshed = true
+                        store.log("retry_reason kind=FORBIDDEN code=${failure.code} strategy=refresh_snapshot", job.id)
                         progress(0f,-1,"ZenithWRefreshing");continue
                     }
-                    if(useAria && DownloadPolicy.isAriaDownloadFailure(e.message.orEmpty())) {
+                    if (useAria && failure.kind in setOf(RecoveryKind.UNKNOWN, RecoveryKind.ENGINE, RecoveryKind.NETWORK) && DownloadPolicy.isAriaDownloadFailure(e.message.orEmpty())) {
                         useAria=false;notes.add("Aria2c indirmesi tamamlanamadı; normal motorla yeniden denendi.")
+                        store.log("retry_reason kind=${failure.kind.name} code=${failure.code} strategy=native_downloader", job.id)
                         progress(-1f,-1,"ZenithWNativeFallback");continue
                     }
                     throw e
                 }
             }
+            val output = response.out + "\n" + response.err
             response.err.lineSequence().filter(String::isNotBlank).take(100).forEach { store.log(it,job.id) }
-            if(DownloadPolicy.archiveSkipped(response.out+"\n"+response.err) &&
-                directory.listFiles().orEmpty().none { it.isFile && DownloadPolicy.isPublicOutput(it.name) })
+            val hasExpectedOutput = directory.listFiles().orEmpty().any {
+                it.isFile && it.length() > 0 && DownloadPolicy.isExpectedOutput(it.name, options.mode.name, !managed)
+            }
+            if (DownloadPolicy.archiveSkipped(output) && !hasExpectedOutput)
                 return@withEngine DownloadOutcome(notes.distinct(),archiveSkipped=true)
+            if (!hasExpectedOutput && options.mode == MediaMode.SUBTITLES && managed) {
+                throw DownloadFailureException(RecoveryFailure(RecoveryKind.SUBTITLE), "NO_SUBTITLE_OUTPUT")
+            }
+            check(hasExpectedOutput) { "No output files" }
+            if (optionalSubtitles) DownloadPolicy.subtitleWarning(output)?.let { notes.add(it) }
             if(job.options.mergeClips && job.options.clipRanges.size>1 && job.options.customArguments.isBlank()) {
                 try { LocalMediaTools(context).mergeClips(directory,job.options.mode) }
                 catch(cancelled: CancellationException) { throw cancelled }
@@ -376,15 +578,23 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
                 notes.addAll(SquareCover(context).applyTo(directory,job.id))
             }
             DownloadOutcome(notes.distinct())
-        } finally { cookie?.delete(); YoutubeDL.getInstance().destroyProcessById(job.id) }
+        } finally { cookie?.delete(); cancel(job.id) }
     }
     private fun ariaCertificate()=File(context.noBackupFilesDir,"youtubedl-android/packages/python/usr/etc/tls/cert.pem")
-    fun cancel(id: String) { YoutubeDL.getInstance().destroyProcessById(id) }
-    private fun request(job: DownloadJob,directory: File,cookie: File?,useAria: Boolean,snapshot: File?=null): YoutubeDLRequest {
+    fun cancel(id: String) {
+        // The adapter can remove its process entry while cancellation is in flight.
+        runCatching { YoutubeDL.getInstance().destroyProcessById(id) }
+    }
+    private fun request(job: DownloadJob, directory: File, cookie: File?, useAria: Boolean, snapshot: File?, withSubtitles: Boolean, capture: File?): YoutubeDLRequest {
         val o=job.options
         require(!o.filenameTemplate.contains('/') && !o.filenameTemplate.contains('\\') && !o.filenameTemplate.contains(".."))
         val r=baseRequest(if(snapshot==null) job.url else null)
-        snapshot?.let { r.addOption("--load-info-json",it.absolutePath) }
+        snapshot?.let {
+            r.addOption("--load-info-json",it.absolutePath)
+            r.addOption("--parse-metadata", "video:zenith_page:%(webpage_url)s")
+            BrowserTransport.apply(context, r, job.url)
+        }
+        capture?.let { r.addCommands(listOf("--print-to-file", "pre_process:%()j", it.absolutePath.replace("%", "%%"))) }
         val nameBase=if(o.filenameOverride.isNotBlank()) InspectionPolicy.literalFilename(o.filenameOverride)
             else o.filenameTemplate.ifBlank { "%(title).150B [%(id)s].%(ext)s" }
         val name=if(o.clipRanges.isNotEmpty()) nameBase.replace(".%(ext)s"," - %(section_number)03d.%(ext)s") else nameBase
@@ -403,6 +613,7 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         r.addOption("--progress-template",DownloadProgress.TEMPLATE)
         r.addOption("--progress-template",DownloadProgress.POST)
         r.addOption("--print",DownloadProgress.PLAN)
+        if (o.customArguments.isBlank()) r.addOption("--print", "pre_process:ZenithWMetadataReady")
         r.addOption("--print","before_dl:ZenithWMetadata:%(.{title,thumbnail,thumbnails,duration})j")
         // --print otherwise implies quiet mode, whose progress screen is stderr.
         // The 0.18.1 wrapper forwards every stdout line to our callback; keep
@@ -442,6 +653,11 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
         // A command task supplies its own media pipeline. In particular, -x must
         // not inherit the normal video's --remux-video or default format selector.
         if(o.customArguments.isBlank()) {
+        // Retain previously downloaded bytes and completed sidecars on retries.
+        r.addOption("--continue")
+        r.addOption("--no-overwrites")
+        if (!o.playlist || o.playlistErrors != "continue") r.addOption("--abort-on-error")
+        if (!o.autoSubtitles || !withSubtitles) r.addOption("--extractor-args", "youtube:skip=translated_subs")
         when(o.mode) {
             MediaMode.AUDIO -> {
                 r.addOption("-f",o.selectedFormat.ifBlank { "bestaudio/best" }); r.addOption("-x")
@@ -460,9 +676,9 @@ class DownloadEngine(private val context: Context, private val store: LocalStore
             }
             MediaMode.SUBTITLES -> r.addOption("--skip-download")
         }
-        if(o.subtitles || o.mode==MediaMode.SUBTITLES) r.addOption("--write-subs")
-        if(o.autoSubtitles) r.addOption("--write-auto-subs")
-        if(o.subtitles || o.autoSubtitles || o.mode==MediaMode.SUBTITLES) {
+        if(withSubtitles && (o.subtitles || o.mode==MediaMode.SUBTITLES)) r.addOption("--write-subs")
+        if(withSubtitles && o.autoSubtitles) r.addOption("--write-auto-subs")
+        if(withSubtitles && (o.subtitles || o.autoSubtitles || o.mode==MediaMode.SUBTITLES)) {
             r.addOption("--sub-langs",o.subtitleLanguages.ifBlank { "all,-live_chat" })
             r.addOption("--sub-format","best")
             require(o.subtitleFormat in listOf("srt","vtt","ass","lrc"))

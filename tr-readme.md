@@ -46,19 +46,21 @@ Arayüz **Türkçe, İngilizce, Almanca, Fransızca ve Rusça** dillerinde kulla
 
 ## Uygulamayı indir
 
-En güncel kararlı sürüm **[3.1.0](https://github.com/boranseasonnew/zenithw-android/releases/tag/v3.1.0)**. Uygulama **Android 7.0 veya üzerini (API 24+)** gerektirir. Cihazına uygun APK'yı seç:
+En güncel kararlı sürüm **[3.1.1](https://github.com/boranseasonnew/zenithw-android/releases/tag/v3.1.1)**. Uygulama **Android 7.0 veya üzerini (API 24+)** gerektirir. Cihazına uygun APK'yı seç:
 
 | APK | Kullanıldığı cihazlar |
 | --- | --- |
-| [arm64-v8a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.0/Zenith-3.1.0-stable-arm64-v8a.apk) | Güncel Android telefon ve tabletlerin çoğu |
-| [armeabi-v7a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.0/Zenith-3.1.0-stable-armeabi-v7a.apk) | Eski 32 bit ARM cihazlar |
-| [x86_64](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.0/Zenith-3.1.0-stable-x86_64.apk) | Uyumlu Intel/AMD cihazlar ve emülatörler |
+| [arm64-v8a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.1/Zenith-3.1.1-stable-arm64-v8a.apk) | Güncel Android telefon ve tabletlerin çoğu |
+| [armeabi-v7a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.1/Zenith-3.1.1-stable-armeabi-v7a.apk) | Eski 32 bit ARM cihazlar |
+| [x86_64](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.1/Zenith-3.1.1-stable-x86_64.apk) | Uyumlu Intel/AMD cihazlar ve emülatörler |
 
-Dosya bütünlüğünü [SHA256SUMS.txt](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.0/SHA256SUMS.txt) ile kontrol edebilirsin. Güncelleme imzasını doğrulamaya yardımcı olan herkese açık [imza sertifikası parmak izi](release-certificate.sha256) de depoda bulunur.
+Dosya bütünlüğünü [SHA256SUMS.txt](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.1/SHA256SUMS.txt) ile kontrol edebilirsin. Güncelleme imzasını doğrulamaya yardımcı olan herkese açık [imza sertifikası parmak izi](release-certificate.sha256) de depoda bulunur.
 
 ## Proje durumu
 
 **3.1.0**, mevcut indirme motorunu koruyarak paylaşım, kuyruk, kütüphane ve yerel medya araçlarını genişletir. Fiziksel Android 13 cihazda gerçek medya dönüşümleri dahil 28 test geçti. Son imzalı yayın akışında **61 Android 13 testi, 23 Android 7 uyumluluk testi, 32 Python kontrolü ve Android lint başarılı oldu**. Gerçek kapsam ve kalan sınırlar [İngilizce sürüm notlarında](releases/3.1.0.md) ve [teknik raporda](docs/android-3.1.0-report.md).
+
+**3.1.1 hotfix**, indirme hatalarından kurtarmayı iyileştirir, motoru Ayarlar’ın başına taşır ve ana ekranı tek elle kullanmayı kolaylaştırır. Ayrıntılar [3.1.1 sürüm notlarında](releases/3.1.1.md).
 
 İndirmeler yt-dlp desteğine ve kaynağın erişim koşullarına bağlıdır. Yerel 16 KB bellek sayfası uyumluluğu tam olarak doğrulanmış değildir; [çalışma ortamı ve sınırlarına](docs/native-curl-NOTICES.md) bakabilirsin.
 

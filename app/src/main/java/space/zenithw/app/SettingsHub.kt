@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 package space.zenithw.app
 
 import android.content.Intent
@@ -37,11 +37,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 private data class SettingsCategory(val key: String,val title: String,val detail: String,val icon: ImageVector,val titleResource: Int?=null,val detailResource: Int?=null)
 private val categories=listOf(
+    SettingsCategory("engine","İndirme motoru","Otomatik güncelleme ve sürüm kanalı",Icons.Outlined.Memory),
     SettingsCategory("about","Hakkında ve sürüm","ZenithW · ${BuildConfig.VERSION_NAME}",Icons.Outlined.Info),
     SettingsCategory("language","Dil","Uygulama dili",Icons.Outlined.Language),
     SettingsCategory("appearance","","",Icons.Outlined.Palette,R.string.pref_appearance,R.string.pref_appearance_summary),
     SettingsCategory("interaction","","",Icons.Outlined.TouchApp,R.string.pref_interaction,R.string.pref_interaction_summary),
-    SettingsCategory("engine","İndirme motoru","Otomatik güncelleme ve sürüm kanalı",Icons.Outlined.Memory),
     SettingsCategory("cookies","Tarayıcı oturumları","Cihazda saklanan çerezler",Icons.Outlined.Lock),
     SettingsCategory("video","Video ve ses","Kalite, dosya biçimi, codec",Icons.Outlined.Tune),
     SettingsCategory("content","Dosya içeriği","Kapak, medya bilgisi ve bölümler",Icons.Outlined.Image),
@@ -80,31 +80,22 @@ private val categories=listOf(
     AnimatedContent(active,transitionSpec={ fadeIn(tween(160)) togetherWith fadeOut(tween(100)) },label="settings-page") { category ->
         pageStates.SaveableStateProvider(category ?: "settings-root") {
         val scroll=rememberLazyListState()
-        LazyColumn(Modifier.fillMaxSize(),state=scroll,contentPadding=PaddingValues(24.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            item {
-                Row(Modifier.fillMaxWidth().padding(top=if(category==null) 24.dp else 4.dp,bottom=20.dp),verticalAlignment=Alignment.CenterVertically) {
-                    if(category!=null) {
-                        IconButton(onClick={ navigate(null) }) { Icon(Icons.Outlined.ArrowBack,AppLanguage.message(texts,"Ayarlara dön")) }
-                        Spacer(Modifier.width(6.dp))
-                    }
-                    Column(Modifier.weight(1f)) {
-                        Text(if(category==null) AppLanguage.message(texts,"Ayarlar") else categories.first { it.key==category }.let { it.titleResource?.let(texts::getString) ?: AppLanguage.message(texts,it.title) },style=MaterialTheme.typography.headlineLarge)
-                        Text(if(category==null) "Zenith · ${BuildConfig.VERSION_NAME}" else AppLanguage.message(texts,"Otomatik kaydedilir"),color=Muted,style=MaterialTheme.typography.bodyMedium)
-                    }
-                }
+        LazyColumn(Modifier.fillMaxSize(),state=scroll,contentPadding=PaddingValues(start=16.dp,end=16.dp,bottom=16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            stickyHeader {
+                SettingsHeader(categories.firstOrNull { it.key==category }) { navigate(null) }
             }
             if(category==null) {
                 items(categories,key={ it.key }) { group ->
                     Surface(onClick={ if(group.key=="cookies") { dismissInput();onCookies() } else navigate(group.key) },
-                        shape=RoundedCornerShape(22.dp),color=Panel,border=BorderStroke(1.dp,Hairline.copy(alpha=.65f))) {
-                        Row(Modifier.fillMaxWidth().heightIn(min=96.dp).padding(20.dp),verticalAlignment=Alignment.CenterVertically) {
-                            Surface(shape=RoundedCornerShape(14.dp),color=PanelRaised) {
-                                Icon(group.icon,null,tint=Silver,modifier=Modifier.padding(12.dp).size(22.dp))
+                        shape=RoundedCornerShape(16.dp),color=Panel,border=BorderStroke(1.dp,Hairline.copy(alpha=.65f))) {
+                        Row(Modifier.fillMaxWidth().heightIn(min=72.dp).padding(horizontal=12.dp,vertical=10.dp),verticalAlignment=Alignment.CenterVertically) {
+                            Surface(shape=RoundedCornerShape(12.dp),color=PanelRaised) {
+                                Icon(group.icon,null,tint=Silver,modifier=Modifier.padding(10.dp).size(20.dp))
                             }
-                            Spacer(Modifier.width(15.dp))
+                            Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(if(group.key=="about") texts.getString(R.string.workspace_about) else group.titleResource?.let(texts::getString) ?: AppLanguage.message(texts,group.title),style=MaterialTheme.typography.titleMedium)
-                                Text(group.detailResource?.let(texts::getString) ?: AppLanguage.message(texts,group.detail),color=Muted,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=4.dp))
+                                Text(group.detailResource?.let(texts::getString) ?: AppLanguage.message(texts,group.detail),color=Muted,style=MaterialTheme.typography.bodySmall,modifier=Modifier.padding(top=2.dp))
                             }
                             Icon(Icons.Outlined.ChevronRight,null,tint=Muted)
                         }
@@ -125,8 +116,8 @@ private val categories=listOf(
                     }
                 }
             } else item {
-                Surface(shape=RoundedCornerShape(24.dp),color=Panel) {
-                    Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+                Surface(shape=RoundedCornerShape(18.dp),color=Panel) {
+                    Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
                         when(category) {
                             "appearance" -> {
                                 OptionPicker(texts.getString(R.string.pref_theme),listOf("system" to texts.getString(R.string.pref_system),"light" to texts.getString(R.string.pref_light),"dark" to texts.getString(R.string.pref_dark)),screen.themeMode,model::theme)
@@ -140,19 +131,24 @@ private val categories=listOf(
                             }
                             "language" -> OptionPicker("Dil",AppLanguage.choices,screen.language,model::language)
                             "engine" -> {
-                                Text(engine.version.ifBlank { "yt-dlp hazırlanıyor" },style=MaterialTheme.typography.titleMedium)
+                                Text(engine.version.ifBlank { texts.getString(R.string.preparing_engine) },style=MaterialTheme.typography.titleMedium)
                                 if (BuildConfig.F_DROID) {
                                     Text(texts.getString(R.string.fdroid_engine_updates),color=Muted)
                                 } else {
+                                Button(onClick=model::updateEngine,enabled=!engine.updating,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=RoundedCornerShape(12.dp),
+                                    colors=ButtonDefaults.buttonColors(containerColor=PanelRaised,contentColor=Silver,disabledContainerColor=PanelRaised,disabledContentColor=Muted)) {
+                                    if(engine.updating) {
+                                        CircularProgressIndicator(Modifier.size(16.dp),strokeWidth=2.dp,color=Muted)
+                                        Spacer(Modifier.width(8.dp))
+                                    }
+                                    Text(AppLanguage.message(texts,if(engine.updating) "Kontrol ediliyor…" else "Şimdi güncelle"))
+                                }
                                 OptionSwitch("Açılışta otomatik güncelle","İndirmeyi bekletmeden arka planda kontrol eder.",screen.autoUpdate,model::automatic)
                                 OptionPicker(texts.getString(R.string.pref_update_interval),listOf(1,6,12,24,72,168).map { it.toString() to texts.getString(R.string.pref_hours,it) },screen.updateIntervalHours.toString()) { model.updateInterval(it.toInt()) }
                                 Pick("Sürüm kanalı",listOf("stable" to "Kararlı","nightly" to "Nightly"),screen.channel,model::channel)
                                 engine.warning?.let {
                                     Text(AppLanguage.message(texts,it),color=MaterialTheme.colorScheme.error)
                                     TextButton(onClick={ navigate("terminal") }) { Text(AppLanguage.message(texts,"İşlem günlüğü")) }
-                                }
-                                Button(onClick=model::updateEngine,enabled=!engine.updating,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp)) {
-                                    Text(AppLanguage.message(texts,if(engine.updating) "Kontrol ediliyor…" else "Şimdi güncelle"))
                                 }
                                 }
                             }
@@ -245,6 +241,32 @@ private val categories=listOf(
     }
 }
 
+}
+
+@Composable
+private fun SettingsHeader(category: SettingsCategory?, onBack: () -> Unit) {
+    val texts=LocalAppContext.current
+    val title=if(category==null) texts.getString(R.string.settings)
+        else category.titleResource?.let(texts::getString) ?: AppLanguage.message(texts,category.title)
+    val subtitle=if(category==null) "Zenith · ${BuildConfig.VERSION_NAME}"
+        else AppLanguage.message(texts,"Otomatik kaydedilir")
+    Surface(color=Ink) {
+        Row(
+            modifier=Modifier.fillMaxWidth().padding(top=8.dp,bottom=12.dp),
+            verticalAlignment=Alignment.CenterVertically,
+        ) {
+            if(category!=null) {
+                IconButton(onClick=onBack) {
+                    Icon(Icons.Outlined.ArrowBack,AppLanguage.message(texts,"Ayarlara dön"))
+                }
+                Spacer(Modifier.width(6.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text(title,style=MaterialTheme.typography.headlineMedium)
+                Text(subtitle,color=Muted,style=MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
 }
 
 @Composable private fun Pick(title: String,items: List<Pair<String,String>>,selected: String,onSelect: (String)->Unit) {

@@ -39,18 +39,26 @@ object DownloadPolicy {
         it.trim().startsWith("[download] ") && it.contains("has already been recorded in the archive")
     }
 
+    private val mediaExtensions = setOf("mp4", "mkv", "webm", "mov", "m4v", "mp3", "m4a", "opus", "wav", "flac", "ogg")
+    private val subtitleExtensions = setOf("srt", "vtt", "ass", "lrc")
+
+    fun isExpectedOutput(name: String, mode: String, custom: Boolean): Boolean {
+        if (!isPublicOutput(name)) return false
+        if (custom) return true
+        val extension = name.substringAfterLast('.', "").lowercase()
+        return extension in if (mode == "SUBTITLES") subtitleExtensions else mediaExtensions
+    }
+
     fun isPublicOutput(name: String): Boolean {
         if(name.startsWith(".") || name.contains(".temp.") || name.contains(".part.") || name=="source-info.json") return false
         if(name.endsWith(".info.json") || name.endsWith(".description")) return true
-        return name.substringAfterLast('.', "").lowercase() in setOf(
-            "mp4","mkv","webm","mov","m4v","mp3","m4a","opus","wav","flac","ogg",
-            "jpg","jpeg","png","webp","srt","vtt","ass","lrc"
-        )
+        return name.substringAfterLast('.', "").lowercase() in mediaExtensions + subtitleExtensions + setOf("jpg", "jpeg", "png", "webp")
     }
     fun progressDetail(percent: Float, eta: Long, line: String): String = when {
         line.contains("ZenithWSquareCover") -> "Kare kapak hazırlanıyor"
         line.contains("ZenithWProcessing") -> "Son işlemler yapılıyor"
         line.contains("ZenithWRefreshing") -> "İndirme bağlantısı yenileniyor"
+        line.contains("ZenithWSubtitleFallback") -> "Altyazı alınamadı, medya indirmesi sürüyor"
         line.contains("[EmbedThumbnail]") -> "Kapak görseli gömülüyor"
         line.contains("[Metadata]") -> "Medya bilgileri gömülüyor"
         line.contains("[Merger]") -> "Ses ve video birleştiriliyor"
@@ -72,6 +80,36 @@ object DownloadPolicy {
         output.contains("doesn't support embedding a thumbnail", true) ->
             "Dosya kaydedildi ancak bu formatta kapak gömülemedi."
         else -> null
+    }
+
+    fun subtitleWarning(output: String): String? {
+        val message = output.lowercase()
+        if (message.contains("there are no subtitles for the requested languages")) {
+            return "Seçilen dillerde altyazı bulunamadı."
+        }
+        val failingLine = output.lineSequence().lastOrNull { RecoveryPolicy.isSubtitleFailure(it.lowercase()) } ?: return null
+        return subtitleWarning(RecoveryPolicy.failure(failingLine))
+    }
+
+    fun subtitleWarning(failure: RecoveryFailure): String {
+        val code = failure.httpStatus?.let { " (HTTP $it)" }.orEmpty()
+        return "İstenen altyazıların tümü kaydedilemedi$code. Medya indirmesi altyazı hatası nedeniyle durdurulmadı."
+    }
+
+    fun failureDetail(failure: RecoveryFailure, original: String = ""): String {
+        val detail = when (failure.kind) {
+            RecoveryKind.SESSION -> if (original.contains("SESSION_UNAVAILABLE", true) || original.contains("seçili oturum bulunamadı", true))
+                "Seçili oturum silinmiş veya okunamıyor. Yeniden bağlanıp oturumu tekrar seç." else "Kaynak geçerli bir oturum istiyor. Oturumu yeniden bağla."
+            RecoveryKind.FORBIDDEN -> if (failure.httpStatus == 410) "Medya bağlantısının süresi doldu. Yeni bir indirme başlat." else "Kaynak erişimi reddetti. Bağlantıyı veya seçili oturumu kontrol et."
+            RecoveryKind.RATE_LIMIT -> "Kaynak çok fazla istek aldı. Bir süre bekleyip tekrar dene."
+            RecoveryKind.FORMAT -> "Seçilen kalite veya biçim bu kaynakta bulunamadı."
+            RecoveryKind.SUBTITLE -> "Seçilen altyazı alınamadı. Kaynakta başka bir dil veya altyazı biçimi seç."
+            RecoveryKind.NETWORK -> "Ağ bağlantısı kesildi veya kaynak zamanında yanıt vermedi."
+            RecoveryKind.STORAGE -> "Cihazda indirmeyi tamamlamak için yeterli boş alan yok."
+            RecoveryKind.PERMISSION -> "Dosyaya erişilemedi. İndirme klasörünün izinlerini kontrol et."
+            else -> failureDetail(original)
+        }
+        return failure.httpStatus?.let { "HTTP $it · $detail" } ?: detail
     }
     fun failureDetail(message: String): String = when {
         message.contains("EmbedThumbnail",true) || message.contains("Unable to embed",true) ->

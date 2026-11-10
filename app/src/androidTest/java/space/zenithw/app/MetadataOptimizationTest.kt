@@ -13,6 +13,7 @@ class MetadataOptimizationTest {
     @Test fun selectingSessionKeepsTheOpenPanelAndCurrentChoices() {
         val before=app.store.showMediaPreview;val configure=app.store.configureBeforeDownload
         val selected=app.store.selectedCookieId;val remember=app.store.rememberDownloadChoices
+        val profile = app.vault.capture("fixture-${System.nanoTime()}.example", "fixture=session")
         try {
             app.store.showMediaPreview=false;app.store.configureBeforeDownload=true
             app.store.rememberDownloadChoices=false
@@ -21,8 +22,8 @@ class MetadataOptimizationTest {
                 model.cookie(null);model.url("https://example.org/video");model.analyze()
                 val panel=model.screen.value.analysisId
                 model.downloadChoices(DownloadOptions(mode=MediaMode.AUDIO,audioFormat="m4a"))
-                model.cookie("fixture-session")
-                assertEquals("fixture-session",model.screen.value.cookieId)
+                model.cookie(profile.id)
+                assertEquals(profile.id,model.screen.value.cookieId)
                 assertNotNull(model.screen.value.preview)
                 assertEquals(panel,model.screen.value.analysisId)
                 assertFalse(model.screen.value.preview!!.metadataReady)
@@ -37,9 +38,53 @@ class MetadataOptimizationTest {
                 model.dismissPreview()
             }
         } finally {
+            app.vault.remove(profile.id)
             app.store.showMediaPreview=before;app.store.configureBeforeDownload=configure
             app.store.selectedCookieId=selected;app.store.rememberDownloadChoices=remember
         }
+    }
+
+    @Test fun deletedSelectedSessionBlocksQueueWithoutSwitchingToAnonymous() {
+        val before = app.store.showMediaPreview
+        val configure = app.store.configureBeforeDownload
+        val selected = app.store.selectedCookieId
+        val profile = app.vault.capture("fixture-${System.nanoTime()}.example", "fixture=session")
+        try {
+            app.store.showMediaPreview = false
+            app.store.configureBeforeDownload = true
+            app.store.selectedCookieId = profile.id
+            instrumentation.runOnMainSync {
+                val model = ZenithViewModel(app)
+                model.url("https://example.org/video")
+                model.analyze()
+                model.removeProfile(profile.id)
+                val jobs = app.store.jobs.value
+                model.enqueue(DownloadOptions())
+                assertEquals(jobs, app.store.jobs.value)
+                assertEquals(profile.id, model.screen.value.cookieId)
+                assertFalse(model.screen.value.submitting)
+                assertEquals(AnalysisState.Error, model.screen.value.analysisState)
+                assertEquals(AppLanguage.context(app).getString(R.string.missing_session), model.screen.value.message)
+                assertTrue(runCatching { app.vault.requireAvailable(profile.id) }.exceptionOrNull() is CookieSessionException)
+                model.cookie(null)
+                assertNull(model.screen.value.cookieId)
+            }
+        } finally {
+            app.vault.remove(profile.id)
+            app.store.showMediaPreview = before
+            app.store.configureBeforeDownload = configure
+            app.store.selectedCookieId = selected
+        }
+    }
+
+    @Test fun cachedTransferLinksExpireBeforeTheirDeadline() {
+        val now = 1_780_000_000L
+        assertTrue(MetadataSnapshotPolicy.fresh(89_999L, 0, now))
+        assertFalse(MetadataSnapshotPolicy.fresh(90_000L, 0, now))
+        assertTrue(MetadataSnapshotPolicy.fresh(240_000L, now + 31, now))
+        assertFalse(MetadataSnapshotPolicy.fresh(240_000L, now + 30, now))
+        assertFalse(MetadataSnapshotPolicy.fresh(300_000L, now + 300, now))
+        assertFalse(MetadataSnapshotPolicy.fresh(-1, now + 300, now))
     }
 
 
@@ -129,9 +174,11 @@ class MetadataOptimizationTest {
             assertTrue(one.formats.any { it.height==360 })
             assertEquals(AnalysisState.Ready,events.last())
             val count=fixture.requests.get()
-            val cached=app.engine.inspect(fixture.origin+"/one?signature=first",null,DownloadOptions())
+            val cached=app.engine.inspect(fixture.origin+"/one?signature=first",null,DownloadOptions(subtitleLanguages="tr,en"))
             assertEquals(one,cached)
             assertEquals(count,fixture.requests.get())
+            app.engine.inspect(fixture.origin+"/one?signature=first",null,DownloadOptions(autoSubtitles=true))
+            assertTrue(fixture.requests.get()>count)
             val two=app.engine.inspect(fixture.origin+"/two?signature=second",null,DownloadOptions())
             assertNotEquals(one.title,two.title)
             assertTrue(fixture.requests.get()>count)

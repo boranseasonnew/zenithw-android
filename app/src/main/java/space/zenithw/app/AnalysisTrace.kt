@@ -6,7 +6,11 @@ import java.util.UUID
 enum class AnalysisState { Idle,Preparing,FetchingMetadata,BasicInfoReady,FetchingFormats,Ready,Error,Cancelled }
 
 /** Deliberately accepts event names and numeric samples only, never URL or metadata. */
-class AnalysisTrace(private val store: LocalStore,private val start: Long=SystemClock.elapsedRealtime()) {
+class AnalysisTrace(
+    private val store: LocalStore,
+    private val start: Long = SystemClock.elapsedRealtime(),
+    private val jobId: String? = null,
+) {
     val id=UUID.randomUUID().toString().take(8)
     private val seen=mutableSetOf<String>()
     @Synchronized fun mark(event: String) {
@@ -16,7 +20,7 @@ class AnalysisTrace(private val store: LocalStore,private val start: Long=System
     fun sample(event: String,milliseconds: Long) {
         require(event.matches(Regex("[a-z_]+")))
         val line="PERF id=$id event=$event ms=${milliseconds.coerceAtLeast(0)}"
-        store.log(line)
+        store.log(line, jobId)
         if(BuildConfig.DEBUG) android.util.Log.d("ZenithPerf",line)
     }
     fun preview(value: MediaPreview) {

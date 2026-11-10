@@ -45,6 +45,10 @@ if [ "$MODE" != "engine-only" ]; then
   run_test bulkLinkDraft
   run_test bulkWorkspace
   run_test sealWorkspaceControls
+  run_test hotfixHomeSettingsAndAbout
+  for method in cachedPreviewAndSubtitlesUseRealLocalTransfer downloadJoinsAnExtractionAlreadyInProgress optionalSubtitle429WarnsAndSubtitleOnlyFails removedSelectedSessionStopsBeforeSourceRequest cachedMedia403RefreshesTheSourceOnlyOnce networkBackoffDoesNotBlockNextJobOrRetryMissingSession cancelledJobCannotEnterPublication aFreeSlotWakesCapacityWaitWithoutWaitingForFailureBackoff; do
+    run_test "$method" DownloadRecoveryTest
+  done
   for method in metadataOffersRealFormatsAndSubtitleLanguages privacyRetainsActiveQueueAndClearsPerMediaDefaults configurationIsAvailableWithoutWaitingForExtraction requestHonorsAudioFormatClipAndNetworkOptions; do
     run_test "$method" SealFlowTest
   done
@@ -103,8 +107,8 @@ logo=next(node for node in nodes if node.get('text')=='Zenith')
 root_bounds=bounds(nodes[0])
 y=bounds(url)
 ratio=(y[1]+y[3])/2/root_bounds[3]
-assert .35<ratio<.70, ('URL must be in the central region',ratio)
+assert .65<ratio<.95, ('URL must be within one-handed reach at the bottom',ratio)
 assert bounds(logo)[3]<root_bounds[3]*.25, 'Logo must stay at top left'
-print('PASS: five languages, persistence and centered minimal screen on Android 13; URL ratio',ratio)
+print('PASS: five languages, persistence and one-handed home on Android 13; URL ratio',ratio)
 PY
 require_all_tests_passed

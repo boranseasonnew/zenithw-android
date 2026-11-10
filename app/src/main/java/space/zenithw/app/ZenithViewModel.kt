@@ -52,10 +52,12 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     @Volatile private var analysisTrace: AnalysisTrace?=null
     private var playlistOptions: DownloadOptions?=null
     private var inspectionOptions: DownloadOptions?=null
+    private var runningInspectionOptions: MetadataSnapshotPolicy.ExtractionOptions? = null
     private fun cancelInspection() {
         generation++
         if(inspection?.isActive==true) analysisTrace?.mark("cancelled")
         inspection?.cancel()
+        runningInspectionOptions = null
     }
     fun library(history: Boolean=false) {
         cancelInspection()
@@ -105,9 +107,11 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         cancelInspection();edit { it.copy(preview=null,analyzing=false,analysisError=null,analysisState=AnalysisState.Idle) }
     }
     fun cancelAnalysis() { cancelInspection();edit { it.copy(analyzing=false,analysisState=AnalysisState.Cancelled) } }
-    fun cookie(id: String?) {
+    fun cookie(id: String?) = selectCookie(id, forceRefresh = false)
+
+    private fun selectCookie(id: String?, forceRefresh: Boolean) {
         val state=mutableScreen.value
-        if(id==state.cookieId) return
+        if (!checkSession(id) || !forceRefresh && id == state.cookieId) return
         cancelInspection()
         app.store.selectedCookieId=id
         // Changing a session must invalidate source data, not dismiss the open
@@ -121,11 +125,35 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         if(pending!=null && state.showMediaPreview) startInspection(false,true)
     }
     fun refreshProfiles() {
-        val profiles=app.vault.profiles()
-        edit { it.copy(profiles=profiles,cookieId=it.cookieId?.takeIf { id -> profiles.any { profile -> profile.id==id } }) }
-        app.store.selectedCookieId=mutableScreen.value.cookieId
+        val before = mutableScreen.value
+        val profiles = app.vault.profiles()
+        edit { it.copy(profiles = profiles) }
+        val selected = before.cookieId ?: return
+        val previous = before.profiles.find { it.id == selected }
+        val current = profiles.find { it.id == selected }
+        if (current == null && previous != null) {
+            // Keep the missing selection. Anonymous mode requires an explicit choice.
+            app.engine.invalidateSessionSnapshots(selected)
+            cancelInspection()
+            val message = text(R.string.missing_session)
+            edit { state ->
+                val preview = state.preview?.let { MediaPreview(it.url, it.url,
+                    isPlaylist = PreviewPolicy.isCollection(it.url), metadataReady = false) }
+                state.copy(preview = preview, analyzing = false, playlistLoading = false,
+                    playlistEntries = emptyList(), message = message, analysisError = message,
+                    analysisState = if (preview == null) AnalysisState.Idle else AnalysisState.Error)
+            }
+        } else if (current != null && current.updatedAt != previous?.updatedAt) {
+            app.engine.invalidateSessionSnapshots(selected)
+            selectCookie(selected, forceRefresh = true)
+        }
     }
-    fun removeProfile(id: String) { app.vault.remove(id); refreshProfiles() }
+    fun removeProfile(id: String) {
+        val removed = app.vault.remove(id)
+        app.engine.invalidateSessionSnapshots(id)
+        refreshProfiles()
+        if (!removed) showMessage(text(R.string.session_save_error))
+    }
     fun shareIntent(text: String) {
         val urls=runCatching { IncomingLinks.extract(text) }.getOrElse { showMessage(text(R.string.options_invalid));return }
         if(urls.isEmpty()) { showMessage(text(R.string.check_link));return }
@@ -190,6 +218,11 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         }
     }
     private fun text(id: Int,vararg args: Any)=AppLanguage.context(getApplication()).getString(id,*args)
+    private fun checkSession(id: String?): Boolean {
+        if (app.vault.exists(id)) return true
+        showMessage(text(R.string.missing_session))
+        return false
+    }
     fun analyze() {
         val state=mutableScreen.value
         val url=try { normalizeUrl(state.url) } catch(e: Exception) {
@@ -213,10 +246,12 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
         val url=state.preview?.url ?: return
         cancelInspection();val request=generation
         val trace=(analysisTrace.takeIf { reuseTrace } ?: AnalysisTrace(app.store)).also { analysisTrace=it }
+        val options = inspectionOptions ?: state.defaults
+        runningInspectionOptions = MetadataSnapshotPolicy.extractionOptions(options)
         edit { it.copy(analyzing=true,inspectSlow=slow,analysisError=null,analysisState=AnalysisState.Preparing,analysisId=trace.id) }
         inspection=viewModelScope.launch {
             try {
-                val preview=app.engine.inspect(url,state.cookieId,inspectionOptions ?: state.defaults,slow,onUpdate={ phase,partial ->
+                val preview=app.engine.inspect(url,state.cookieId,options,slow,onUpdate={ phase,partial ->
                     if(request==generation) edit { current ->
                         if(request!=generation || current.url!=url || current.cookieId!=state.cookieId ||
                             current.preview?.metadataReady==true && phase!=AnalysisState.Ready) current
@@ -230,18 +265,31 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
             catch(e: Exception) { if(request==generation) {
                 extractionFailureLines(e.message ?: e.javaClass.simpleName).forEach { app.store.log("INSPECT failed: $it") }
                 trace.mark("error")
-                edit { it.copy(analysisError=recoveryMessage(AppLanguage.context(app),RecoveryPolicy.classify(e.message.orEmpty())),analysisState=AnalysisState.Error) }
+                val message = if (e is CookieSessionException) text(R.string.missing_session)
+                    else recoveryMessage(AppLanguage.context(app), RecoveryPolicy.classify(e.message.orEmpty()))
+                edit { it.copy(analysisError=message,analysisState=AnalysisState.Error) }
             } }
-            finally { if(request==generation) edit { it.copy(analyzing=false) } }
+            finally { if(request==generation) {
+                runningInspectionOptions = null
+                edit { it.copy(analyzing=false) }
+            } }
         }
     }
     fun enqueue(options: DownloadOptions) {
         val state=mutableScreen.value;val preview=state.preview ?: return
         if(state.submitting) return
-        if(!validOptions(options,preview.duration)) return
+        if (!checkSession(state.cookieId) || !validOptions(options,preview.duration)) return
         if(state.rememberDownloadChoices) defaults(options)
         if(options.playlist && preview.isPlaylist) { loadPlaylist(options);return }
-        cancelInspection();edit { it.copy(analyzing=false) }
+        if (inspection?.isActive == true && options.customArguments.isBlank() &&
+            MetadataSnapshotPolicy.extractionOptions(options) == runningInspectionOptions) {
+            // The worker can reuse this in-flight extraction. Stop delivering its
+            // UI callbacks but let the already-started network request complete.
+            generation++
+            inspection = null
+            runningInspectionOptions = null
+        } else cancelInspection()
+        edit { it.copy(analyzing=false) }
         enqueueBatch(listOf(DownloadJob(url=preview.url,title=preview.title.takeIf { it.isNotBlank() && it!=preview.url } ?: Uri.parse(preview.url).host.orEmpty(),thumbnail=preview.thumbnail,
             durationSeconds=preview.duration,options=options.copy(cookieId=state.cookieId,playlist=false,playlistItems=""))))
     }
@@ -262,7 +310,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     }
     fun enqueueBulk(raw: String,options: DownloadOptions): Boolean {
         if(mutableScreen.value.submitting) return false
-        if(!validOptions(options)) return false
+        if (!checkSession(mutableScreen.value.cookieId) || !validOptions(options)) return false
         val lines=raw.lineSequence().map(String::trim).filter(String::isNotBlank).toList()
         if(lines.size !in 1..50) { showMessage(text(R.string.bulk_limit));return false }
         val urls=runCatching { lines.map(::normalizeUrl).distinct() }.getOrElse { showMessage(text(R.string.bulk_limit));return false }
@@ -287,6 +335,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     fun loadPlaylist(options: DownloadOptions=mutableScreen.value.defaults) {
         val state=mutableScreen.value
         if(state.submitting || state.playlistLoading) return
+        if (!checkSession(state.cookieId)) return
         val url=runCatching { normalizeUrl(state.preview?.url ?: state.url) }.getOrElse { showMessage(text(R.string.check_link));return }
         cancelInspection();val request=generation;playlistOptions=options.copy(cookieId=state.cookieId)
         edit { it.copy(playlistLoading=true,analyzing=false,preview=null,playlistEntries=emptyList(),message=null,analysisState=AnalysisState.FetchingMetadata) }
@@ -302,7 +351,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
             catch(e: Exception) { if(request==generation) {
                 extractionFailureLines(e.message ?: e.javaClass.simpleName).forEach { app.store.log("PLAYLIST failed: $it") }
                 edit { it.copy(analysisState=AnalysisState.Error) }
-                showMessage(text(R.string.playlist_error))
+                showMessage(text(if (e is CookieSessionException) R.string.missing_session else R.string.playlist_error))
             } }
             finally { if(request==generation) edit { it.copy(playlistLoading=false) } }
         }
@@ -316,6 +365,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
     }
     private fun enqueueBatch(candidates: List<DownloadJob>,clearBulk: Boolean=false,stayTerminal: Boolean=false,allowDuplicate: Boolean=false) {
         if(mutableScreen.value.submitting) return
+        if (candidates.any { !checkSession(it.options.cookieId) }) return
         val expectedGeneration=generation
         val expectedUrl=mutableScreen.value.url
         val expectedTab=mutableScreen.value.tab
@@ -337,6 +387,7 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
                         val seen=current.map(::key).toMutableSet()
                         val selected=candidates.filter { seen.add(key(it)) }
                         require(current.size+selected.size<=200) { "capacity" }
+                        selected.mapNotNull { it.options.cookieId }.distinct().forEach(app.vault::requireAvailable)
                         selected.forEachIndexed { index,job ->
                             DownloadWorker.enqueue(app,job.copy(createdAt=System.currentTimeMillis()+index))
                         }
@@ -357,7 +408,14 @@ class ZenithViewModel(application: Application): AndroidViewModel(application) {
                     else showMessage(text(R.string.bulk_added,count))
                 }
             } catch(cancelled: CancellationException) { throw cancelled }
-            catch(e: Exception) { showMessage(text(if(e.message=="capacity") R.string.queue_capacity else R.string.bulk_error)) }
+            catch(e: Exception) {
+                val message = when {
+                    e is CookieSessionException -> R.string.missing_session
+                    e.message == "capacity" -> R.string.queue_capacity
+                    else -> R.string.bulk_error
+                }
+                showMessage(text(message))
+            }
             finally { edit { it.copy(submitting=false) } }
         }
     }

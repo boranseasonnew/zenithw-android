@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_sheet_advanced">Options avancées</string>
+    <string name="download_sheet_custom">Personnalisé</string>
+    <string name="download_sheet_audio_quality">Qualité audio</string>
+    <string name="download_sheet_subtitle_format">Format des sous-titres</string>
+    <string name="download_sheet_cover">Miniature</string>
+    <string name="download_sheet_metadata">Métadonnées</string>
+    <string name="download_sheet_stop_analysis">Arrêter l’analyse</string>
+</resources>

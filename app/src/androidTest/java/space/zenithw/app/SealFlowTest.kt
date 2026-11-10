@@ -73,11 +73,12 @@ class SealFlowTest {
         val directory=java.io.File(app.cacheDir,"request-check-${UUID.randomUUID()}").apply { mkdirs() }
         try {
             val method=DownloadEngine::class.java.getDeclaredMethod("request",DownloadJob::class.java,
-                java.io.File::class.java,java.io.File::class.java,java.lang.Boolean.TYPE,java.io.File::class.java).apply { isAccessible=true }
+                java.io.File::class.java,java.io.File::class.java,java.lang.Boolean.TYPE,java.io.File::class.java,
+                java.lang.Boolean.TYPE,java.io.File::class.java).apply { isAccessible=true }
             val options=DownloadOptions(mode=MediaMode.AUDIO,selectedFormat="140",networkMode="ipv4",
                 proxy="socks5://127.0.0.1:1080",userAgent="Zenith test",filenameOverride="100% music",
                 clipStart="10",clipEnd="20",restrictFilenames=true,formatSort="res,fps",maxFilesizeMb=50)
-            val request=method.invoke(app.engine,DownloadJob(url="https://example.org/video",title="Test",options=options),directory,null,false,null)
+            val request=method.invoke(app.engine,DownloadJob(url="https://example.org/video",title="Test",options=options),directory,null,false,null,true,null)
                 as com.yausername.youtubedl_android.YoutubeDLRequest
             val args=request.buildCommand()
             assertEquals("140",request.getOption("-f"))
@@ -88,7 +89,7 @@ class SealFlowTest {
             assertEquals("50M",request.getOption("--max-filesize"))
             assertTrue(request.getOption("-o").orEmpty().endsWith("100%% music.%(ext)s"))
             val command=method.invoke(app.engine,DownloadJob(url="https://example.org/video",title="Test",
-                options=options.copy(mode=MediaMode.VIDEO,customArguments="-f bestaudio -x --audio-format mp3")),directory,null,false,null)
+                options=options.copy(mode=MediaMode.VIDEO,customArguments="-f bestaudio -x --audio-format mp3")),directory,null,false,null,true,null)
                 as com.yausername.youtubedl_android.YoutubeDLRequest
             assertFalse(command.hasOption("--remux-video"))
             assertFalse(command.hasOption("-f")) // custom tokens, not inherited automatic media options
