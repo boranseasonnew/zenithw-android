@@ -1,86 +1,72 @@
 <p align="center">
-  <img src="app/src/main/res/drawable/zenithw.png" width="88" height="88" alt="ZenithW logo">
+  <img src="app/src/main/res/drawable/zenithw.png" width="96" height="96" alt="ZenithW logo">
 </p>
 
-<h1 align="center">ZenithW for Android</h1>
+<h1 align="center">ZenithW Android</h1>
 
 <p align="center">
-  A private, open-source way to download and manage online media on Android.<br>
-  No ads, subscriptions, or ZenithW account required.
-</p>
-
-<p align="center">
-  <a href="https://github.com/boranseasonnew/zenithw-android/releases/latest"><img src="https://img.shields.io/github/v/release/boranseasonnew/zenithw-android?style=flat&color=8b5cf6" alt="Latest release"></a>
-  <img src="https://img.shields.io/badge/Android-7.0%2B-3DDC84?logo=android&logoColor=white" alt="Android 7.0 or later">
-  <a href="https://github.com/boranseasonnew/zenithw-android/releases"><img src="https://img.shields.io/github/downloads/boranseasonnew/zenithw-android/total?color=6366f1&logo=github" alt="Total GitHub release downloads"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0--only-64748b" alt="AGPL-3.0-only license"></a>
+  Save media. Keep it simple.<br>
+  Open-source Android media downloader. No ads, subscriptions or mandatory account.
 </p>
 
 <p align="center">
-  <a href="https://github.com/boranseasonnew/zenithw-android/releases/latest">Get the latest APK</a> ·
-  <a href="https://zenithw.space/downloads">Website & Windows</a> ·
-  <a href="https://github.com/boranseasonnew/zenithw-android/issues">Report an issue</a> ·
+  <a href="https://github.com/boranseasonnew/zenithw-android/releases/latest"><img src="https://img.shields.io/github/v/release/boranseasonnew/zenithw-android?style=for-the-badge&amp;label=Android&amp;labelColor=151922&amp;logo=android&amp;logoColor=white&amp;color=2E7D32" alt="Latest Android release"></a>
+  <img src="https://img.shields.io/badge/Android-7.0%2B-3DDC84?style=for-the-badge&amp;labelColor=151922&amp;logo=android&amp;logoColor=white" alt="Android 7.0 or later">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0--only-64748B?style=for-the-badge&amp;labelColor=151922&amp;logoColor=white" alt="AGPL-3.0-only license"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/boranseasonnew/zenithw-android/releases"><img src="https://img.shields.io/github/downloads/boranseasonnew/zenithw-android/total?style=for-the-badge&amp;labelColor=151922&amp;label=Android%20downloads&amp;logo=github&amp;logoColor=white&amp;color=2E7D32" alt="Android GitHub release downloads across all releases"></a>
+</p>
+
+<p align="center"><sub>The download badge counts GitHub release file downloads, not unique users or installs from other stores.</sub></p>
+
+<p align="center">
+  <a href="https://github.com/boranseasonnew/zenithw-android/releases/latest">Download APK</a> ·
+  <a href="https://zenithw.space">Website</a> ·
+  <a href="https://github.com/boranseasonnew/zenithw-android/issues">Issues</a> ·
   <a href="tr-readme.md">Türkçe</a>
 </p>
 
-## New in 3.1.0
+<p align="center"><strong><a href="https://github.com/boranseasonnew/zenithw/blob/main/why_zenithw.md">✦ Why ZenithW? Read our story</a></strong></p>
 
-Multi-link sharing, source-specific profiles, safer naming templates, queue priorities and concurrent downloads, a searchable media library, local conversion/trimming, chapters, GIF/WebP and subtitle tools, portable settings backups and reviewed storage cleanup. See the [implementation and actual verification](docs/android-3.1.0-report.md) for coverage and limitations. Full native 16 KB page support remains unresolved.
+ZenithW is a native Android app built with Kotlin, Jetpack Compose, yt-dlp, FFmpeg and Aria2c. Downloads and media processing run on your device using its own network connection, not through ZenithW's web download service.
 
-## What is ZenithW?
+## Features
 
-ZenithW is a native Android app for saving online video and audio for personal, offline access. It combines **Kotlin**, **Jetpack Compose**, **yt-dlp**, **FFmpeg** and **Aria2c** in one interface.
+- **Download control:** choose available video and audio formats, quality, subtitles, metadata and cover art.
+- **Queue and history:** handle multiple links and playlists, track progress, retry tasks and review logs.
+- **Media tools:** convert, trim and manage supported files locally, including GIF/WebP and subtitle workflows.
+- **Personalization:** download profiles, themes, SponsorBlock and configurable storage and network options.
 
-Downloads and media processing run on your device using its network connection. Your media does not pass through the ZenithW web download service. ZenithW is open source and does not require an account, subscription or ad-supported service.
+Available in **English, Turkish, German, French and Russian**.
 
-## What you can do
+## Download
 
-- **Choose what to save:** select video quality, available formats, audio, subtitles, metadata and cover art.
-- **Track active downloads:** see cover art, duration, file size, speed and progress; open or share saved files from history.
-- **Work with multiple links:** queue up to 50 URL rows or select individual entries from a playlist.
-- **Manage tasks:** save yt-dlp option templates, inspect and copy task logs, and retry failed jobs.
-- **Make it yours:** set the output folder, theme, download options, SponsorBlock, network settings and history behavior.
-- **Use saved sessions:** capture cookies with the built-in browser or import a Netscape cookie file. Cookie profiles are encrypted at rest.
+Get the latest APK from [GitHub Releases](https://github.com/boranseasonnew/zenithw-android/releases/latest). Requires **Android 7.0 or later (API 24+)**.
 
-The interface is available in **English, Turkish, German, French and Russian**. The GitHub edition can also check for verified yt-dlp stable or nightly updates from Settings; engine updates are separate from app updates.
+Choose `arm64-v8a` for most modern phones, `armeabi-v7a` for older 32-bit ARM devices, or `x86_64` for compatible devices and emulators. Verify downloads using the checksums included with each release. The [signing certificate fingerprint](release-certificate.sha256) is also public.
 
-## Get the app
+## Documentation
 
-The latest stable release is **[3.1.1](https://github.com/boranseasonnew/zenithw-android/releases/tag/v3.1.1)** and requires **Android 7.0 or later (API 24+)**. Download the APK that matches your device:
+- [Releases and changes](https://github.com/boranseasonnew/zenithw-android/releases) · [Implementation and test coverage](docs/android-3.1.0-report.md)
+- [F-Droid packaging status](docs/FDROID.md) · [Native dependencies and limitations](docs/native-curl-NOTICES.md)
 
-| APK | Typical devices |
-| --- | --- |
-| [arm64-v8a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.1/Zenith-3.1.1-stable-arm64-v8a.apk) | Most modern Android phones and tablets |
-| [armeabi-v7a](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.1/Zenith-3.1.1-stable-armeabi-v7a.apk) | Older 32-bit ARM devices |
-| [x86_64](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.1/Zenith-3.1.1-stable-x86_64.apk) | Compatible Intel/AMD devices and emulators |
-
-For file integrity, compare the downloaded APK with [SHA256SUMS.txt](https://github.com/boranseasonnew/zenithw-android/releases/download/v3.1.1/SHA256SUMS.txt). The public [signing-certificate fingerprint](release-certificate.sha256) helps verify update compatibility.
-
-## Project status
-
-Version **3.1.0** extends the existing download engine with queue, sharing, library and local media workflows. Physical Android 13 testing passed 28 tests including real media conversion. The final signed release workflow passed **61 Android 13 tests, 23 Android 7 compatibility tests, all 32 Python checks and Android lint**. See the [English release notes](releases/3.1.0.md) and [engineering report](docs/android-3.1.0-report.md) for actual coverage and remaining limitations.
-
-The **3.1.1 hotfix** improves download recovery, brings the engine to the top of Settings, and puts the home actions within one-handed reach. See the [3.1.1 release notes](releases/3.1.1.md).
-
-Downloads depend on yt-dlp support and the source's access requirements. Full native 16 KB memory-page compatibility has not been established; see the [runtime provenance and limits](docs/native-curl-NOTICES.md).
-
-The [F-Droid submission](docs/FDROID.md) is pending.
+Full compatibility with devices requiring **16 KB memory pages** has not yet been verified. Available formats and downloads depend on the source and its access requirements.
 
 ## Build from source
 
-To build a debug APK, use **JDK 17**, **Android SDK Platform 36** and **Build Tools 36.0.0**. Configure the SDK path in Android Studio or `local.properties`, then run:
+Requires JDK 17, Android SDK Platform 36 and Build Tools 36.0.0.
 
 ```sh
 python3 scripts/package_native_curl.py
 ./gradlew :app:assembleDebug
 ```
 
-On Windows, run `python scripts/package_native_curl.py`, then `.\\gradlew.bat :app:assembleDebug`. The preparation script verifies pinned native browser executables and dependency notices; see [runtime provenance and compatibility](docs/native-curl-NOTICES.md). The APK is written to `app/build/outputs/apk/debug/`. Official signed releases are built and published by [GitHub Actions](.github/workflows/android-release.yml).
+On Windows, use `python scripts/package_native_curl.py` and `.\gradlew.bat :app:assembleDebug`. Signed releases are built through [GitHub Actions](.github/workflows/android-release.yml).
 
-## Credits & license
+## Contributing and license
 
-Created by [boranseason](https://github.com/boranseasonnew). ZenithW is licensed under [AGPL-3.0-only](LICENSE); dependencies retain their own licenses.
+Bug reports, translations and pull requests are welcome. [Report an issue](https://github.com/boranseasonnew/zenithw-android/issues) without sharing cookies or private links.
 
-[Seal](https://github.com/JunkFood02/Seal) v1.13.1 informed the download configuration, settings and terminal workflows. These were implemented independently; no Seal source code or visual assets are bundled. See the [comparison](docs/seal-comparison.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
-
-Found a problem? [Open an issue](https://github.com/boranseasonnew/zenithw-android/issues) with your app and Android versions, reproduction steps and a sanitized error message. Do not include cookies or private links in public reports. Use ZenithW only for media you own or have permission to download.
+ZenithW is licensed under [AGPL-3.0-only](LICENSE). Built with open-source software; see [third-party notices](THIRD_PARTY_NOTICES.md) and the [Seal comparison](docs/seal-comparison.md). Download only content you own or have permission to use.
